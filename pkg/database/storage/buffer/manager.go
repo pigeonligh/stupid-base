@@ -22,79 +22,159 @@ type Manager struct {
 	// size of pages in the buffer
 	PageSize int
 
-	// MRU page slot
-	First int
-	// LRU page slot
-	Last int
-	// Head of free list
-	Free int
+	FirstUsed int
+	LastUsed  int
+	FirstFree int
 }
 
 // NewManager returns a manager
 func NewManager(numPages, pageSize int) *Manager {
-	buffers := []*PageDescriptor{}
+	buffers := make([]*PageDescriptor, numPages)
 	for i := 0; i < numPages; i++ {
-		desc := NewDescriptor(pageSize, i)
-		buffers = append(buffers, desc)
+		buffers[i] = NewDescriptor(pageSize, i)
 	}
 	buffers[0].Previous = InvalidSlot
 	buffers[numPages-1].Next = InvalidSlot
 
 	mg := &Manager{
 		Buffers: buffers,
-		Slots:   map[storage.PageID]int{},
+		Slots:   make(map[storage.PageID]int, numPages),
 
 		Pages:    numPages,
 		PageSize: pageSize,
 
-		First: InvalidSlot,
-		Last:  InvalidSlot,
-		Free:  0,
+		FirstUsed: InvalidSlot,
+		LastUsed:  InvalidSlot,
+		FirstFree: 0,
 	}
 	return mg
 }
 
 // GetPage gets a pointer to a page pinned in the buffer.
-func (mg *Manager) GetPage(
-	file *os.File, pageNum storage.PageNum, multiplePins int,
-) (*TypeData, error) {
-	id := storage.PageID{
-		File: file,
-		Page: pageNum,
-	}
+func (mg *Manager) GetPage(id storage.PageID) (storage.PageData, error) {
 	var err error
 	slot, found := mg.Slots[id]
 	if found {
-		if multiplePins == 0 && mg.Buffers[slot].PinCount > 0 {
-			return nil, errors.New(storage.ErrorPagePinned)
-		}
-		mg.Buffers[slot].PinCount++
-
-		if err = mg.unlink(slot); err != nil {
-			return nil, err
-		}
-		if err = mg.linkhead(slot); err != nil {
-			return nil, err
-		}
+		mg.linkUsed(slot)
 	} else {
-		slot, err = mg.alloc()
-		if err != nil {
+		if slot, err = mg.allocSlot(); err != nil {
 			return nil, err
 		}
-
+		if mg.Buffers[slot].Data, err = mg.readPage(id); err != nil {
+			mg.linkFree(slot)
+			return nil, err
+		}
+		mg.initPageDesc(id, slot)
 	}
 
-	return nil, nil
+	return mg.Buffers[slot].Data, nil
 }
 
-func (mg *Manager) unlink(slot int) error {
+// AllocatePage allocates a new page in the buffer
+func (mg *Manager) AllocatePage(id storage.PageID) (storage.PageData, error) {
+	if _, found := mg.Slots[id]; found {
+		return nil, errors.New(storage.ErrorPageInBuffer)
+	}
+	var err error
+	var slot int
+	if slot, err = mg.allocSlot(); err != nil {
+		return nil, err
+	}
+	mg.initPageDesc(id, slot)
+
+	return mg.Buffers[slot].Data, nil
+}
+
+// MarkDirty marks page dirty
+func (mg *Manager) MarkDirty(id storage.PageID) error {
+	slot, found := mg.Slots[id]
+	if !found {
+		return errors.New(storage.ErrorPageNotInBuffer)
+	}
+	mg.Buffers[slot].Dirty = true
+	mg.linkUsed(slot)
 	return nil
 }
 
-func (mg *Manager) linkhead(slot int) error {
+// UnpinPage unpins a page so that it can be discarded from the buffer.
+func (mg *Manager) UnpinPage(id storage.PageID) error {
+	slot, found := mg.Slots[id]
+	if !found {
+		return errors.New(storage.ErrorPageNotInBuffer)
+	}
+	mg.linkUsed(slot)
 	return nil
 }
 
-func (mg *Manager) alloc() (int, error) {
-	return -1, nil
+// FlushPages flushes pages for file
+func (mg *Manager) FlushPages(file *os.File) error {
+	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
+		page := mg.Buffers[slot]
+		if file == page.File {
+			if err := mg.clearDirty(slot); err != nil {
+				return err
+			}
+			delete(mg.Slots, page.PageID)
+			mg.linkFree(slot)
+		}
+	}
+	return nil
+}
+
+// ForcePages forces a page to disk
+func (mg *Manager) ForcePages(id storage.PageID) error {
+	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
+		page := mg.Buffers[slot]
+		if id == page.PageID && id.Page == storage.AllPageNum {
+			if err := mg.clearDirty(slot); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ClearBuffer removes all entries from the Buffer Manager
+func (mg *Manager) ClearBuffer() error {
+	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
+		page := mg.Buffers[slot]
+		delete(mg.Slots, page.PageID)
+		mg.linkFree(slot)
+	}
+	return nil
+}
+
+// PrintBuffer displays all entries in the buffer
+func (mg *Manager) PrintBuffer() {
+	// TODO
+}
+
+// ResizeBuffer attempts to resize the buffer to the new size
+func (mg *Manager) ResizeBuffer(newSize int) error {
+	return errors.New(storage.ErrorNotImplemented)
+}
+
+// GetBlockSize returns the size of the block that can be allocated
+func (mg *Manager) GetBlockSize() int {
+	return mg.PageSize
+}
+
+// AllocateBlock allocates a memory chunk that lives in buffer manager
+func (mg *Manager) AllocateBlock() (storage.PageID, storage.PageData, error) {
+	slot, err := mg.allocSlot()
+	if err != nil {
+		return storage.PageID{File: nil, Page: -1}, nil, err
+	}
+	pageID := storage.PageID{
+		File: nil,
+		Page: 0, // need to create
+	}
+	mg.initPageDesc(pageID, slot)
+	return pageID, mg.Buffers[slot].Data, nil
+}
+
+// DisposeBlock disposes of a memory chunk managed by the buffer manager
+func (mg *Manager) DisposeBlock(storage.PageID) error {
+	// TODO: maybe nothing is needed to do
+	return nil
 }

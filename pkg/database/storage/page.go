@@ -12,6 +12,9 @@ type PageID struct {
 	Page PageNum
 }
 
+// PageData is type of data
+type PageData = []byte
+
 // PageHandle is PF page interface
 type PageHandle struct {
 	Number int

@@ -2,59 +2,56 @@ package common
 
 import (
 	"math"
-	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 const (
-	UnsignedMax = 0xffffffff
+	UnsignedMax     = 0xffffffff
 	BitsetFindNoRes = -1
-	BitsetOpFails = -1
+	BitsetOpFails   = -1
+
+	dataSize = types.PageSize / 4
 )
 
 type MyBitset struct {
-	data []uint32
-	length int	// length of the array
-	size int	// how many contents are there
+	data   *[dataSize]uint32
+	length int // length of the array
+	size   int // how many contents are there
 }
 
-func myBitset(data []uint32, contentSize int) *MyBitset {
+func myBitset(data *[dataSize]uint32, contentSize int) *MyBitset {
 	bitset := MyBitset{
 		data:   data,
 		length: int(math.Ceil(float64(contentSize) / 32)),
 		size:   contentSize,
 	}
 
-	paddingBitsNum := bitset.length * 32 - bitset.size
-
-	println(paddingBitsNum)
-	println(bitset.length)
-	println(unsafe.Sizeof(bitset.data))
-	println((bitset.data)[0])
+	paddingBitsNum := bitset.length*32 - bitset.size
 
 	for i := 0; i < paddingBitsNum; i++ {
-		bitset.data[bitset.length - 1] |= 1 << (31 - i)
+		bitset.data[bitset.length-1] |= 1 << (31 - i)
 	}
 
 	return &bitset
 }
 
-func (b *MyBitset) FindLowestZeroBitIdx() int{
+func (b *MyBitset) FindLowestZeroBitIdx() int {
 	for i := 0; i < b.length; i++ {
 		if b.data[i] != UnsignedMax {
-			return i * 32 + int(math.Log2(float64(^b.data[i] & (b.data[i]+1))))
+			return i*32 + int(math.Log2(float64(^b.data[i]&(b.data[i]+1))))
 		}
 	}
 	return BitsetFindNoRes
 }
 
-
-func (b *MyBitset) FindLowestOneBitIdx() int{
+func (b *MyBitset) FindLowestOneBitIdx() int {
 	for i := 0; i < b.length; i++ {
 		if b.data[i] != 0 {
-			idx := i * 32 + int(math.Log2(float64(-b.data[i] & b.data[i])))
+			idx := i*32 + int(math.Log2(float64(-b.data[i]&b.data[i])))
 			if idx > b.size {
 				return BitsetFindNoRes
-			}else {
+			} else {
 				return idx
 			}
 		}
@@ -64,24 +61,24 @@ func (b *MyBitset) FindLowestOneBitIdx() int{
 
 func (b *MyBitset) IsOccupied(idx int) bool {
 	var is, r = false, uint32(1 << (idx & 31))
-	if r == (b.data[idx >> 5] & r) {
+	if r == (b.data[idx>>5] & r) {
 		is = true
 	}
 	return is
 }
 
-func (b *MyBitset) Set(idx int) int{
+func (b *MyBitset) Set(idx int) int {
 	if idx < 0 || idx >= b.size {
 		return BitsetOpFails
 	}
-	b.data[idx >> 5] |= 1 << (idx & 31)
+	b.data[idx>>5] |= 1 << (idx & 31)
 	return 0
 }
 
-func (b *MyBitset) Clean(idx int) int{
+func (b *MyBitset) Clean(idx int) int {
 	if idx < 0 || idx >= b.size {
 		return BitsetOpFails
 	}
-	b.data[idx >> 5] &= ^(1 << (idx & 31))
+	b.data[idx>>5] &= ^(1 << (idx & 31))
 	return 0
 }

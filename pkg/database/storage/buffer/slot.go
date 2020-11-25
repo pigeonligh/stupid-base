@@ -8,74 +8,82 @@ package buffer
 const InvalidSlot = -1
 
 func (mg *Manager) setLink(slot, prev, next int) {
-	page := mg.Buffers[slot]
-	if page.Linked {
+	page := mg.buffers[slot]
+	if page.linked {
 		mg.setUnlink(slot)
 	}
-	page.Previous = prev
-	page.Next = next
-	page.Linked = true
+	page.previous = prev
+	page.next = next
+	page.linked = true
 
 	if prev != InvalidSlot {
-		mg.Buffers[prev].Next = slot
+		mg.buffers[prev].next = slot
 	}
 	if next != InvalidSlot {
-		mg.Buffers[next].Previous = slot
+		mg.buffers[next].previous = slot
 	}
 }
 
 func (mg *Manager) setUnlink(slot int) {
-	page := mg.Buffers[slot]
-	if !page.Linked {
+	page := mg.buffers[slot]
+	if !page.linked {
 		return
 	}
 
-	if mg.FirstUsed == slot {
-		mg.FirstUsed = page.Next
+	if mg.firstUsed == slot {
+		mg.firstUsed = page.next
 	}
-	if mg.FirstFree == slot {
-		mg.FirstFree = page.Next
+	if mg.firstFree == slot {
+		mg.firstFree = page.next
 	}
-	if mg.LastUsed == slot {
-		mg.LastUsed = page.Previous
-	}
-
-	if page.Next != InvalidSlot {
-		mg.Buffers[page.Next].Previous = page.Previous
-	}
-	if page.Previous != InvalidSlot {
-		mg.Buffers[page.Previous].Next = page.Next
+	if mg.lastUsed == slot {
+		mg.lastUsed = page.previous
 	}
 
-	page.Previous = InvalidSlot
-	page.Next = InvalidSlot
-	page.Linked = false
+	if page.next != InvalidSlot {
+		mg.buffers[page.next].previous = page.previous
+	}
+	if page.previous != InvalidSlot {
+		mg.buffers[page.previous].next = page.next
+	}
+
+	page.previous = InvalidSlot
+	page.next = InvalidSlot
+	page.linked = false
 }
 
 func (mg *Manager) linkFree(slot int) {
-	mg.setLink(slot, InvalidSlot, mg.FirstFree)
-	mg.FirstFree = slot
+	page := mg.buffers[slot]
+	if page.linked {
+		mg.setUnlink(slot)
+	}
+	mg.setLink(slot, InvalidSlot, mg.firstFree)
+	mg.firstFree = slot
 }
 
 func (mg *Manager) linkUsed(slot int) {
-	mg.setLink(slot, InvalidSlot, mg.FirstUsed)
-	mg.FirstUsed = slot
-	if mg.LastUsed == InvalidSlot {
-		mg.LastUsed = slot
+	page := mg.buffers[slot]
+	if page.linked {
+		mg.setUnlink(slot)
+	}
+	mg.setLink(slot, InvalidSlot, mg.firstUsed)
+	mg.firstUsed = slot
+	if mg.lastUsed == InvalidSlot {
+		mg.lastUsed = slot
 	}
 }
 
 func (mg *Manager) allocSlot() (int, error) {
-	if mg.FirstFree == InvalidSlot {
-		slot := mg.LastUsed
+	if mg.firstFree == InvalidSlot {
+		slot := mg.lastUsed
 		if err := mg.clearDirty(slot); err != nil {
 			return -1, err
 		}
-		delete(mg.Slots, mg.Buffers[slot].PageID)
+		delete(mg.slots, mg.buffers[slot].PageID)
 		mg.linkFree(slot)
 	}
 
-	slot := mg.FirstFree
+	slot := mg.firstFree
 	mg.linkUsed(slot)
 
 	return slot, nil

@@ -5,29 +5,29 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/database/storage"
+	"github.com/pigeonligh/stupid-base/pkg/database/types"
 )
 
 // PageDescriptor contains data about a page in the buffer
 type PageDescriptor struct {
-	storage.PageID
+	types.PageID
 
-	Previous int
-	Next     int
-	Linked   bool
+	previous int
+	next     int
+	linked   bool
 
 	Dirty bool
 
-	Data storage.PageData
+	Data types.PageData
 }
 
 // NewDescriptor returns a page descriptor
 func NewDescriptor(pageSize int, index int) *PageDescriptor {
 	return &PageDescriptor{
-		Previous: index - 1,
-		Next:     index + 1,
-		Linked:   true,
+		previous: index - 1,
+		next:     index + 1,
+		linked:   true,
 
-		Data: make(storage.PageData, pageSize),
+		Data: make(types.PageData, pageSize),
 	}
 }

@@ -2,7 +2,7 @@
 Copyright (c) 2020, pigeonligh.
 */
 
-package storage
+package errormsg
 
 const (
 	// ErrorPagePinned is an error message
@@ -28,6 +28,15 @@ const (
 
 	// ErrorNotImplemented is an error message
 	ErrorNotImplemented = "NotImplemented"
+
+	// ErrorFileNotOpened is an error message
+	ErrorFileNotOpened = "FileNotOpened"
+
+	// ErrorInvalidPage is an error message
+	ErrorInvalidPage = "InvalidPage"
+
+	// ErrorEOF is an error message
+	ErrorEOF = "EOF"
 
 	// UnknownError is an error message
 	UnknownError = "UnknownError"

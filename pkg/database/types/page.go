@@ -2,12 +2,11 @@
 Copyright (c) 2020, pigeonligh.
 */
 
-package storage
+package types
 
-import "strconv"
-
-// PageNum uniquely identifies a page in a file
-type PageNum = int64
+import (
+	"os"
+)
 
 const (
 	// FileHeaderSize justifies the file header to the length of one page
@@ -16,9 +15,18 @@ const (
 	// PageSize is the size of a page
 	PageSize = 4096
 
-	// PageDataSize is the size of a page without header
-	PageDataSize = PageSize - strconv.IntSize
-
 	// AllPageNum is defined and used by the ForcePages method defined in RM and PF layers
 	AllPageNum = -1
 )
+
+// PageNum uniquely identifies a page in a file
+type PageNum = int
+
+// PageData is type of data
+type PageData = []byte
+
+// PageID saves a page's fd and PageNum
+type PageID struct {
+	File *os.File
+	Page PageNum
+}

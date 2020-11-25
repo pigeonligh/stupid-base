@@ -8,23 +8,24 @@ import (
 	"errors"
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/storage"
+	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/database/types"
 )
 
 // Manager is the manager for page buffer
 type Manager struct {
 	// info on buffer pages
-	Buffers []*PageDescriptor
-	Slots   map[storage.PageID]int
+	buffers []*PageDescriptor
+	slots   map[types.PageID]int
 
 	// pages in the buffer
-	Pages int
+	pages int
 	// size of pages in the buffer
-	PageSize int
+	pageSize int
 
-	FirstUsed int
-	LastUsed  int
-	FirstFree int
+	firstUsed int
+	lastUsed  int
+	firstFree int
 }
 
 // NewManager returns a manager
@@ -33,47 +34,47 @@ func NewManager(numPages, pageSize int) *Manager {
 	for i := 0; i < numPages; i++ {
 		buffers[i] = NewDescriptor(pageSize, i)
 	}
-	buffers[0].Previous = InvalidSlot
-	buffers[numPages-1].Next = InvalidSlot
+	buffers[0].previous = InvalidSlot
+	buffers[numPages-1].next = InvalidSlot
 
 	mg := &Manager{
-		Buffers: buffers,
-		Slots:   make(map[storage.PageID]int, numPages),
+		buffers: buffers,
+		slots:   make(map[types.PageID]int, numPages),
 
-		Pages:    numPages,
-		PageSize: pageSize,
+		pages:    numPages,
+		pageSize: pageSize,
 
-		FirstUsed: InvalidSlot,
-		LastUsed:  InvalidSlot,
-		FirstFree: 0,
+		firstUsed: InvalidSlot,
+		lastUsed:  InvalidSlot,
+		firstFree: 0,
 	}
 	return mg
 }
 
 // GetPage gets a pointer to a page pinned in the buffer.
-func (mg *Manager) GetPage(id storage.PageID) (storage.PageData, error) {
+func (mg *Manager) GetPage(id types.PageID) (types.PageData, error) {
 	var err error
-	slot, found := mg.Slots[id]
+	slot, found := mg.slots[id]
 	if found {
 		mg.linkUsed(slot)
 	} else {
 		if slot, err = mg.allocSlot(); err != nil {
 			return nil, err
 		}
-		if mg.Buffers[slot].Data, err = mg.readPage(id); err != nil {
+		if mg.buffers[slot].Data, err = mg.readPage(id); err != nil {
 			mg.linkFree(slot)
 			return nil, err
 		}
 		mg.initPageDesc(id, slot)
 	}
 
-	return mg.Buffers[slot].Data, nil
+	return mg.buffers[slot].Data, nil
 }
 
 // AllocatePage allocates a new page in the buffer
-func (mg *Manager) AllocatePage(id storage.PageID) (storage.PageData, error) {
-	if _, found := mg.Slots[id]; found {
-		return nil, errors.New(storage.ErrorPageInBuffer)
+func (mg *Manager) AllocatePage(id types.PageID) (types.PageData, error) {
+	if _, found := mg.slots[id]; found {
+		return nil, errors.New(errormsg.ErrorPageInBuffer)
 	}
 	var err error
 	var slot int
@@ -82,50 +83,40 @@ func (mg *Manager) AllocatePage(id storage.PageID) (storage.PageData, error) {
 	}
 	mg.initPageDesc(id, slot)
 
-	return mg.Buffers[slot].Data, nil
+	return mg.buffers[slot].Data, nil
 }
 
 // MarkDirty marks page dirty
-func (mg *Manager) MarkDirty(id storage.PageID) error {
-	slot, found := mg.Slots[id]
+func (mg *Manager) MarkDirty(id types.PageID) error {
+	slot, found := mg.slots[id]
 	if !found {
-		return errors.New(storage.ErrorPageNotInBuffer)
+		return errors.New(errormsg.ErrorPageNotInBuffer)
 	}
-	mg.Buffers[slot].Dirty = true
-	mg.linkUsed(slot)
-	return nil
-}
-
-// UnpinPage unpins a page so that it can be discarded from the buffer.
-func (mg *Manager) UnpinPage(id storage.PageID) error {
-	slot, found := mg.Slots[id]
-	if !found {
-		return errors.New(storage.ErrorPageNotInBuffer)
-	}
+	mg.buffers[slot].Dirty = true
 	mg.linkUsed(slot)
 	return nil
 }
 
 // FlushPages flushes pages for file
 func (mg *Manager) FlushPages(file *os.File) error {
-	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
-		page := mg.Buffers[slot]
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+		page := mg.buffers[slot]
 		if file == page.File {
 			if err := mg.clearDirty(slot); err != nil {
 				return err
 			}
-			delete(mg.Slots, page.PageID)
+			delete(mg.slots, page.PageID)
 			mg.linkFree(slot)
 		}
 	}
 	return nil
 }
 
-// ForcePages forces a page to disk
-func (mg *Manager) ForcePages(id storage.PageID) error {
-	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
-		page := mg.Buffers[slot]
-		if id == page.PageID && id.Page == storage.AllPageNum {
+// ForcePage forces a page to disk
+func (mg *Manager) ForcePage(id types.PageID) error {
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+		page := mg.buffers[slot]
+		if id == page.PageID {
 			if err := mg.clearDirty(slot); err != nil {
 				return err
 			}
@@ -136,9 +127,9 @@ func (mg *Manager) ForcePages(id storage.PageID) error {
 
 // ClearBuffer removes all entries from the Buffer Manager
 func (mg *Manager) ClearBuffer() error {
-	for slot := mg.FirstUsed; slot != InvalidSlot; slot = mg.Buffers[slot].Next {
-		page := mg.Buffers[slot]
-		delete(mg.Slots, page.PageID)
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+		page := mg.buffers[slot]
+		delete(mg.slots, page.PageID)
 		mg.linkFree(slot)
 	}
 	return nil
@@ -146,35 +137,35 @@ func (mg *Manager) ClearBuffer() error {
 
 // PrintBuffer displays all entries in the buffer
 func (mg *Manager) PrintBuffer() {
-	// TODO
+	// TODO: print buffer
 }
 
 // ResizeBuffer attempts to resize the buffer to the new size
 func (mg *Manager) ResizeBuffer(newSize int) error {
-	return errors.New(storage.ErrorNotImplemented)
+	return errors.New(errormsg.ErrorNotImplemented)
 }
 
 // GetBlockSize returns the size of the block that can be allocated
 func (mg *Manager) GetBlockSize() int {
-	return mg.PageSize
+	return mg.pageSize
 }
 
 // AllocateBlock allocates a memory chunk that lives in buffer manager
-func (mg *Manager) AllocateBlock() (storage.PageID, storage.PageData, error) {
+func (mg *Manager) AllocateBlock() (types.PageID, types.PageData, error) {
 	slot, err := mg.allocSlot()
 	if err != nil {
-		return storage.PageID{File: nil, Page: -1}, nil, err
+		return types.PageID{File: nil, Page: -1}, nil, err
 	}
-	pageID := storage.PageID{
+	pageID := types.PageID{
 		File: nil,
 		Page: 0, // need to create
 	}
 	mg.initPageDesc(pageID, slot)
-	return pageID, mg.Buffers[slot].Data, nil
+	return pageID, mg.buffers[slot].Data, nil
 }
 
 // DisposeBlock disposes of a memory chunk managed by the buffer manager
-func (mg *Manager) DisposeBlock(storage.PageID) error {
+func (mg *Manager) DisposeBlock(types.PageID) error {
 	// TODO: maybe nothing is needed to do
 	return nil
 }

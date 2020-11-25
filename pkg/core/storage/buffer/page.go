@@ -5,8 +5,6 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	"errors"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
@@ -20,7 +18,7 @@ func (mg *Manager) readPage(pageID types.PageID) (types.PageData, error) {
 		return nil, err
 	}
 	if n != mg.pageSize {
-		return nil, errors.New(errormsg.ErrorImcompleteRead)
+		return nil, errormsg.ErrorImcompleteRead
 	}
 	return data, nil
 }
@@ -33,7 +31,7 @@ func (mg *Manager) writePage(pageID types.PageID, data types.PageData) error {
 		return err
 	}
 	if n != mg.pageSize {
-		return errors.New(errormsg.ErrorImcompleteWrite)
+		return errormsg.ErrorImcompleteWrite
 	}
 	return nil
 }

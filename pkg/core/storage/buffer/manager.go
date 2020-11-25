@@ -8,8 +8,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 // Manager is the manager for page buffer

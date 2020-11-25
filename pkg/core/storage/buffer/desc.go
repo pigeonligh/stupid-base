@@ -5,7 +5,7 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 // PageDescriptor contains data about a page in the buffer

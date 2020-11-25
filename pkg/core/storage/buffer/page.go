@@ -7,8 +7,8 @@ package buffer
 import (
 	"errors"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func (mg *Manager) readPage(pageID types.PageID) (types.PageData, error) {

@@ -7,8 +7,8 @@ package storage
 import (
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/storage/buffer"
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 const bufferSize = 64

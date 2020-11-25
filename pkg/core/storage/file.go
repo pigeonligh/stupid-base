@@ -8,9 +8,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
-	"github.com/pigeonligh/stupid-base/pkg/database/storage/buffer"
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 // FileHandle is PF file interface

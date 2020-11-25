@@ -7,7 +7,7 @@ package buffer
 import (
 	"errors"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
 )
 
 // InvalidSlot is the invalid slot

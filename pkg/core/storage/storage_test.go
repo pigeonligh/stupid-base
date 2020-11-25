@@ -7,7 +7,7 @@ package storage
 import (
 	"testing"
 
-	"github.com/pigeonligh/stupid-base/pkg/database/types"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func TestBuffer(t *testing.T) {

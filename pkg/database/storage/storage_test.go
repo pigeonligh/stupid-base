@@ -13,6 +13,8 @@ import (
 func TestBuffer(t *testing.T) {
 	manager := GetInstance()
 
+	count := 100000
+
 	if err := manager.CreateFile("test1.bin"); err != nil {
 		t.Error(err)
 		return
@@ -38,7 +40,7 @@ func TestBuffer(t *testing.T) {
 		t.Error("BlockSize error")
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < count; i++ {
 		data, err := f1.NewPage(i)
 		if err != nil {
 			t.Error(err)
@@ -78,7 +80,7 @@ func TestBuffer(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < count; i++ {
 		data, err := ff.GetPage(i)
 		if err != nil {
 			t.Error(err)

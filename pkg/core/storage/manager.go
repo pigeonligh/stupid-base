@@ -33,6 +33,7 @@ func init() {
 	defer log.V(2).Info("Storage Manager has been initialized.")
 	instance = &Manager{
 		buffer: buffer.NewManager(bufferSize, types.PageSize),
+		files:  make(map[string]*FileHandle),
 	}
 }
 
@@ -60,7 +61,7 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.files[filename] = handle
+	// m.files[filename] = handle
 	return handle, err
 }
 
@@ -70,7 +71,7 @@ func (m *Manager) CloseFile(filename string) error {
 		if err := handle.file.Close(); err != nil {
 			return err
 		}
-		delete(m.files, filename)
+		// delete(m.files, filename)
 		handle.buffer = nil
 		handle.file = nil
 		return nil

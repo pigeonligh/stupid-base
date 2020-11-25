@@ -13,23 +13,25 @@ import (
 func TestBuffer(t *testing.T) {
 	manager := GetInstance()
 
-	count := 100000
+	count := 10000
+	filename1 := "testfiles_test1.bin"
+	filename2 := "testfiles_test2.bin"
 
-	if err := manager.CreateFile("test1.bin"); err != nil {
+	if err := manager.CreateFile(filename1); err != nil {
 		t.Error(err)
 		return
 	}
-	if err := manager.CreateFile("test2.bin"); err != nil {
+	if err := manager.CreateFile(filename2); err != nil {
 		t.Error(err)
 		return
 	}
 
-	f1, err := manager.OpenFile("test1.bin")
+	f1, err := manager.OpenFile(filename1)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	f2, err := manager.OpenFile("test2.bin")
+	f2, err := manager.OpenFile(filename2)
 	if err != nil {
 		t.Error(err)
 		return
@@ -68,14 +70,14 @@ func TestBuffer(t *testing.T) {
 	if err := f2.FlushPages(); err != nil {
 		t.Error(err)
 	}
-	if err := manager.CloseFile("test1.bin"); err != nil {
+	if err := manager.CloseFile(filename1); err != nil {
 		t.Error(err)
 	}
-	if err := manager.CloseFile("test2.bin"); err != nil {
+	if err := manager.CloseFile(filename2); err != nil {
 		t.Error(err)
 	}
 
-	ff, err := manager.OpenFile("test1.bin")
+	ff, err := manager.OpenFile(filename1)
 	if err != nil {
 		t.Error(err)
 		return
@@ -95,14 +97,14 @@ func TestBuffer(t *testing.T) {
 			break
 		}
 	}
-	if err := manager.CloseFile("test1.bin"); err != nil {
+	if err := manager.CloseFile(filename1); err != nil {
 		t.Error(err)
 	}
 
-	if err := manager.DestroyFile("test1.bin"); err != nil {
+	if err := manager.DestroyFile(filename1); err != nil {
 		t.Error(err)
 	}
-	if err := manager.DestroyFile("test2.bin"); err != nil {
+	if err := manager.DestroyFile(filename2); err != nil {
 		t.Error(err)
 	}
 	return

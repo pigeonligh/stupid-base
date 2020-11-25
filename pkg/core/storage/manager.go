@@ -9,6 +9,7 @@ import (
 
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/log"
 )
 
 const bufferSize = 64
@@ -28,6 +29,8 @@ func GetInstance() *Manager {
 }
 
 func init() {
+	log.V(2).Info("Storage Manager starts to initialize.")
+	defer log.V(2).Info("Storage Manager has been initialized.")
 	instance = &Manager{
 		buffer: buffer.NewManager(bufferSize, types.PageSize),
 	}

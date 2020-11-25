@@ -41,17 +41,19 @@ func (mg *Manager) writePage(pageID types.PageID, data types.PageData) error {
 func (mg *Manager) initPageDesc(pageID types.PageID, slot int) {
 	mg.slots[pageID] = slot
 
-	mg.buffers[slot].PageID = pageID
-	mg.buffers[slot].Dirty = false
+	page := mg.buffers[slot]
+	page.PageID = pageID
+	page.dirty = false
+	page.pinCount = 1
 }
 
 func (mg *Manager) clearDirty(slot int) error {
 	page := mg.buffers[slot]
-	if page.Dirty {
-		if err := mg.writePage(page.PageID, page.Data); err != nil {
+	if page.dirty {
+		if err := mg.writePage(page.PageID, page.data); err != nil {
 			return err
 		}
-		page.Dirty = false
+		page.dirty = false
 	}
 	return nil
 }

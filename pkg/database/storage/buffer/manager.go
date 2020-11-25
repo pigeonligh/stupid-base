@@ -56,19 +56,20 @@ func (mg *Manager) GetPage(id types.PageID) (types.PageData, error) {
 	var err error
 	slot, found := mg.slots[id]
 	if found {
+		mg.buffers[slot].pinCount++
 		mg.linkUsed(slot)
 	} else {
 		if slot, err = mg.allocSlot(); err != nil {
 			return nil, err
 		}
-		if mg.buffers[slot].Data, err = mg.readPage(id); err != nil {
+		if mg.buffers[slot].data, err = mg.readPage(id); err != nil {
 			mg.linkFree(slot)
 			return nil, err
 		}
 		mg.initPageDesc(id, slot)
 	}
 
-	return mg.buffers[slot].Data, nil
+	return mg.buffers[slot].data, nil
 }
 
 // AllocatePage allocates a new page in the buffer
@@ -83,7 +84,7 @@ func (mg *Manager) AllocatePage(id types.PageID) (types.PageData, error) {
 	}
 	mg.initPageDesc(id, slot)
 
-	return mg.buffers[slot].Data, nil
+	return mg.buffers[slot].data, nil
 }
 
 // MarkDirty marks page dirty
@@ -92,8 +93,28 @@ func (mg *Manager) MarkDirty(id types.PageID) error {
 	if !found {
 		return errors.New(errormsg.ErrorPageNotInBuffer)
 	}
-	mg.buffers[slot].Dirty = true
+	if mg.buffers[slot].pinCount == 0 {
+		return errors.New(errormsg.ErrorPageUnPinned)
+	}
+	mg.buffers[slot].dirty = true
 	mg.linkUsed(slot)
+	return nil
+}
+
+// UnpinPage unpins a page so that it can be discarded from the buffer
+func (mg *Manager) UnpinPage(id types.PageID) error {
+	slot, found := mg.slots[id]
+	if !found {
+		return errors.New(errormsg.ErrorPageNotInBuffer)
+	}
+	page := mg.buffers[slot]
+	if page.pinCount == 0 {
+		return errors.New(errormsg.ErrorPageUnPinned)
+	}
+	page.pinCount--
+	if page.pinCount == 0 {
+		mg.linkUsed(slot)
+	}
 	return nil
 }
 
@@ -102,11 +123,15 @@ func (mg *Manager) FlushPages(file *os.File) error {
 	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
 		page := mg.buffers[slot]
 		if file == page.File {
-			if err := mg.clearDirty(slot); err != nil {
-				return err
+			if page.pinCount > 0 {
+				// TODO: Warn
+			} else {
+				if err := mg.clearDirty(slot); err != nil {
+					return err
+				}
+				delete(mg.slots, page.PageID)
+				mg.linkFree(slot)
 			}
-			delete(mg.slots, page.PageID)
-			mg.linkFree(slot)
 		}
 	}
 	return nil
@@ -129,8 +154,10 @@ func (mg *Manager) ForcePage(id types.PageID) error {
 func (mg *Manager) ClearBuffer() error {
 	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
 		page := mg.buffers[slot]
-		delete(mg.slots, page.PageID)
-		mg.linkFree(slot)
+		if page.pinCount == 0 {
+			delete(mg.slots, page.PageID)
+			mg.linkFree(slot)
+		}
 	}
 	return nil
 }
@@ -161,7 +188,7 @@ func (mg *Manager) AllocateBlock() (types.PageID, types.PageData, error) {
 		Page: 0, // need to create
 	}
 	mg.initPageDesc(pageID, slot)
-	return pageID, mg.buffers[slot].Data, nil
+	return pageID, mg.buffers[slot].data, nil
 }
 
 // DisposeBlock disposes of a memory chunk managed by the buffer manager

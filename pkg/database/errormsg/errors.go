@@ -20,6 +20,9 @@ const (
 	// ErrorBufferResuce is an error message
 	ErrorBufferResuce = "BufferResuce"
 
+	// ErrorBufferFull is an error message
+	ErrorBufferFull = "BufferFull"
+
 	// ErrorImcompleteRead is an error message
 	ErrorImcompleteRead = "ImcompleteRead"
 

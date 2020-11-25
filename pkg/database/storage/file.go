@@ -94,6 +94,17 @@ func (fh *FileHandle) MarkDirty(current types.PageNum) error {
 	return fh.buffer.MarkDirty(types.PageID{File: fh.file, Page: current})
 }
 
+// UnpinPage unpins a page
+func (fh *FileHandle) UnpinPage(current types.PageNum) error {
+	if fh.file == nil {
+		return errors.New(errormsg.ErrorFileNotOpened)
+	}
+	if current < 0 {
+		return errors.New(errormsg.ErrorInvalidPage)
+	}
+	return fh.buffer.UnpinPage(types.PageID{File: fh.file, Page: current})
+}
+
 // ForcePage forces a page to disk
 func (fh *FileHandle) ForcePage(current types.PageNum) error {
 	if fh.file == nil {

@@ -42,10 +42,22 @@ func TestBuffer(t *testing.T) {
 		data, err := f1.NewPage(i)
 		if err != nil {
 			t.Error(err)
+			break
 		}
-		data.Data[0] = byte(48)
-		if _, err := f2.NewPage(i); err != nil {
+		data.Data[0] = byte(48 + i)
+		if err = f1.UnpinPage(data.Page); err != nil {
 			t.Error(err)
+			break
+		}
+
+		data, err = f2.NewPage(i)
+		if err != nil {
+			t.Error(err)
+			break
+		}
+		if err = f2.UnpinPage(data.Page); err != nil {
+			t.Error(err)
+			break
 		}
 	}
 	if err := f1.FlushPages(); err != nil {
@@ -70,9 +82,15 @@ func TestBuffer(t *testing.T) {
 		data, err := ff.GetPage(i)
 		if err != nil {
 			t.Error(err)
+			break
 		}
-		if data.Data[0] != byte(48) {
+		if data.Data[0] != byte(48+i) {
 			t.Error("Data error")
+			break
+		}
+		if err = ff.UnpinPage(data.Page); err != nil {
+			t.Error(err)
+			break
 		}
 	}
 	if err := manager.CloseFile("test1.bin"); err != nil {

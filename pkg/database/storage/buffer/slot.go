@@ -4,6 +4,12 @@ Copyright (c) 2020, pigeonligh.
 
 package buffer
 
+import (
+	"errors"
+
+	"github.com/pigeonligh/stupid-base/pkg/database/errormsg"
+)
+
 // InvalidSlot is the invalid slot
 const InvalidSlot = -1
 
@@ -76,6 +82,12 @@ func (mg *Manager) linkUsed(slot int) {
 func (mg *Manager) allocSlot() (int, error) {
 	if mg.firstFree == InvalidSlot {
 		slot := mg.lastUsed
+		for slot != InvalidSlot && mg.buffers[slot].pinCount > 0 {
+			slot = mg.buffers[slot].previous
+		}
+		if slot == InvalidSlot {
+			return -1, errors.New(errormsg.ErrorBufferFull)
+		}
 		if err := mg.clearDirty(slot); err != nil {
 			return -1, err
 		}

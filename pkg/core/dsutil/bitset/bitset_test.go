@@ -1,4 +1,4 @@
-package common
+package bitset
 
 import (
 	"testing"
@@ -12,7 +12,8 @@ func TestMyBitset(t *testing.T) {
 
 	contentSize := 50
 
-	bitset := myBitset(types.ByteSlice2uint32ArrayPtr(data, 0), contentSize)
+	page := (*types.BitsetPage)(types.ByteSliceToPointer(data))
+	bitset := NewBitset(&page.Data, contentSize)
 
 	for i := 0; i < contentSize; i += 2 {
 		bitset.Set(i)

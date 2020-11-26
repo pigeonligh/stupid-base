@@ -1,4 +1,4 @@
-package common
+package bitset
 
 import (
 	"math"
@@ -7,21 +7,19 @@ import (
 )
 
 const (
-	UnsignedMax     = 0xffffffff
+	UnsignedMax     = ^uint32(0)
 	BitsetFindNoRes = -1
 	BitsetOpFails   = -1
-
-	dataSize = types.PageSize / 4
 )
 
-type MyBitset struct {
-	data   *[dataSize]uint32
+type Bitset struct {
+	data   *[types.BitsetDataSize]uint32
 	length int // length of the array
 	size   int // how many contents are there
 }
 
-func myBitset(data *[dataSize]uint32, contentSize int) *MyBitset {
-	bitset := MyBitset{
+func NewBitset(data *[types.BitsetDataSize]uint32, contentSize int) *Bitset {
+	bitset := Bitset{
 		data:   data,
 		length: int(math.Ceil(float64(contentSize) / 32)),
 		size:   contentSize,
@@ -36,7 +34,7 @@ func myBitset(data *[dataSize]uint32, contentSize int) *MyBitset {
 	return &bitset
 }
 
-func (b *MyBitset) FindLowestZeroBitIdx() int {
+func (b *Bitset) FindLowestZeroBitIdx() int {
 	for i := 0; i < b.length; i++ {
 		if b.data[i] != UnsignedMax {
 			return i*32 + int(math.Log2(float64(^b.data[i]&(b.data[i]+1))))
@@ -45,7 +43,7 @@ func (b *MyBitset) FindLowestZeroBitIdx() int {
 	return BitsetFindNoRes
 }
 
-func (b *MyBitset) FindLowestOneBitIdx() int {
+func (b *Bitset) FindLowestOneBitIdx() int {
 	for i := 0; i < b.length; i++ {
 		if b.data[i] != 0 {
 			idx := i*32 + int(math.Log2(float64(-b.data[i]&b.data[i])))
@@ -59,7 +57,7 @@ func (b *MyBitset) FindLowestOneBitIdx() int {
 	return BitsetFindNoRes
 }
 
-func (b *MyBitset) IsOccupied(idx int) bool {
+func (b *Bitset) IsOccupied(idx int) bool {
 	var is, r = false, uint32(1 << (idx & 31))
 	if r == (b.data[idx>>5] & r) {
 		is = true
@@ -67,7 +65,7 @@ func (b *MyBitset) IsOccupied(idx int) bool {
 	return is
 }
 
-func (b *MyBitset) Set(idx int) int {
+func (b *Bitset) Set(idx int) int {
 	if idx < 0 || idx >= b.size {
 		return BitsetOpFails
 	}
@@ -75,7 +73,7 @@ func (b *MyBitset) Set(idx int) int {
 	return 0
 }
 
-func (b *MyBitset) Clean(idx int) int {
+func (b *Bitset) Clean(idx int) int {
 	if idx < 0 || idx >= b.size {
 		return BitsetOpFails
 	}
@@ -83,20 +81,20 @@ func (b *MyBitset) Clean(idx int) int {
 	return 0
 }
 
-func (b* MyBitset) DebugBitset() {
+func (b *Bitset) DebugBitset() {
 	println("------------------------------------------------------------------------------------")
 	println("Bitmap size of content: ", b.size)
 	println("Bitmap arr length: ", b.length)
-	println("Bitmap padding bits num: ", b.length * 32 - b.size)
+	println("Bitmap padding bits num: ", b.length*32-b.size)
 	var b2i = map[bool]int8{false: 0, true: 1}
 	for i := 0; i < b.size; i++ {
-		if i % 32 == 0 && i != 0 {
+		if i%32 == 0 && i != 0 {
 			print("-")
 		}
 		print(b2i[b.IsOccupied(i)])
 	}
 	print("$")
-	for i := b.size; i < b.length * 32; i++ {
+	for i := b.size; i < b.length*32; i++ {
 		print(b2i[b.IsOccupied(i)])
 	}
 	println()

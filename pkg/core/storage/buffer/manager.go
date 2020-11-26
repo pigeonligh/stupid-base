@@ -7,7 +7,7 @@ package buffer
 import (
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
@@ -74,7 +74,7 @@ func (mg *Manager) GetPage(id types.PageID) (types.PageData, error) {
 // AllocatePage allocates a new page in the buffer
 func (mg *Manager) AllocatePage(id types.PageID) (types.PageData, error) {
 	if _, found := mg.slots[id]; found {
-		return nil, errormsg.ErrorPageInBuffer
+		return nil, errorutil.ErrorPageInBuffer
 	}
 	var err error
 	var slot int
@@ -90,10 +90,10 @@ func (mg *Manager) AllocatePage(id types.PageID) (types.PageData, error) {
 func (mg *Manager) MarkDirty(id types.PageID) error {
 	slot, found := mg.slots[id]
 	if !found {
-		return errormsg.ErrorPageNotInBuffer
+		return errorutil.ErrorPageNotInBuffer
 	}
 	if mg.buffers[slot].pinCount == 0 {
-		return errormsg.ErrorPageUnPinned
+		return errorutil.ErrorPageUnPinned
 	}
 	mg.buffers[slot].dirty = true
 	mg.linkUsed(slot)
@@ -104,11 +104,11 @@ func (mg *Manager) MarkDirty(id types.PageID) error {
 func (mg *Manager) UnpinPage(id types.PageID) error {
 	slot, found := mg.slots[id]
 	if !found {
-		return errormsg.ErrorPageNotInBuffer
+		return errorutil.ErrorPageNotInBuffer
 	}
 	page := mg.buffers[slot]
 	if page.pinCount == 0 {
-		return errormsg.ErrorPageUnPinned
+		return errorutil.ErrorPageUnPinned
 	}
 	page.pinCount--
 	if page.pinCount == 0 {
@@ -168,7 +168,7 @@ func (mg *Manager) PrintBuffer() {
 
 // ResizeBuffer attempts to resize the buffer to the new size
 func (mg *Manager) ResizeBuffer(newSize int) error {
-	return errormsg.ErrorNotImplemented
+	return errorutil.ErrorNotImplemented
 }
 
 // GetBlockSize returns the size of the block that can be allocated

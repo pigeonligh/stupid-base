@@ -11,11 +11,26 @@ import (
 
 // Logger is used to log
 type Logger struct {
+	debugLogger   *log.Logger
 	infoLogger    *log.Logger
 	warningLogger *log.Logger
 	errorLogger   *log.Logger
 
 	depth int
+}
+
+// Debug logs important message
+func (logger *Logger) Debug(v ...interface{}) {
+	if logger.debugLogger != nil && debugMode {
+		logger.debugLogger.Output(logger.depth, fmt.Sprintln(v...))
+	}
+}
+
+// Debugf logs important message
+func (logger *Logger) Debugf(format string, v ...interface{}) {
+	if logger.debugLogger != nil && debugMode {
+		logger.debugLogger.Output(logger.depth, fmt.Sprintf(format, v...))
+	}
 }
 
 // Info logs important message

@@ -13,10 +13,10 @@ func TestMyBitset(t *testing.T) {
 	log.SetLevel(log.BitsetLevel)
 	data := make([]byte, types.PageSize)
 
-	contentSize := 50
+	contentSize := 126
 
-	page := (*types.BitsetPage)(types.ByteSliceToPointer(data))
-	bitset := NewBitset(&page.Data, contentSize)
+	page := (*types.RecordPageHeader)(types.ByteSliceToPointer(data))
+	bitset := NewBitset(&page.BitsetData, contentSize)
 
 	for i := 0; i < contentSize; i += 2 {
 		bitset.Set(i)
@@ -47,6 +47,11 @@ func TestMyBitset(t *testing.T) {
 	bitset.Clean(31)
 	if res := bitset.FindLowestOneBitIdx(); res != 33 {
 		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 33, res)
+	}
+
+	bitset.Clean(33)
+	if res := bitset.FindLowestOneBitIdx(); res != 35 {
+		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 35, res)
 	}
 
 	bitset.DebugBitset()

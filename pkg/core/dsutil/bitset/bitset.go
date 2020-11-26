@@ -15,29 +15,32 @@ const (
 )
 
 type Bitset struct {
-	data   *[types.BitsetDataSize]uint32
-	length int // length of the array
-	size   int // how many contents are there
+	data   *[types.BitsetArrayMaxLength]uint32
+	size   int // how many records are there (how many real occupied bytes)
 }
 
-func NewBitset(data *[types.BitsetDataSize]uint32, contentSize int) *Bitset {
+func NewBitset(data *[types.BitsetArrayMaxLength]uint32, contentNums int) *Bitset {
 	bitset := Bitset{
 		data:   data,
-		length: int(math.Ceil(float64(contentSize) / 32)),
-		size:   contentSize,
+		size:   contentNums,
 	}
 
-	paddingBitsNum := bitset.length*32 - bitset.size
+	for i := 0; i < len(data); i++ {
+		paddingBitsNum := (i+1)*32 - bitset.size
+		if paddingBitsNum >= 32 {
+			bitset.data[i] = UnsignedMax
+		}else {
+			for j := 0; j < paddingBitsNum; j++ {
+				bitset.data[i] |= 1 << (31 - j)
+			}
+		}
 
-	for i := 0; i < paddingBitsNum; i++ {
-		bitset.data[bitset.length-1] |= 1 << (31 - i)
 	}
-
 	return &bitset
 }
 
 func (b *Bitset) FindLowestZeroBitIdx() int {
-	for i := 0; i < b.length; i++ {
+	for i := 0; i < len(b.data); i++ {
 		if b.data[i] != UnsignedMax {
 			return i*32 + int(math.Log2(float64(^b.data[i]&(b.data[i]+1))))
 		}
@@ -46,7 +49,7 @@ func (b *Bitset) FindLowestZeroBitIdx() int {
 }
 
 func (b *Bitset) FindLowestOneBitIdx() int {
-	for i := 0; i < b.length; i++ {
+	for i := 0; i < len(b.data); i++ {
 		if b.data[i] != 0 {
 			idx := i*32 + int(math.Log2(float64(-b.data[i]&b.data[i])))
 			if idx > b.size {
@@ -85,8 +88,8 @@ func (b *Bitset) Clean(idx int) int {
 
 func (b *Bitset) DebugBitset() {
 	log.Debugf("Bitmap size of content: %v\n", b.size)
-	log.Debugf("Bitmap arr length: %v\n", b.length)
-	log.Debugf("Bitmap padding bits num: %v\n", b.length*32-b.size)
+	log.Debugf("Bitmap arr length: %v\n", len(b.data))
+	log.Debugf("Bitmap padding bits num: %v\n", len(b.data)*32-b.size)
 
 	var sb strings.Builder
 
@@ -100,7 +103,7 @@ func (b *Bitset) DebugBitset() {
 		sb.Write([]byte(b2c[b.IsOccupied(i)]))
 	}
 	sb.Write([]byte("$"))
-	for i := b.size; i < b.length*32; i++ {
+	for i := b.size; i < len(b.data)*32; i++ {
 		sb.Write([]byte(b2c[b.IsOccupied(i)]))
 	}
 	log.Debugf(sb.String())

@@ -1,7 +1,9 @@
 package bitset
 
 import (
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"math"
+	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
@@ -82,21 +84,24 @@ func (b *Bitset) Clean(idx int) int {
 }
 
 func (b *Bitset) DebugBitset() {
-	println("------------------------------------------------------------------------------------")
-	println("Bitmap size of content: ", b.size)
-	println("Bitmap arr length: ", b.length)
-	println("Bitmap padding bits num: ", b.length*32-b.size)
-	var b2i = map[bool]int8{false: 0, true: 1}
+	log.Debugf("Bitmap size of content: %v\n", b.size)
+	log.Debugf("Bitmap arr length: %v\n", b.length)
+	log.Debugf("Bitmap padding bits num: %v\n", b.length*32-b.size)
+
+	var sb strings.Builder
+
+	//var b2i = map[bool]int8{false: 0, true: 1}
+	var b2c = map[bool]string{false: "0", true: "1"}
+
 	for i := 0; i < b.size; i++ {
 		if i%32 == 0 && i != 0 {
-			print("-")
+			sb.Write([]byte("-"))
 		}
-		print(b2i[b.IsOccupied(i)])
+		sb.Write([]byte(b2c[b.IsOccupied(i)]))
 	}
-	print("$")
+	sb.Write([]byte("$"))
 	for i := b.size; i < b.length*32; i++ {
-		print(b2i[b.IsOccupied(i)])
+		sb.Write([]byte(b2c[b.IsOccupied(i)]))
 	}
-	println()
-	println("------------------------------------------------------------------------------------")
+	log.Debugf(sb.String())
 }

@@ -18,42 +18,44 @@ func TestMyBitset(t *testing.T) {
 	page := (*types.RecordPageHeader)(types.ByteSliceToPointer(data))
 	bitset := NewBitset(&page.BitsetData, contentSize)
 
-	for i := 0; i < contentSize; i += 2 {
-		bitset.Set(i)
-	}
 
-	if res := bitset.FindLowestOneBitIdx(); res != 0 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 0, res)
+	bitset.Set(48)
+	if res := bitset.FindLowestOneBitIdx(); res != 48 {
+		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 48, res)
 	}
-	if res := bitset.FindLowestZeroBitIdx(); res != 1 {
-		t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", 1, res)
+	bitset.Set(63)
+	bitset.Set(64)
+	if res := bitset.Set(126); res != BitsetOpFails {
+		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", -1, res)
 	}
+	bitset.Set(125)
+	log.Debugf("Set: %v %v %v %v %v\n", 48, 63, 64, 126, 125)
+	bitset.DebugBitset()
 
-	for i := 0; i < contentSize; i += 2 {
+
+	for i := 0; i < contentSize; i += 1 {
 		bitset.Clean(i)
 	}
-	for i := 31; i < contentSize; i += 2 {
+
+	if res := bitset.FindLowestOneBitIdx(); res != BitsetFindNoRes {
+		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", -1, res)
+	}
+	for i := contentSize - 1; i >= 0; i-- {
 		bitset.Set(i)
+		if res := bitset.FindLowestOneBitIdx(); res != i {
+			t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", i, res)
+		}
 	}
 
-	bitset.DebugBitset()
-
-	if res := bitset.FindLowestOneBitIdx(); res != 31 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 31, res)
+	if res := bitset.FindLowestZeroBitIdx(); res != BitsetFindNoRes {
+		t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", -1, res)
 	}
-	if res := bitset.FindLowestZeroBitIdx(); res != 0 {
-		t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", 0, res)
-	}
-	bitset.Clean(31)
-	if res := bitset.FindLowestOneBitIdx(); res != 33 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 33, res)
+	for i := contentSize - 1; i >= 0; i-- {
+		bitset.Clean(i)
+		if res := bitset.FindLowestZeroBitIdx(); res != i {
+			t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", i, res)
+		}
 	}
 
-	bitset.Clean(33)
-	if res := bitset.FindLowestOneBitIdx(); res != 35 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 35, res)
-	}
-
-	bitset.DebugBitset()
 
 }

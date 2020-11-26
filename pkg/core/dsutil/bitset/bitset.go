@@ -52,7 +52,7 @@ func (b *Bitset) FindLowestOneBitIdx() int {
 	for i := 0; i < len(b.data); i++ {
 		if b.data[i] != 0 {
 			idx := i*32 + int(math.Log2(float64(-b.data[i]&b.data[i])))
-			if idx > b.size {
+			if idx >= b.size {
 				return BitsetFindNoRes
 			} else {
 				return idx

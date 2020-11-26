@@ -5,7 +5,7 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 // InvalidSlot is the invalid slot
@@ -84,7 +84,7 @@ func (mg *Manager) allocSlot() (int, error) {
 			slot = mg.buffers[slot].previous
 		}
 		if slot == InvalidSlot {
-			return -1, errormsg.ErrorBufferFull
+			return -1, errorutil.ErrorBufferFull
 		}
 		if err := mg.clearDirty(slot); err != nil {
 			return -1, err

@@ -14,26 +14,28 @@ import (
 type Level = uint
 
 var (
-	debugLogger   *log.Logger
-	infoLogger    *log.Logger
-	warningLogger *log.Logger
-	errorLogger   *log.Logger
+	loggers *Logger
 
 	logLevel Level = 0 // block the logs
+
+	debugMode bool = false
 )
 
 func init() {
-	debugLogger = log.New(os.Stderr, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
-	infoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	warningLogger = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
-	errorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+	loggers = &Logger{
+		debugLogger:   log.New(os.Stderr, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
+		infoLogger:    log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
+		warningLogger: log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile),
+		errorLogger:   log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+	}
 }
 
 // SetOutput sets log's output
-func SetOutput(infoOutput, warningOutput, errorOutput io.Writer) {
-	infoLogger.SetOutput(infoOutput)
-	warningLogger.SetOutput(warningOutput)
-	errorLogger.SetOutput(errorOutput)
+func SetOutput(debugOutput, infoOutput, warningOutput, errorOutput io.Writer) {
+	loggers.debugLogger.SetOutput(debugOutput)
+	loggers.infoLogger.SetOutput(infoOutput)
+	loggers.warningLogger.SetOutput(warningOutput)
+	loggers.errorLogger.SetOutput(errorOutput)
 }
 
 // SetLevel sets log's level
@@ -51,12 +53,23 @@ func get(level Level, depth int) *Logger {
 		return &Logger{}
 	}
 	return &Logger{
-		infoLogger:    infoLogger,
-		warningLogger: warningLogger,
-		errorLogger:   errorLogger,
+		debugLogger:   loggers.debugLogger,
+		infoLogger:    loggers.infoLogger,
+		warningLogger: loggers.warningLogger,
+		errorLogger:   loggers.errorLogger,
 
 		depth: depth,
 	}
+}
+
+// Debug logs important message
+func Debug(v ...interface{}) {
+	get(logLevel, 3).Debug(v...)
+}
+
+// Debugf logs important message
+func Debugf(format string, v ...interface{}) {
+	get(logLevel, 3).Debugf(format, v...)
 }
 
 // Info logs important message

@@ -82,3 +82,23 @@ func (b *MyBitset) Clean(idx int) int {
 	b.data[idx>>5] &= ^(1 << (idx & 31))
 	return 0
 }
+
+func (b* MyBitset) DebugBitset() {
+	println("------------------------------------------------------------------------------------")
+	println("Bitmap size of content: ", b.size)
+	println("Bitmap arr length: ", b.length)
+	println("Bitmap padding bits num: ", b.length * 32 - b.size)
+	var b2i = map[bool]int8{false: 0, true: 1}
+	for i := 0; i < b.size; i++ {
+		if i % 32 == 0 && i != 0 {
+			print("-")
+		}
+		print(b2i[b.IsOccupied(i)])
+	}
+	print("$")
+	for i := b.size; i < b.length * 32; i++ {
+		print(b2i[b.IsOccupied(i)])
+	}
+	println()
+	println("------------------------------------------------------------------------------------")
+}

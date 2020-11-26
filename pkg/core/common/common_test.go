@@ -1,30 +1,17 @@
 package common
 
 import (
-	"fmt"
-	"testing"
-	"unsafe"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"testing"
 )
 
 func TestMyBitset(t *testing.T) {
 
 	data := make([]byte, types.PageSize)
 
-	contentSize := 160
+	contentSize := 50
 
-	data2 := ((*struct {
-		pdata unsafe.Pointer
-		len   int
-		cap   int
-	})(unsafe.Pointer(&data))).pdata
-
-	data3 := (unsafe.Pointer)((uintptr)(data2) + 8)
-
-	ptr := (*[1024]uint32)(data3)
-
-	bitset := myBitset(ptr, contentSize)
+	bitset := myBitset(types.ByteSlice2uint32ArrayPtr(data, 0), contentSize)
 
 	for i := 0; i < contentSize; i += 2 {
 		bitset.Set(i)
@@ -34,7 +21,7 @@ func TestMyBitset(t *testing.T) {
 		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 0, res)
 	}
 	if res := bitset.FindLowestZeroBitIdx(); res != 1 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 1, res)
+		t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", 1, res)
 	}
 
 	for i := 0; i < contentSize; i += 2 {
@@ -44,18 +31,19 @@ func TestMyBitset(t *testing.T) {
 		bitset.Set(i)
 	}
 
-	fmt.Println(bitset.data)
-	fmt.Println(data)
+	bitset.DebugBitset()
 
 	if res := bitset.FindLowestOneBitIdx(); res != 31 {
 		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 31, res)
 	}
 	if res := bitset.FindLowestZeroBitIdx(); res != 0 {
-		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 0, res)
+		t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", 0, res)
 	}
 	bitset.Clean(31)
 	if res := bitset.FindLowestOneBitIdx(); res != 33 {
 		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 33, res)
 	}
+
+	bitset.DebugBitset()
 
 }

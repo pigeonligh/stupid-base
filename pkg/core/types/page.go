@@ -6,6 +6,7 @@ package types
 
 import (
 	"os"
+	"unsafe"
 )
 
 const (
@@ -14,6 +15,12 @@ const (
 
 	// PageSize is the size of a page
 	PageSize = 4096
+
+	// PageHeaderSize is the size of a page header
+	PageHeaderSize = unsafe.Sizeof(PageHeader{})
+
+	// PageDataSize is the size of a page data
+	PageDataSize = PageSize - PageHeaderSize
 
 	// AllPageNum is defined and used by the ForcePages method defined in RM and PF layers
 	AllPageNum = -1

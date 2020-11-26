@@ -30,6 +30,11 @@ func init() {
 	}
 }
 
+// SetDebugMode sets debug mode
+func SetDebugMode(debug bool) {
+	debugMode = debug
+}
+
 // SetOutput sets log's output
 func SetOutput(debugOutput, infoOutput, warningOutput, errorOutput io.Writer) {
 	loggers.debugLogger.SetOutput(debugOutput)

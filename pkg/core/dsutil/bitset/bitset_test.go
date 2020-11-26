@@ -1,8 +1,9 @@
 package common
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"testing"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func TestMyBitset(t *testing.T) {

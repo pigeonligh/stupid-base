@@ -1,27 +1,28 @@
 package record
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 )
 
 type Manager struct {
 	storage *storage.Manager
-	files map[string]* FileHandle
+	files   map[string]*FileHandle
 }
 
 var instance *Manager
 
-func GetInstance() *Manager{
+func GetInstance() *Manager {
 	return instance
 }
-func init()  {
+func init() {
 	instance = &Manager{
 		storage: storage.GetInstance(),
 	}
 }
 
-func (m *Manager) CreateFile(filename string, recordSize uint32) error{
+func (m *Manager) CreateFile(filename string, recordSize uint32) error {
 	var err error
 	if err = m.storage.CreateFile(filename); err != nil {
 		return err
@@ -55,14 +56,14 @@ func (m *Manager) CreateFile(filename string, recordSize uint32) error{
 	return nil
 }
 
-func (m* Manager) DestroyFile(filename string) error {
-	if err := m.storage.DestroyFile(filename); err != nil{
+func (m *Manager) DestroyFile(filename string) error {
+	if err := m.storage.DestroyFile(filename); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m* Manager) OpenFile(filename string) (*FileHandle, error) {
+func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 	if file, found := m.files[filename]; found {
 		return file, nil
@@ -93,7 +94,7 @@ func (m* Manager) OpenFile(filename string) (*FileHandle, error) {
 	return file, nil
 }
 
-func (m* Manager) CloseFile(filename string)  error{
+func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {
 		if err := handle.Close(); err != nil {
 			return err

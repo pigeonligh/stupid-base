@@ -1,19 +1,20 @@
 package record
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 )
 
 type FileHandle struct {
-	filename		string
-	header        	Header
-	headerModified 	bool
-	initialized 	bool
-	storageFH		storage.FileHandle
+	filename       string
+	header         Header
+	headerModified bool
+	initialized    bool
+	storageFH      storage.FileHandle
 }
 
-func fileHandle() *FileHandle{
+func fileHandle() *FileHandle {
 	return &FileHandle{
 		header:         Header{},
 		headerModified: false,
@@ -22,12 +23,12 @@ func fileHandle() *FileHandle{
 	}
 }
 
-func (f *FileHandle) Close() error{
+func (f *FileHandle) Close() error {
 	if !f.initialized || !f.headerModified {
 		return nil
-	}else {
+	} else {
 		pageHandle, err := f.storageFH.GetPage(0)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 		pageHandle.Data = *(*[]byte)(unsafe.Pointer(&f.header))
@@ -68,8 +69,6 @@ func (f *FileHandle) Close() error{
 //
 //return {free_page, free_slot};
 //}
-
-
 
 //class RM_FileHandle {
 //friend class RM_Manager;

@@ -10,15 +10,20 @@ import (
 	"os"
 )
 
+// Level is log level type
+type Level = uint
+
 var (
+	debugLogger   *log.Logger
 	infoLogger    *log.Logger
 	warningLogger *log.Logger
 	errorLogger   *log.Logger
 
-	logLevel uint = ^uint(0) // block the logs
+	logLevel Level = 0 // block the logs
 )
 
 func init() {
+	debugLogger = log.New(os.Stderr, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
 	infoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	warningLogger = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	errorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -32,17 +37,17 @@ func SetOutput(infoOutput, warningOutput, errorOutput io.Writer) {
 }
 
 // SetLevel sets log's level
-func SetLevel(level uint) {
+func SetLevel(level Level) {
 	logLevel = level
 }
 
 // V gets logger by level
-func V(level uint) *Logger {
+func V(level Level) *Logger {
 	return get(level, 2)
 }
 
-func get(level uint, depth int) *Logger {
-	if level < logLevel {
+func get(level Level, depth int) *Logger {
+	if level&logLevel == 0 {
 		return &Logger{}
 	}
 	return &Logger{

@@ -2,7 +2,7 @@
 Copyright (c) 2020, pigeonligh.
 */
 
-package errormsg
+package errorutil
 
 import "errors"
 

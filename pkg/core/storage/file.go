@@ -7,9 +7,9 @@ package storage
 import (
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/core/errormsg"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 // FileHandle is PF file interface
@@ -21,7 +21,7 @@ type FileHandle struct {
 // fileHandle returns a file handle
 func fileHandle(filename string, bm *buffer.Manager) (*FileHandle, error) {
 	if bm == nil {
-		return nil, errormsg.ErrorUnknown
+		return nil, errorutil.ErrorUnknown
 	}
 	file, err := os.OpenFile(filename, os.O_RDWR, 0666)
 	if err != nil {
@@ -36,10 +36,10 @@ func fileHandle(filename string, bm *buffer.Manager) (*FileHandle, error) {
 // GetPage gets the page in a file
 func (fh *FileHandle) GetPage(current types.PageNum) (*PageHandle, error) {
 	if fh.file == nil {
-		return nil, errormsg.ErrorFileNotOpened
+		return nil, errorutil.ErrorFileNotOpened
 	}
 	if current < 0 {
-		return nil, errormsg.ErrorInvalidPage
+		return nil, errorutil.ErrorInvalidPage
 	}
 	id := types.PageID{
 		File: fh.file,
@@ -55,10 +55,10 @@ func (fh *FileHandle) GetPage(current types.PageNum) (*PageHandle, error) {
 // NewPage gets a new page in a file
 func (fh *FileHandle) NewPage(current types.PageNum) (*PageHandle, error) {
 	if fh.file == nil {
-		return nil, errormsg.ErrorFileNotOpened
+		return nil, errorutil.ErrorFileNotOpened
 	}
 	if current < 0 {
-		return nil, errormsg.ErrorInvalidPage
+		return nil, errorutil.ErrorInvalidPage
 	}
 	id := types.PageID{
 		File: fh.file,
@@ -77,7 +77,7 @@ func (fh *FileHandle) NewPage(current types.PageNum) (*PageHandle, error) {
 // DisposePage disposes of a page
 func (fh *FileHandle) DisposePage(current types.PageNum) error {
 	if fh.file == nil {
-		return errormsg.ErrorFileNotOpened
+		return errorutil.ErrorFileNotOpened
 	}
 	return fh.MarkDirty(current)
 }
@@ -85,10 +85,10 @@ func (fh *FileHandle) DisposePage(current types.PageNum) error {
 // MarkDirty marks a page as being dirty
 func (fh *FileHandle) MarkDirty(current types.PageNum) error {
 	if fh.file == nil {
-		return errormsg.ErrorFileNotOpened
+		return errorutil.ErrorFileNotOpened
 	}
 	if current < 0 {
-		return errormsg.ErrorInvalidPage
+		return errorutil.ErrorInvalidPage
 	}
 	return fh.buffer.MarkDirty(types.PageID{File: fh.file, Page: current})
 }
@@ -96,10 +96,10 @@ func (fh *FileHandle) MarkDirty(current types.PageNum) error {
 // UnpinPage unpins a page
 func (fh *FileHandle) UnpinPage(current types.PageNum) error {
 	if fh.file == nil {
-		return errormsg.ErrorFileNotOpened
+		return errorutil.ErrorFileNotOpened
 	}
 	if current < 0 {
-		return errormsg.ErrorInvalidPage
+		return errorutil.ErrorInvalidPage
 	}
 	return fh.buffer.UnpinPage(types.PageID{File: fh.file, Page: current})
 }
@@ -107,10 +107,10 @@ func (fh *FileHandle) UnpinPage(current types.PageNum) error {
 // ForcePage forces a page to disk
 func (fh *FileHandle) ForcePage(current types.PageNum) error {
 	if fh.file == nil {
-		return errormsg.ErrorFileNotOpened
+		return errorutil.ErrorFileNotOpened
 	}
 	if current < 0 {
-		return errormsg.ErrorInvalidPage
+		return errorutil.ErrorInvalidPage
 	}
 	return fh.buffer.ForcePage(types.PageID{File: fh.file, Page: current})
 }
@@ -118,7 +118,7 @@ func (fh *FileHandle) ForcePage(current types.PageNum) error {
 // FlushPages flushes all dirty pages from the buffer manager for this file
 func (fh *FileHandle) FlushPages() error {
 	if fh.file == nil {
-		return errormsg.ErrorFileNotOpened
+		return errorutil.ErrorFileNotOpened
 	}
 	return fh.buffer.FlushPages(fh.file)
 }

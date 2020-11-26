@@ -1,9 +1,8 @@
 package record
 
 import (
-	"unsafe"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 type Manager struct {
@@ -38,14 +37,15 @@ func (m *Manager) CreateFile(filename string, recordSize uint32) error {
 	}
 
 	// set up the header page
-	header := (*Header)(unsafe.Pointer(&pageHandle.Data))
+	header := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
 	header.RecordSize = recordSize
-	header.PageNum = 1
 	header.RecordNum = 0
 	header.RecordPerPage = recordPerPage(recordSize)
 	header.SlotMapSize = bitMapSize(header.RecordPerPage)
 	header.SizeOfHeader = header.SlotMapSize + 4 // equals to sizeof(PageNum)
-	header.FirstSparePage = 0
+
+	header.Pages = 1
+	header.FirstFree = 0
 
 	if err = fileHandle.MarkDirty(pageHandle.Page); err != nil {
 		return err
@@ -79,12 +79,7 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 	}
 
 	// RM_FileHandle
-	file := fileHandle()
-	header := (*Header)(unsafe.Pointer(&pageHandle.Data))
-	file.header = *header
-	file.headerModified = false
-	file.initialized = true
-	file.filename = filename
+	file := newFileHandle(filename, pageHandle)
 
 	if err = storageFH.UnpinPage(pageHandle.Page); err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ Copyright (c) 2020, pigeonligh.
 package types
 
 const (
+	// BitsetDataSize is the data size of bitset
 	BitsetDataSize = PageDataSize / 4
 )
 

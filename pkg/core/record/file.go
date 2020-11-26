@@ -4,21 +4,23 @@ import (
 	"unsafe"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 type FileHandle struct {
 	filename       string
-	header         Header
+	header         *types.RecordHeaderPage
 	headerModified bool
 	initialized    bool
 	storageFH      storage.FileHandle
 }
 
-func fileHandle() *FileHandle {
+func newFileHandle(filename string, ph *storage.PageHandle) *FileHandle {
 	return &FileHandle{
-		header:         Header{},
+		filename:       filename,
+		header:         (*types.RecordHeaderPage)(types.ByteSliceToPointer(ph.Data)),
 		headerModified: false,
-		initialized:    false,
+		initialized:    true,
 		storageFH:      storage.FileHandle{},
 	}
 }

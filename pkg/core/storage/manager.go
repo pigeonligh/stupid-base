@@ -6,6 +6,7 @@ package storage
 
 import (
 	"os"
+	"sync"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -22,19 +23,29 @@ type Manager struct {
 }
 
 var instance *Manager
+var once sync.Once
 
 // GetInstance returns the instance
 func GetInstance() *Manager {
+	once.Do(func() {
+		log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
+		defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
+		instance = &Manager{
+			buffer: buffer.NewManager(bufferSize, types.PageSize),
+			files:  make(map[string]*FileHandle),
+		}
+	})
 	return instance
 }
 
-func init() {
-	log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
-	defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
-	instance = &Manager{
-		buffer: buffer.NewManager(bufferSize, types.PageSize),
-	}
-}
+//func init() {
+//	log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
+//	defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
+//	instance = &Manager{
+//		buffer: buffer.NewManager(bufferSize, types.PageSize),
+//		files:  make(map[string]*FileHandle),
+//	}
+//}
 
 // CreateFile creates a new file
 func (m *Manager) CreateFile(filename string) error {
@@ -56,15 +67,22 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 	if file, found := m.files[filename]; found {
 		return file, nil
 	}
-	return newFileHanle(filename, m.buffer)
+	handle, err := fileHandle(filename, m.buffer)
+	if err != nil {
+		return nil, err
+	}
+	m.files[filename] = handle
+	return handle, err
 }
 
 // CloseFile closes a file
 func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {
+		m.buffer.FlushPages(handle.file)
 		if err := handle.file.Close(); err != nil {
 			return err
 		}
+		delete(m.files, filename)
 		handle.buffer = nil
 		handle.file = nil
 		return nil

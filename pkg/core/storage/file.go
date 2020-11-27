@@ -18,8 +18,8 @@ type FileHandle struct {
 	file   *os.File
 }
 
-// newFileHanle returns a file handle
-func newFileHanle(filename string, bm *buffer.Manager) (*FileHandle, error) {
+// fileHandle returns a file handle
+func fileHandle(filename string, bm *buffer.Manager) (*FileHandle, error) {
 	if bm == nil {
 		return nil, errorutil.ErrorUnknown
 	}

@@ -7,17 +7,16 @@ package log
 import (
 	"fmt"
 	"log"
-	"reflect"
 	"runtime"
 	"strings"
+
+	"github.com/pigeonligh/stupid-base/pkg"
 )
 
 const (
 	prefixString string = ""
 	suffixString string = ""
 )
-
-var projectName = strings.TrimSuffix(reflect.TypeOf(Logger{}).PkgPath(), "pkg/logutil")
 
 // Logger is used to log
 type Logger struct {
@@ -34,7 +33,7 @@ func (logger *Logger) prefix() string {
 	if !ok {
 		return "???: "
 	}
-	return fmt.Sprintf("%s:%d: ", strings.Split(file, projectName)[1], line)
+	return fmt.Sprintf("%s:%d: ", strings.TrimPrefix(file, pkg.ProjectPath), line)
 }
 
 func (logger *Logger) wrap(s string) string {

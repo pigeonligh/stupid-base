@@ -27,3 +27,13 @@ func ByteSliceToPointerWithOffset(data []byte, offset int) unsafe.Pointer {
 	ptr := rawSlicePtr(unsafe.Pointer(&data)).pdata
 	return (unsafe.Pointer)((uintptr)(ptr) + uintptr(offset))
 }
+
+// PointerToByteSlice, convert from Pointer to byte, len must be specified (cap equals len)
+func PointerToByteSlice(ptr unsafe.Pointer, len int) []byte{
+	raw := &rawSlice{
+		pdata: ptr,
+		len: len,
+		cap: len,
+	}
+	return *(*[]byte)(unsafe.Pointer(raw))
+}

@@ -15,7 +15,7 @@ func TestMyBitset(t *testing.T) {
 
 	contentSize := 126
 
-	page := (*types.RecordPageHeader)(types.ByteSliceToPointer(data))
+	page := (*types.RecordPage)(types.ByteSliceToPointer(data))
 	bitset := NewBitset(&page.BitsetData, contentSize)
 
 

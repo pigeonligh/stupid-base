@@ -6,3 +6,6 @@ type RID struct {
 	Slot 	SlotNum
 }
 
+func (r *RID) IsValid() bool{
+	return r.Slot >= 0 && r.Page >= 0
+}

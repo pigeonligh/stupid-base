@@ -56,19 +56,6 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 	return nil
 }
 
-func (m *Manager) DestroyFile(filename string) error {
-	if _, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
-		log.V(log.RecordLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
-		return nil
-	}
-	if err := m.storage.DestroyFile(filename); err != nil {
-		return err
-	}
-	log.V(log.RecordLevel).Infof("DestroyFile succeeded: %v", filename)
-	return nil
-}
-
 func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 	if file, found := m.files[filename]; found {
@@ -85,6 +72,20 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 	m.files[filename] = file
 	return file, nil
 }
+
+func (m *Manager) DestroyFile(filename string) error {
+	if _, found := m.files[filename]; found {
+		// TODO: should return warn for open file which is opened
+		log.V(log.RecordLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
+		return nil
+	}
+	if err := m.storage.DestroyFile(filename); err != nil {
+		return err
+	}
+	log.V(log.RecordLevel).Infof("DestroyFile succeeded: %v", filename)
+	return nil
+}
+
 
 func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {

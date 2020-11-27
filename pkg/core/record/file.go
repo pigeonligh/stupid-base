@@ -2,10 +2,11 @@ package record
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/dsutil/bitset"
-	"unsafe"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"unsafe"
 )
 
 type FileHandle struct {
@@ -23,6 +24,7 @@ func newFileHandle(filename string) (*FileHandle, error) {
 	}
 	pageHandle, err := storageFH.GetPage(0)
 	if err != nil {
+		log.V(log.RecordLevel).Errorf("storageFH.GetPage(0) failed")
 		return nil, err
 	}
 	copiedHeader := *(*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -49,29 +51,37 @@ func (f *FileHandle) Close() error {
 		pageData := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
 		*pageData = f.header
 
-		_ = f.storageFH.MarkDirty(0)
-		if err = f.storageFH.UnpinPage(0); err != nil {
+		if err = f.storageFH.MarkDirty(pageHandle.Page); err != nil {
+			return err
+		}
+		if err = f.storageFH.UnpinPage(pageHandle.Page); err != nil {
 			return err
 		}
 		f.initialized = false
-		f.filename = ""
-		return nil
+		return storage.GetInstance().CloseFile(f.filename)
 	}
 }
 
-func (f *FileHandle) AllocateFreeRID() error{
+func (f *FileHandle) AllocateFreeRID() types.RID{
+	ret := types.RID{
+		Page: -1,
+		Slot: -1,
+	}
 	if f.header.FileHeaderPage.FirstFree <= 0 {
 		if err := f.insertPage(); err != nil {
-			return err
+			return ret
 		}
 	}
 	freePage := f.header.FirstFree
 	pageHandle, err := f.storageFH.GetPage(freePage)
 	if err != nil {
-		return err
+		return ret
 	}
-	bitset := bitset.NewBitset(types.ByteSlice2uint32ArrayPtr(pageHandle.Data, int(unsafe.Sizeof(types.PageHeader{}))), f.header.RecordSize)
-	freeSlot = bitset.FindLowestZeroBitIdx()
+	myBitset := bitset.NewBitset(types.ByteSlice2uint32ArrayPtr(pageHandle.Data, int(unsafe.Sizeof(types.PageHeader{}))), f.header.RecordSize)
+	freeSlot := myBitset.FindLowestZeroBitIdx()
+	ret.Page = freePage
+	ret.Slot = freeSlot
+	return ret
 }
 
 func (f* FileHandle) insertPage() error {
@@ -89,22 +99,106 @@ func (f* FileHandle) insertPage() error {
 	return nil
 }
 
-RID RM_FileHandle::AllocateFreeRID() {
-if (_header_page.first_free_page <= 0) {
-this->_insert_page();
-}
-PF_PageHandle page_handle;
-PageNum free_page = _header_page.first_free_page;
-_pf_file_handle.GetThisPage(free_page, page_handle);
-char *page_data = page_handle.GetData_SAFE();
-
-MyBitset bitset(reinterpret_cast<unsigned *>(page_data + DPAGE_BITSET_OFFSET), _header_page.record_per_page);
-SlotNum free_slot = bitset.FindLowestZeroBitIdx();
-_pf_file_handle.UnpinPage(free_page);
-
-//    RM_Manager::GetInstance()._pfm.PrintBuffer();
-
-return {free_page, free_slot};
+func (f* FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
+	offset := slot * f.header.RecordSize
+	ptr := types.ByteSliceToPointerWithOffset(data, offset)
+	slice := types.PointerToByteSlice(ptr, f.header.RecordSize)
+	return slice
 }
 
-/**
+func (f* FileHandle) InsertRec(data []byte, rid types.RID) error {
+	if len(data) != f.header.RecordSize {
+		log.V(log.RecordLevel).Errorf("InsertRecord passed parameter len(data) won't match record size")
+		return errorutil.ErrorRecordLengthNotMatch
+	}
+	if !rid.IsValid() {
+		rid = f.AllocateFreeRID()
+	}
+	freePage := rid.Page
+	freeSlot := rid.Slot
+
+	pageHandle, err := f.storageFH.GetPage(freePage)
+	if err != nil {
+		return err
+	}
+	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
+	slotByteSlice := f.getSlotByteSlice(recordPagePtr.Data[:], freeSlot)
+	copy(slotByteSlice, data)
+	mybitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
+	mybitset.Set(freeSlot)
+	if mybitset.FindLowestZeroBitIdx() != bitset.BitsetFindNoRes {
+		log.V(log.RecordLevel).Infof("InsertRecord, current page(%v) full!", freePage)
+		// current bitset if full
+		if recordPagePtr.NextFree > 0 {
+			f.header.FirstFree = recordPagePtr.NextFree
+			recordPagePtr.NextFree = 0
+		}else {
+			f.header.FirstFree = 0	// there is no free page after this page
+		}
+	}
+
+	if err := f.storageFH.MarkDirty(rid.Page); err != nil {
+		return err
+	}
+	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
+		return err
+	}
+	f.header.RecordNum += 1
+	f.headerModified = true
+	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
+	return nil
+}
+
+func (f* FileHandle) DeleteRec(rid types.RID) error{
+	pageHandle, err := f.storageFH.GetPage(rid.Page)
+	if err != nil {
+		log.V(log.RecordLevel).Errorf("DelRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
+		return errorutil.ErrorRecordRidNotValid
+	}
+	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
+	mybitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
+	if !mybitset.IsOccupied(rid.Slot) || !rid.IsValid() {
+		log.V(log.RecordLevel).Errorf("DelRecord failed: rid(%v, %v) not valid", rid.Page, rid.Slot)
+		return errorutil.ErrorRecordRidNotValid
+	}
+
+	if mybitset.FindLowestZeroBitIdx() == bitset.BitsetFindNoRes {
+		if f.header.FirstFree > 0 {
+			recordPagePtr.NextFree = f.header.FirstFree	// link this page to the previous page
+		}else {
+			recordPagePtr.NextFree = 0	// there is no free page after this
+		}
+		f.header.FirstFree = rid.Page
+	}
+	mybitset.Clean(rid.Slot)
+	f.header.RecordNum -= 1
+	f.headerModified = true
+
+	if err := f.storageFH.MarkDirty(rid.Page); err != nil {
+		return err
+	}
+	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f* FileHandle) GetRec(rid types.RID) (Record, error) {
+	pageHandle, err := f.storageFH.GetPage(rid.Page)
+	if err != nil {
+		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
+		return NewEmptyRecord(), errorutil.ErrorRecordRidNotValid
+	}
+	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
+	mybitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
+	if !mybitset.IsOccupied(rid.Slot) {
+		return NewEmptyRecord(), errorutil.ErrorRecordRidNotValid
+	}
+
+	slotByteSlice := f.getSlotByteSlice(recordPagePtr.Data[:], rid.Slot)
+	if err := f.storageFH.UnpinPage(pageHandle.Page); err != nil {
+		return NewEmptyRecord(), err
+	}
+
+	return NewRecord(rid, slotByteSlice, f.header.RecordSize)
+}

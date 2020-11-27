@@ -35,9 +35,9 @@ type PageHeader struct {
 }
 
 // BitsetPageHeader is page structure for bitset
-type RecordPageHeader struct {
+type RecordPage struct {
 	PageHeader
 	BitsetData [BitsetArrayMaxLength]uint32
-	Data [PageDataSize - BitsetByteMaxSize]byte
+	Data [PageSize - PageHeaderSize - BitsetByteMaxSize]byte
 }
 

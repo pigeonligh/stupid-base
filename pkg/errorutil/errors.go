@@ -42,6 +42,4 @@ var (
 
 	// ErrorUnknown is an error
 	ErrorUnknown = errors.New("you meet unknown error")
-
-	ErrorFileNotClosed = errors.New("file not closed")
 )

@@ -17,7 +17,7 @@ type FileHandle struct {
 	storageFH      *storage.FileHandle
 }
 
-func newFileHandle(filename string) (*FileHandle, error) {
+func NewFileHandle(filename string) (*FileHandle, error) {
 	storageFH, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
 		return nil, err

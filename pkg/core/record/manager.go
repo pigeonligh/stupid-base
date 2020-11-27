@@ -64,7 +64,7 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 		return file, nil
 	}
 	// RM_FileHandle
-	file, err := newFileHandle(filename)
+	file, err := NewFileHandle(filename)
 	if err != nil {
 		return nil, err
 	}

@@ -7,8 +7,8 @@ package buffer
 import (
 	"os"
 
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 // Manager is the manager for page buffer
@@ -119,7 +119,9 @@ func (mg *Manager) UnpinPage(id types.PageID) error {
 
 // FlushPages flushes pages for file
 func (mg *Manager) FlushPages(file *os.File) error {
-	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+	var next int
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = next {
+		next = mg.buffers[slot].next
 		page := mg.buffers[slot]
 		if file == page.File {
 			if page.pinCount > 0 {
@@ -138,7 +140,9 @@ func (mg *Manager) FlushPages(file *os.File) error {
 
 // ForcePage forces a page to disk
 func (mg *Manager) ForcePage(id types.PageID) error {
-	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+	var next int
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = next {
+		next = mg.buffers[slot].next
 		page := mg.buffers[slot]
 		if id == page.PageID {
 			if err := mg.clearDirty(slot); err != nil {
@@ -151,7 +155,9 @@ func (mg *Manager) ForcePage(id types.PageID) error {
 
 // ClearBuffer removes all entries from the Buffer Manager
 func (mg *Manager) ClearBuffer() error {
-	for slot := mg.firstUsed; slot != InvalidSlot; slot = mg.buffers[slot].next {
+	var next int
+	for slot := mg.firstUsed; slot != InvalidSlot; slot = next {
+		next = mg.buffers[slot].next
 		page := mg.buffers[slot]
 		if page.pinCount == 0 {
 			delete(mg.slots, page.PageID)

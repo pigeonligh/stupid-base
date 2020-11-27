@@ -19,6 +19,7 @@ func GetInstance() *Manager {
 func init() {
 	instance = &Manager{
 		storage: storage.GetInstance(),
+		files: make(map[string]*FileHandle),
 	}
 }
 

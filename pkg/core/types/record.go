@@ -7,5 +7,5 @@ type RID struct {
 }
 
 func (r *RID) IsValid() bool {
-	return r.Slot >= 0 && r.Page >= 0
+	return r.Slot >= 0 && r.Page > 0
 }

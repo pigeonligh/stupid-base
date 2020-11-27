@@ -18,7 +18,6 @@ type RecordHeaderPage struct {
 	RecordSize    int
 	RecordNum     int
 	RecordPerPage int
-	SlotMapSize   int
 }
 
 const (

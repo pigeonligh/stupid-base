@@ -5,8 +5,8 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 func (mg *Manager) readPage(pageID types.PageID) (types.PageData, error) {

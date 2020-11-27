@@ -23,10 +23,10 @@ var (
 
 func init() {
 	loggers = &Logger{
-		debugLogger:   log.New(os.Stderr, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile),
-		infoLogger:    log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile),
-		warningLogger: log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile),
-		errorLogger:   log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile),
+		debugLogger:   log.New(os.Stderr, "\x1b[32m [DEBUG] \x1b[0m", log.LstdFlags|log.Lmicroseconds),
+		infoLogger:    log.New(os.Stdout, "\x1b[34m [INFO] \x1b[0m", log.LstdFlags|log.Lmicroseconds),
+		warningLogger: log.New(os.Stdout, "\x1b[33m [WARNING] \x1b[0m", log.LstdFlags|log.Lmicroseconds),
+		errorLogger:   log.New(os.Stderr, "\x1b[31m [ERROR] \x1b[0m", log.LstdFlags|log.Lmicroseconds),
 	}
 }
 

@@ -6,6 +6,7 @@ package storage
 
 import (
 	"os"
+	"sync"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -22,20 +23,29 @@ type Manager struct {
 }
 
 var instance *Manager
+var once sync.Once
 
 // GetInstance returns the instance
 func GetInstance() *Manager {
+	once.Do(func() {
+		log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
+		defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
+		instance = &Manager{
+			buffer: buffer.NewManager(bufferSize, types.PageSize),
+			files:  make(map[string]*FileHandle),
+		}
+	})
 	return instance
 }
 
-func init() {
-	log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
-	defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
-	instance = &Manager{
-		buffer: buffer.NewManager(bufferSize, types.PageSize),
-		files:  make(map[string]*FileHandle),
-	}
-}
+//func init() {
+//	log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
+//	defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
+//	instance = &Manager{
+//		buffer: buffer.NewManager(bufferSize, types.PageSize),
+//		files:  make(map[string]*FileHandle),
+//	}
+//}
 
 // CreateFile creates a new file
 func (m *Manager) CreateFile(filename string) error {

@@ -6,11 +6,11 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
-func recordPerPage(recordSize uint32) uint32 {
+func recordPerPage(recordSize int) int {
 	//ceil(x/32) + x * record_size + 8 = PF_PAGE_SIZE(4092)
-	return uint32(math.Floor(float64(32*types.PageSize) / float64(32*recordSize+1)))
+	return int(math.Floor(float64(32*types.PageSize) / float64(32*recordSize+1)))
 }
 
-func bitMapSize(recordPerPage uint32) uint32 {
-	return uint32(math.Ceil(float64(recordPerPage)/32.0) * 4)
+func bitMapSize(recordPerPage int) int {
+	return int(math.Ceil(float64(recordPerPage)/32.0) * 4)
 }

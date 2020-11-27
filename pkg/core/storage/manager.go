@@ -61,17 +61,18 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	// m.files[filename] = handle
+	m.files[filename] = handle
 	return handle, err
 }
 
 // CloseFile closes a file
 func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {
+		m.buffer.FlushPages(handle.file)
 		if err := handle.file.Close(); err != nil {
 			return err
 		}
-		// delete(m.files, filename)
+		delete(m.files, filename)
 		handle.buffer = nil
 		handle.file = nil
 		return nil

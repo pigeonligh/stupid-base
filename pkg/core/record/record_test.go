@@ -1,11 +1,12 @@
 package record
 
 import (
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"testing"
 )
 
 func TestRecord(t *testing.T) {
-	//log.SetLevel(log.RecordLevel | log.StorageLevel)
+	log.SetLevel(log.RecordLevel | log.StorageLevel)
 
 	manager := GetInstance()
 

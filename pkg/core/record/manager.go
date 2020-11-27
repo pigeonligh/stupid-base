@@ -4,6 +4,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"sync"
 )
 
 type Manager struct {
@@ -12,16 +13,24 @@ type Manager struct {
 }
 
 var instance *Manager
-
+var once sync.Once
 func GetInstance() *Manager {
+	once.Do(func() {
+		log.V(log.RecordLevel).Info("Record Manager starts to initialize.")
+		defer log.V(log.RecordLevel).Info("Record Manager has been initialized.")
+		instance = &Manager{
+			storage: storage.GetInstance(),
+			files: make(map[string]*FileHandle),
+		}
+	})
 	return instance
 }
-func init() {
-	instance = &Manager{
-		storage: storage.GetInstance(),
-		files: make(map[string]*FileHandle),
-	}
-}
+//func init() {
+//	instance = &Manager{
+//		storage: storage.GetInstance(),
+//		files: make(map[string]*FileHandle),
+//	}
+//}
 
 func (m *Manager) CreateFile(filename string, recordSize int) error {
 	var err error

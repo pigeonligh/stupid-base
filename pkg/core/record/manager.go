@@ -14,17 +14,19 @@ type Manager struct {
 
 var instance *Manager
 var once sync.Once
+
 func GetInstance() *Manager {
 	once.Do(func() {
 		log.V(log.RecordLevel).Info("Record Manager starts to initialize.")
 		defer log.V(log.RecordLevel).Info("Record Manager has been initialized.")
 		instance = &Manager{
 			storage: storage.GetInstance(),
-			files: make(map[string]*FileHandle),
+			files:   make(map[string]*FileHandle),
 		}
 	})
 	return instance
 }
+
 //func init() {
 //	instance = &Manager{
 //		storage: storage.GetInstance(),
@@ -95,7 +97,6 @@ func (m *Manager) DestroyFile(filename string) error {
 	log.V(log.RecordLevel).Infof("DestroyFile succeeded: %v", filename)
 	return nil
 }
-
 
 func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {

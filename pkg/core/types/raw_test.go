@@ -12,7 +12,6 @@ import (
 func TestRaw(t *testing.T) {
 	data := make([]byte, PageSize)
 
-
 	type TestStruct struct {
 		a int
 		b int

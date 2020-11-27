@@ -21,12 +21,10 @@ type RecordHeaderPage struct {
 	SlotMapSize   int
 }
 
-
-
 const (
 	// BitsetDataSize is the data size of bitset
 	BitsetArrayMaxLength = 32
-	BitsetByteMaxSize = 128
+	BitsetByteMaxSize    = 128
 )
 
 // PageHeader is header structure for pages
@@ -38,6 +36,5 @@ type PageHeader struct {
 type RecordPage struct {
 	PageHeader
 	BitsetData [BitsetArrayMaxLength]uint32
-	Data [PageSize - PageHeaderSize - BitsetByteMaxSize]byte
+	Data       [PageSize - PageHeaderSize - BitsetByteMaxSize]byte
 }
-

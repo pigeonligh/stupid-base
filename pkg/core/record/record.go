@@ -6,7 +6,7 @@ import (
 )
 
 type Record struct {
-	Rid types.RID
+	Rid  types.RID
 	Data []byte
 	size int
 }
@@ -19,7 +19,7 @@ func NewEmptyRecord() Record {
 	}
 }
 
-func NewRecord(rid types.RID, data []byte, size int) (Record, error){
+func NewRecord(rid types.RID, data []byte, size int) (Record, error) {
 	if len(data) != size {
 		return NewEmptyRecord(), errorutil.ErrorRecordLengthNotMatch
 	}
@@ -31,5 +31,3 @@ func NewRecord(rid types.RID, data []byte, size int) (Record, error){
 		size: size,
 	}, nil
 }
-
-

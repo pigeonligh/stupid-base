@@ -62,7 +62,7 @@ func (f *FileHandle) Close() error {
 	}
 }
 
-func (f *FileHandle) AllocateFreeRID() types.RID{
+func (f *FileHandle) AllocateFreeRID() types.RID {
 	ret := types.RID{
 		Page: -1,
 		Slot: -1,
@@ -84,12 +84,12 @@ func (f *FileHandle) AllocateFreeRID() types.RID{
 	return ret
 }
 
-func (f* FileHandle) insertPage() error {
+func (f *FileHandle) insertPage() error {
 	pageHandle, err := f.storageFH.NewPage(f.header.Pages)
 	if err != nil {
 		return err
 	}
-	copy(pageHandle.Data, make([]byte, types.PageSize))	// Header.FirstFree = 0 marks for the last page
+	copy(pageHandle.Data, make([]byte, types.PageSize)) // Header.FirstFree = 0 marks for the last page
 	_ = f.storageFH.MarkDirty(pageHandle.Page)
 	_ = f.storageFH.UnpinPage(pageHandle.Page)
 
@@ -99,14 +99,14 @@ func (f* FileHandle) insertPage() error {
 	return nil
 }
 
-func (f* FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
+func (f *FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
 	offset := slot * f.header.RecordSize
 	ptr := types.ByteSliceToPointerWithOffset(data, offset)
 	slice := types.PointerToByteSlice(ptr, f.header.RecordSize)
 	return slice
 }
 
-func (f* FileHandle) InsertRec(data []byte, rid types.RID) error {
+func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
 	if len(data) != f.header.RecordSize {
 		log.V(log.RecordLevel).Errorf("InsertRecord passed parameter len(data) won't match record size")
 		return errorutil.ErrorRecordLengthNotMatch
@@ -132,8 +132,8 @@ func (f* FileHandle) InsertRec(data []byte, rid types.RID) error {
 		if recordPagePtr.NextFree > 0 {
 			f.header.FirstFree = recordPagePtr.NextFree
 			recordPagePtr.NextFree = 0
-		}else {
-			f.header.FirstFree = 0	// there is no free page after this page
+		} else {
+			f.header.FirstFree = 0 // there is no free page after this page
 		}
 	}
 
@@ -149,7 +149,7 @@ func (f* FileHandle) InsertRec(data []byte, rid types.RID) error {
 	return nil
 }
 
-func (f* FileHandle) DeleteRec(rid types.RID) error{
+func (f *FileHandle) DeleteRec(rid types.RID) error {
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
 		log.V(log.RecordLevel).Errorf("DelRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
@@ -164,9 +164,9 @@ func (f* FileHandle) DeleteRec(rid types.RID) error{
 
 	if mybitset.FindLowestZeroBitIdx() == bitset.BitsetFindNoRes {
 		if f.header.FirstFree > 0 {
-			recordPagePtr.NextFree = f.header.FirstFree	// link this page to the previous page
-		}else {
-			recordPagePtr.NextFree = 0	// there is no free page after this
+			recordPagePtr.NextFree = f.header.FirstFree // link this page to the previous page
+		} else {
+			recordPagePtr.NextFree = 0 // there is no free page after this
 		}
 		f.header.FirstFree = rid.Page
 	}
@@ -183,7 +183,7 @@ func (f* FileHandle) DeleteRec(rid types.RID) error{
 	return nil
 }
 
-func (f* FileHandle) GetRec(rid types.RID) (Record, error) {
+func (f *FileHandle) GetRec(rid types.RID) (Record, error) {
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
 		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)

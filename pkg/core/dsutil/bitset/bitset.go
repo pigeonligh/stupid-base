@@ -15,21 +15,21 @@ const (
 )
 
 type Bitset struct {
-	data   *[types.BitsetArrayMaxLength]uint32
-	size   int // how many records are there (how many real occupied bytes)
+	data *[types.BitsetArrayMaxLength]uint32
+	size int // how many records are there (how many real occupied bytes)
 }
 
 func NewBitset(data *[types.BitsetArrayMaxLength]uint32, contentNums int) *Bitset {
 	bitset := Bitset{
-		data:   data,
-		size:   contentNums,
+		data: data,
+		size: contentNums,
 	}
 
 	for i := 0; i < len(data); i++ {
 		paddingBitsNum := (i+1)*32 - bitset.size
 		if paddingBitsNum >= 32 {
 			bitset.data[i] = UnsignedMax
-		}else {
+		} else {
 			for j := 0; j < paddingBitsNum; j++ {
 				bitset.data[i] |= 1 << (31 - j)
 			}

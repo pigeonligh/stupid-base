@@ -10,7 +10,6 @@ func TestRecord(t *testing.T) {
 
 	manager := GetInstance()
 
-
 	filename1 := "testfiles_test1.bin"
 	recordSize1 := 50
 	filename2 := "testfiles_test2.bin"

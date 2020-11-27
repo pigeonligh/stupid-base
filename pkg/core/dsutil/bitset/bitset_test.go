@@ -18,7 +18,6 @@ func TestMyBitset(t *testing.T) {
 	page := (*types.RecordPage)(types.ByteSliceToPointer(data))
 	bitset := NewBitset(&page.BitsetData, contentSize)
 
-
 	bitset.Set(48)
 	if res := bitset.FindLowestOneBitIdx(); res != 48 {
 		t.Errorf("FindLowestOneBitIdx Error! Results should be %v but it's %v", 48, res)
@@ -31,7 +30,6 @@ func TestMyBitset(t *testing.T) {
 	bitset.Set(125)
 	log.Debugf("Set: %v %v %v %v %v\n", 48, 63, 64, 126, 125)
 	bitset.DebugBitset()
-
 
 	for i := 0; i < contentSize; i += 1 {
 		bitset.Clean(i)
@@ -56,6 +54,5 @@ func TestMyBitset(t *testing.T) {
 			t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", i, res)
 		}
 	}
-
 
 }

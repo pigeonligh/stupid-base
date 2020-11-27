@@ -22,9 +22,9 @@ type Manager struct {
 	files map[string]*FileHandle
 }
 
-
 var instance *Manager
 var once sync.Once
+
 // GetInstance returns the instance
 func GetInstance() *Manager {
 	once.Do(func() {

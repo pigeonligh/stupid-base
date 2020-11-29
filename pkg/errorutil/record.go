@@ -9,5 +9,5 @@ var (
 
 	ErrorRecordScanWithNonCompOp = errors.New("open scan with non comp op")
 
-	ErrorRecordScanValueTypeNotMatch =  errors.New("open scan value type not match")
+	ErrorRecordScanValueTypeNotMatch = errors.New("open scan value type not match")
 )

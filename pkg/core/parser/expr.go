@@ -10,7 +10,7 @@ type AttrInfo struct {
 	AttrName   string
 	TableName  string
 	AttrOffset int
-	NotNull    bool	// TODO
+	NotNull    bool // TODO
 }
 
 // Used by SM_Manager::CreateTable
@@ -40,17 +40,16 @@ type Expr struct {
 	Value    Value    // represent basic Value which can provide convert functions
 	AttrInfo AttrInfo // represent Value as attr in a db/table
 
-
 	//
 	IsNull       bool
 	IsCalculated bool
 }
 
-func NewExprEmpty() *Expr{
+func NewExprEmpty() *Expr {
 	return &Expr{
-		IsNull: true,
+		IsNull:       true,
 		IsCalculated: false,
-		Value: Value{ValueType: types.NO_ATTR},
+		Value:        Value{ValueType: types.NO_ATTR},
 	}
 }
 
@@ -65,7 +64,7 @@ func NewExprConst(value Value) *Expr {
 	}
 }
 
-func NewExpr(l *Expr, op types.OpType, r *Expr) *Expr{
+func NewExpr(l *Expr, op types.OpType, r *Expr) *Expr {
 	return &Expr{
 		Left:         l,
 		Right:        r,
@@ -81,12 +80,12 @@ func (expr *Expr) CompIsTrue() bool {
 	return expr.Value.toBool() && types.IsOpComp(expr.OpType)
 }
 
-func (expr *Expr)Calculate(data []byte, relationName string) error{
+func (expr *Expr) Calculate(data []byte, relationName string) error {
 	if expr.IsCalculated {
 		return nil
 	}
 	if expr.Left != nil {
-		if err := expr.Left.Calculate(data, relationName); err != nil{
+		if err := expr.Left.Calculate(data, relationName); err != nil {
 			return err
 		}
 	}
@@ -107,7 +106,7 @@ func (expr *Expr)Calculate(data []byte, relationName string) error{
 			return errorutil.ErrorExprNonNullNotCalculated
 		}
 		expr.IsCalculated = true
-		if expr.OpType == types.OpCompIS || expr.OpType == types.OpCompISNOT{
+		if expr.OpType == types.OpCompIS || expr.OpType == types.OpCompISNOT {
 			is := expr.OpType == types.OpCompIS
 			if expr.Left.IsNull && expr.Right.IsNull {
 				expr.Value.fromBool(is)
@@ -119,10 +118,10 @@ func (expr *Expr)Calculate(data []byte, relationName string) error{
 				log.Warningf("Comparison on non-null and non-null Value") // TODO
 				expr.Value.fromBool(is)
 			}
-		}else {
+		} else {
 			if expr.Left.IsNull || expr.Right.IsNull {
 				expr.IsNull = true
-			}else {
+			} else {
 				switch expr.OpType {
 				case types.OpCompEQ:
 					expr.Value.fromBool(expr.Left.Value.EQ(&expr.Right.Value))
@@ -171,7 +170,7 @@ func (expr *Expr)Calculate(data []byte, relationName string) error{
 				log.V(log.ExprLevel).Warningf("data is not implemented\n")
 			}
 
-		}else {
+		} else {
 			log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, expr.AttrInfo.TableName)
 		}
 		return nil
@@ -179,4 +178,3 @@ func (expr *Expr)Calculate(data []byte, relationName string) error{
 	panic(0)
 	return errorutil.ErrorExprNodeNotImplemented
 }
-

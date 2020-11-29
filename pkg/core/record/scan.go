@@ -7,20 +7,18 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
-
-
 type FileScan struct {
-	file 		*FileHandle
-	cond 		*parser.Expr
-	currentBitset	*bitset.Bitset
-	currentBitData	[types.BitsetArrayMaxLength]uint32
-	tableName 	string
-	currentPage	types.PageNum
-	close 		bool
+	file           *FileHandle
+	cond           *parser.Expr
+	currentBitset  *bitset.Bitset
+	currentBitData [types.BitsetArrayMaxLength]uint32
+	tableName      string
+	currentPage    types.PageNum
+	close          bool
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSize int, attrOffset int, compOp types.OpType, value parser.Value)  error{
-	if !types.IsOpComp(compOp){
+func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
+	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}
 
@@ -50,7 +48,7 @@ func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSi
 	return nil
 }
 
-func (f* FileScan) GetNextRecord() (*Record, error) {
+func (f *FileScan) GetNextRecord() (*Record, error) {
 	for {
 		var slot = bitset.BitsetFindNoRes
 		if f.currentPage != 0 {
@@ -68,7 +66,7 @@ func (f* FileScan) GetNextRecord() (*Record, error) {
 			}
 			recordPage := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
 			f.currentBitData = recordPage.BitsetData
-			f.currentBitset  = bitset.NewBitset(&f.currentBitData, f.file.header.RecordPerPage)
+			f.currentBitset = bitset.NewBitset(&f.currentBitData, f.file.header.RecordPerPage)
 
 			slot = f.currentBitset.FindLowestOneBitIdx()
 			if err := f.file.storageFH.UnpinPage(f.currentPage); err != nil {
@@ -91,14 +89,12 @@ func (f* FileScan) GetNextRecord() (*Record, error) {
 				if f.cond.CompIsTrue() {
 					break
 				}
-			}else {
+			} else {
 				break
 			}
 		}
 	}
 }
-
-
 
 //Expr *_condition = nullptr;
 //MyBitset* _current_bitmap = nullptr;

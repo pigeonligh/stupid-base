@@ -20,9 +20,7 @@ type Value struct {
 	ValueType types.ValueType
 	value     [64]byte
 	str       string
-
 }
-
 
 func (v *Value) GE(c *Value) bool {
 	if v.ValueType != c.ValueType {
@@ -160,12 +158,11 @@ func (v *Value) EQ(c *Value) bool {
 	return false
 }
 
-
 func (v *Value) toInt64() int {
 	return *(*int)(unsafe.Pointer(&v.value))
 }
 
-func (v *Value) fromInt64(val int)  {
+func (v *Value) fromInt64(val int) {
 	ptr := (*int)(types.ByteSliceToPointer(v.value[:]))
 	*ptr = val
 }
@@ -174,7 +171,7 @@ func (v *Value) toFloat64() float64 {
 	return *(*float64)(unsafe.Pointer(&v.value))
 }
 
-func (v *Value) fromFloat64(val float64)  {
+func (v *Value) fromFloat64(val float64) {
 	ptr := (*float64)(types.ByteSliceToPointer(v.value[:]))
 	*ptr = val
 }
@@ -183,16 +180,16 @@ func (v *Value) toBool() bool {
 	return *(*bool)(unsafe.Pointer(&v.value))
 }
 
-func (v *Value) fromBool(val bool)  {
+func (v *Value) fromBool(val bool) {
 	v.value = [64]byte{}
 	ptr := (*bool)(types.ByteSliceToPointer(v.value[:]))
 	*ptr = val
 }
 
-func (v* Value) toStr() string{
+func (v *Value) toStr() string {
 	return v.str
 }
 
-func (v* Value) fromStr(s string){
+func (v *Value) fromStr(s string) {
 	v.str = s
 }

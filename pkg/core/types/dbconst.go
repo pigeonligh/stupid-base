@@ -1,6 +1,7 @@
 package types
 
 type ValueType = int
+
 const (
 	NO_ATTR ValueType = iota
 	INT
@@ -9,10 +10,10 @@ const (
 	DATE
 	VARCHAR
 	BOOL
-
 )
 
 type OpType = int
+
 const (
 	OpDefault OpType = iota
 	OpCompEQ
@@ -39,11 +40,12 @@ const (
 	OpLogicNO
 )
 
-func IsOpComp(op OpType) bool{
+func IsOpComp(op OpType) bool {
 	return op == OpCompEQ || op == OpCompLT || op == OpCompGT || op == OpCompLE || op == OpCompGE || op == OpCompNE || op == OpCompIS || op == OpCompISNOT
 }
 
 type NodeType = int
+
 const (
 	NodeArith NodeType = iota
 	NodeComp

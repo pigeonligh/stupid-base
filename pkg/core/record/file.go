@@ -190,7 +190,7 @@ func (f *FileHandle) DeleteRec(rid types.RID) error {
 	return nil
 }
 
-func (f *FileHandle) GetRec(rid types.RID) (Record, error) {
+func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
 		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)

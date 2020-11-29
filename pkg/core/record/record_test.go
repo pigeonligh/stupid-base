@@ -25,9 +25,10 @@ func TestRecord(t *testing.T) {
 		return
 	}
 
-	ridVec := [200]types.RID{}
+	//ridVec := [200]types.RID{}
+	ridVec := make([]types.RID, 0, 200)
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < cap(ridVec); i++ {
 		data := make([]byte, recordSize1)
 		var sb strings.Builder
 		sb.Write([]byte(string(rune(i))))
@@ -36,7 +37,7 @@ func TestRecord(t *testing.T) {
 		copy(data, str)
 
 		rid, _ := f1.InsertRec(data, types.RID{})
-		ridVec[i] = rid
+		ridVec = append(ridVec, rid)
 	}
 	t.Logf("%v\n", f1.header)
 

@@ -8,6 +8,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
+// Iterator is the iterator for bptree values
 type Iterator struct {
 	operator *Operator
 
@@ -18,7 +19,7 @@ func endIterator() *Iterator {
 	return &Iterator{ended: true}
 }
 
-func newIterator(oper *Operator, nodeIndex *types.RID, nodePos int) *Iterator {
+func newIterator(oper *Operator, nodeIndex types.PageNum, nodePos int) *Iterator {
 	return &Iterator{}
 }
 

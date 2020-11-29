@@ -12,10 +12,17 @@ import (
 )
 
 const (
+	// NodePageHeaderSize is the size of node page header
 	NodePageHeaderSize = 0
-	NodePageSize       = types.PageDataSize - NodePageHeaderSize
-	NodeMaxItem        = NodePageSize / 2 / unsafe.Sizeof(types.RID{})
-	NodeMinItem        = NodeMaxItem / 2
+
+	// NodePageSize is the size of node page data
+	NodePageSize = types.PageDataSize - NodePageHeaderSize
+
+	// NodeMaxItem is the max number of node items
+	NodeMaxItem = NodePageSize / 2 / unsafe.Sizeof(types.RID{})
+
+	// NodeMinItem is the min number of node items
+	NodeMinItem = NodeMaxItem / 2
 )
 
 // TreeNode is node for bptree
@@ -24,30 +31,32 @@ type TreeNode struct {
 	size     int
 	capacity int
 
-	index     *types.RID
-	nextIndex *types.RID
+	index     types.PageNum
+	nextIndex types.PageNum
 
-	keys    [NodeMaxItem]*types.RID
-	indexes [NodeMaxItem]*types.RID
+	keys    [NodeMaxItem]types.RID
+	indexes [NodeMaxItem]types.RID
 
 	children [NodeMaxItem]*TreeNode
 }
 
-func NewTreeNode(index *types.RID, capacity int) *TreeNode {
+// NewTreeNode returns a tree node
+func NewTreeNode(index types.PageNum, capacity int) *TreeNode {
 	return &TreeNode{
-		index:     index.Clone(),
-		nextIndex: nil,
+		index:     index,
+		nextIndex: types.InvalidPageNum,
 		size:      0,
 		capacity:  capacity,
 	}
 }
 
+// Close should be called when node is deleted
 func (tn *TreeNode) Close() {
-	tn.index = nil
-	tn.nextIndex = nil
+	tn.index = types.InvalidPageNum
+	tn.nextIndex = types.InvalidPageNum
 	for i := 0; i < tn.size; i++ {
-		tn.keys[i] = nil
-		tn.indexes[i] = nil
+		tn.keys[i] = types.RID{}
+		tn.indexes[i] = types.RID{}
 		tn.children[i] = nil
 	}
 }
@@ -69,7 +78,7 @@ func (tn *TreeNode) prepareNode(index int, oper *Operator) error {
 	}
 	if tn.children[index] == nil {
 		var err error
-		tn.children[index], err = (*oper).LoadNode(*tn.indexes[index])
+		tn.children[index], err = (*oper).LoadNode(tn.indexes[index].Page)
 		if err != nil {
 			return err
 		}
@@ -77,7 +86,7 @@ func (tn *TreeNode) prepareNode(index int, oper *Operator) error {
 	return nil
 }
 
-func (tn *TreeNode) insertData(pos int, key, index *types.RID, child *TreeNode) error {
+func (tn *TreeNode) insertData(pos int, key, index types.RID, child *TreeNode) error {
 	if pos < 0 || pos > tn.size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}

@@ -1,5 +1,9 @@
 package types
 
+const MaxNameSize = 24
+const MaxAttrNums = 40
+const MaxStringSize = 255
+
 type ValueType = int
 
 const (

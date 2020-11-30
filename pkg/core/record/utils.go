@@ -25,7 +25,7 @@ func recordData2FloatWithOffset(data []byte, off int) float64 {
 	return *(*float64)(types.ByteSliceToPointerWithOffset(data, off))
 }
 
-func recordData2TrimedStringWithOffset(data []byte, off int, size ...int) string {
+func recordData2TrimmedStringWithOffset(data []byte, off int, size ...int) string {
 	if len(size) == 0 {
 		return strings.TrimSpace(string(bytes.Trim(data[off:], string(byte(0)))))
 	} else {

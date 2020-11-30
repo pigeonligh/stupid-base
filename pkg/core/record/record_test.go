@@ -53,6 +53,7 @@ func TestRecord(t *testing.T) {
 			age: rand.Int()%20 + 30,
 		}
 		ptr := unsafe.Pointer(&record)
+		// string will always contains null-ended
 		byteSlice := types.PointerToByteSlice(ptr, int(unsafe.Sizeof(record)))
 		name := []byte(nameMap[rand.Int()%len(nameMap)])
 		recordSlice := append(byteSlice, name...)
@@ -69,7 +70,7 @@ func TestRecord(t *testing.T) {
 
 		id := recordData2IntWithOffset(record.Data, 0)
 		age := recordData2IntWithOffset(record.Data, 8)
-		name := recordData2TrimedStringWithOffset(record.Data, 16)
+		name := recordData2TrimmedStringWithOffset(record.Data, 16)
 
 		t.Logf("Rid(%v %v)\n - id: %v, age: %v, name: %v\n", ridVec[i].Page, ridVec[i].Slot, id, age, name)
 
@@ -82,8 +83,8 @@ func TestRecord(t *testing.T) {
 	t.Logf("%v\n", f1.header)
 
 	//
-	fscan := FileScan{}
-	if err = fscan.OpenScan(f1, types.INT, 8, 0, types.OpCompLE, parser.NewValueFromInt64(20)); err != nil {
+	fscan1 := FileScan{}
+	if err = fscan1.OpenScan(f1, types.INT, 8, 0, types.OpCompLE, parser.NewValueFromInt64(20)); err != nil {
 		t.Error(err)
 		return
 	}
@@ -91,7 +92,7 @@ func TestRecord(t *testing.T) {
 	var record *Record
 	t.Logf("Filtered record:")
 	for {
-		record, err = fscan.GetNextRecord()
+		record, err = fscan1.GetNextRecord()
 		if err != nil {
 			t.Error(err)
 			return
@@ -101,7 +102,29 @@ func TestRecord(t *testing.T) {
 		}
 		id := recordData2IntWithOffset(record.Data, 0)
 		age := recordData2IntWithOffset(record.Data, 8)
-		name := recordData2TrimedStringWithOffset(record.Data, 16)
+		name := recordData2TrimmedStringWithOffset(record.Data, 16)
+		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
+
+	}
+
+	fscan2 := FileScan{}
+	if err = fscan2.OpenScan(f1, types.STRING, 20, 16, types.OpCompLE, parser.NewValueFromStr("Carol")); err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("Filtered record:")
+	for {
+		record, err = fscan2.GetNextRecord()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if record == nil {
+			break
+		}
+		id := recordData2IntWithOffset(record.Data, 0)
+		age := recordData2IntWithOffset(record.Data, 8)
+		name := recordData2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
 
 	}

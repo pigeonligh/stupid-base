@@ -25,4 +25,5 @@ type Operator interface {
 	NewValue(types.RID) (types.RID, error)
 	PushValue(types.RID, types.RID) (types.RID, error)
 	DeleteValue(types.RID, types.RID) (types.RID, error)
+	LoadValue(types.RID) (*types.IMValue, error)
 }

@@ -5,24 +5,8 @@ Copyright (c) 2020, pigeonligh.
 package bptree
 
 import (
-	"unsafe"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
-)
-
-const (
-	// NodePageHeaderSize is the size of node page header
-	NodePageHeaderSize = 0
-
-	// NodePageSize is the size of node page data
-	NodePageSize = types.PageDataSize - NodePageHeaderSize
-
-	// NodeMaxItem is the max number of node items
-	NodeMaxItem = NodePageSize / 2 / int(unsafe.Sizeof(types.RID{}))
-
-	// NodeMinItem is the min number of node items
-	NodeMinItem = NodeMaxItem / 2
 )
 
 // TreeNode is node for bptree
@@ -35,8 +19,8 @@ type TreeNode struct {
 	nextIndex types.PageNum
 	prevIndex types.PageNum
 
-	keys    [NodeMaxItem]types.RID
-	indexes [NodeMaxItem]types.RID
+	keys    [types.NodeMaxItem]types.RID
+	indexes [types.NodeMaxItem]types.RID
 }
 
 // NewTreeNode returns a tree node

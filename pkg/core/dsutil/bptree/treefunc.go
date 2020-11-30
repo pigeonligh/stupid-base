@@ -199,7 +199,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
-	if prevNode != nil && prevNode.size+node.size < NodeMinItem {
+	if prevNode != nil && prevNode.size+node.size < types.NodeMinItem {
 		// Merge
 		for i := 0; i < node.size; i++ {
 			err = prevNode.insertData(prevNode.size, node.keys[i], node.indexes[i])

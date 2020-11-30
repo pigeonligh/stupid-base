@@ -16,8 +16,6 @@ type Iterator struct {
 	nodePos    int
 	valueIndex types.RID
 
-	node *TreeNode
-
 	ended bool
 }
 
@@ -29,9 +27,17 @@ func newIterator(oper *Operator, nodeIndex types.PageNum, nodePos int) *Iterator
 	return &Iterator{}
 }
 
-func (iter *Iterator) prepareValue() {
-	iter.valueIndex = iter.node.indexes[iter.nodePos]
-	// TODO: prepare value
+func (iter *Iterator) getNode() (*TreeNode, error) {
+	return (*iter.operator).LoadNode(iter.nodeIndex)
+}
+
+func (iter *Iterator) prepareValue() error {
+	node, err := iter.getNode()
+	if err != nil {
+		return err
+	}
+	iter.valueIndex = node.indexes[iter.nodePos]
+	return nil
 }
 
 // EqualTo checks the two Iterators are equal or not
@@ -56,11 +62,40 @@ func (iter *Iterator) Next() error {
 	if iter.ended {
 		return nil
 	}
-	// TODO
+	nowValue, err := iter.get()
+	if err != nil {
+		return err
+	}
+	nextIndex := nowValue.Next
+	if !nextIndex.IsValid() {
+		node, err := iter.getNode()
+		if err != nil {
+			return err
+		}
+		iter.nodePos++
+		if iter.nodePos == node.size {
+			iter.nodeIndex = node.nextIndex
+			iter.nodePos = 0
+			node, err = iter.getNode()
+			if err != nil {
+				return err
+			}
+		}
+		nextIndex = node.indexes[iter.nodePos]
+	}
+	iter.valueIndex = nextIndex
 	return nil
 }
 
 // Get returns the value of the iterator
 func (iter *Iterator) Get() (types.RID, error) {
-	return types.RID{}, nil
+	nowValue, err := iter.get()
+	if err != nil {
+		return types.RID{}, err
+	}
+	return nowValue.Row, nil
+}
+
+func (iter *Iterator) get() (*types.IMValue, error) {
+	return (*iter.operator).LoadValue(iter.valueIndex)
 }

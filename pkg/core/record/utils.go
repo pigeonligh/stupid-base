@@ -1,8 +1,10 @@
 package record
 
 import (
+	"bytes"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"math"
+	"strings"
 )
 
 func recordPerPage(recordSize int) int {
@@ -14,3 +16,20 @@ func recordPerPage(recordSize int) int {
 //func bitMapSize(recordPerPage int) int {
 //	return int(math.Ceil(float64(recordPerPage)/32.0) * 4)
 //}
+
+func recordData2IntWithOffset(data []byte, off int) int {
+	return *(*int)(types.ByteSliceToPointerWithOffset(data, off))
+}
+
+func recordData2FloatWithOffset(data []byte, off int) float64 {
+	return *(*float64)(types.ByteSliceToPointerWithOffset(data, off))
+}
+
+func recordData2TrimedStringWithOffset(data []byte, off int, size ...int) string {
+	if len(size) == 0 {
+		return strings.TrimSpace(string(bytes.Trim(data[off:], string(byte(0)))))
+	} else {
+		return strings.TrimSpace(string(bytes.Trim(data[off:off+size[0]], string(byte(0)))))
+	}
+
+}

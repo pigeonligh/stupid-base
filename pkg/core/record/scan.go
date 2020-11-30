@@ -14,7 +14,7 @@ type FileScan struct {
 	currentBitData [types.BitsetArrayMaxLength]uint32
 	tableName      string
 	currentPage    types.PageNum
-	close          bool
+	init           bool
 }
 
 func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
@@ -29,6 +29,8 @@ func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSi
 		left.Value.ValueSize = valueSize
 		left.Value.ValueType = valueType
 		left.NodeType = types.NodeAttr
+		left.IsNull = false
+		left.IsCalculated = false
 
 		var right *parser.Expr
 		if value.ValueType != types.NO_ATTR {
@@ -40,16 +42,21 @@ func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSi
 			right = parser.NewExprEmpty()
 		}
 
-		expr = parser.NewExpr(left, compOp, right)
+		expr = parser.NewExprComp(left, compOp, right)
 	}
 	f.file = file
 	f.cond = expr
-	f.close = false
+	f.init = true
 	return nil
 }
 
 func (f *FileScan) GetNextRecord() (*Record, error) {
+	if !f.init {
+		return nil, errorutil.ErrorRecordScanNotInit
+	}
 	for {
+		f.cond.ResetCalculated()
+		//log.V(log.RecordLevel).Info("Iter flag")
 		var slot = bitset.BitsetFindNoRes
 		if f.currentPage != 0 {
 			slot = f.currentBitset.FindLowestOneBitIdx()
@@ -57,7 +64,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		for slot == bitset.BitsetFindNoRes {
 			f.currentPage += 1
 			if f.currentPage >= f.file.header.Pages {
-				f.close = true
+				f.init = false
 				return nil, nil
 			}
 			pageHandle, err := f.file.storageFH.GetPage(f.currentPage)
@@ -69,28 +76,27 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			f.currentBitset = bitset.NewBitset(&f.currentBitData, f.file.header.RecordPerPage)
 
 			slot = f.currentBitset.FindLowestOneBitIdx()
-			if err := f.file.storageFH.UnpinPage(f.currentPage); err != nil {
+			if err = f.file.storageFH.UnpinPage(f.currentPage); err != nil {
 				panic(0)
 			}
-			record, err := f.file.GetRec(types.RID{
-				Page: f.currentPage,
-				Slot: slot,
-			})
-			if err != nil {
-				panic(0)
-			}
-			f.currentBitset.Clean(slot)
-
+		}
+		f.currentBitset.Clean(slot)
+		if record, err := f.file.GetRec(types.RID{
+			Page: f.currentPage,
+			Slot: slot,
+		}); err != nil {
+			panic(0)
+		} else {
 			if f.cond != nil {
 				err := f.cond.Calculate(record.Data, f.tableName)
 				if err != nil {
 					return nil, err
 				}
 				if f.cond.CompIsTrue() {
-					break
+					return record, nil
 				}
 			} else {
-				break
+				return record, nil
 			}
 		}
 	}

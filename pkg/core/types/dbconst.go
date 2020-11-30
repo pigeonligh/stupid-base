@@ -41,7 +41,7 @@ const (
 )
 
 func IsOpComp(op OpType) bool {
-	return op == OpCompEQ || op == OpCompLT || op == OpCompGT || op == OpCompLE || op == OpCompGE || op == OpCompNE || op == OpCompIS || op == OpCompISNOT
+	return op == OpDefault || op == OpCompEQ || op == OpCompLT || op == OpCompGT || op == OpCompLE || op == OpCompGE || op == OpCompNE || op == OpCompIS || op == OpCompISNOT
 }
 
 type NodeType = int

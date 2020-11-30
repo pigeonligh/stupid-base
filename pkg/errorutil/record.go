@@ -7,6 +7,8 @@ var (
 
 	ErrorRecordRidNotValid = errors.New("record rid not valid")
 
+	ErrorRecordScanNotInit = errors.New("open scan not init yet")
+
 	ErrorRecordScanWithNonCompOp = errors.New("open scan with non comp op")
 
 	ErrorRecordScanValueTypeNotMatch = errors.New("open scan value type not match")

@@ -82,7 +82,7 @@ func (f *FileHandle) AllocateFreeRID() types.RID {
 	freeSlot := myBitset.FindLowestZeroBitIdx()
 	ret.Page = freePage
 	ret.Slot = freeSlot
-	log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
+	//log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
 	return ret
 }
 
@@ -148,7 +148,7 @@ func (f *FileHandle) InsertRec(data []byte, rid types.RID) (types.RID, error) {
 	}
 	f.header.RecordNum += 1
 	f.headerModified = true
-	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
+	//log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
 	return types.RID{
 		Page: freePage,
 		Slot: freeSlot,

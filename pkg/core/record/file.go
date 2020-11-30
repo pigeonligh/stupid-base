@@ -6,7 +6,6 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"unsafe"
 )
 
 type FileHandle struct {
@@ -77,10 +76,13 @@ func (f *FileHandle) AllocateFreeRID() types.RID {
 	if err != nil {
 		return ret
 	}
-	myBitset := bitset.NewBitset(types.ByteSlice2uint32ArrayPtr(pageHandle.Data, int(unsafe.Sizeof(types.PageHeader{}))), f.header.RecordSize)
+
+	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
+	myBitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
 	freeSlot := myBitset.FindLowestZeroBitIdx()
 	ret.Page = freePage
 	ret.Slot = freeSlot
+	//log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
 	return ret
 }
 
@@ -96,6 +98,7 @@ func (f *FileHandle) insertPage() error {
 	f.header.FirstFree = pageHandle.Page
 	f.header.Pages += 1
 	f.headerModified = true
+	log.V(log.RecordLevel).Infof("insertPage, FirstFree: %v, Pages: %v", f.header.FirstFree, f.header.Pages)
 	return nil
 }
 
@@ -106,10 +109,10 @@ func (f *FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
 	return slice
 }
 
-func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
+func (f *FileHandle) InsertRec(data []byte, rid types.RID) (types.RID, error) {
 	if len(data) != f.header.RecordSize {
 		log.V(log.RecordLevel).Errorf("InsertRecord passed parameter len(data) won't match record size")
-		return errorutil.ErrorRecordLengthNotMatch
+		return types.RID{}, errorutil.ErrorRecordLengthNotMatch
 	}
 	if !rid.IsValid() {
 		rid = f.AllocateFreeRID()
@@ -119,15 +122,15 @@ func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
 
 	pageHandle, err := f.storageFH.GetPage(freePage)
 	if err != nil {
-		return err
+		return types.RID{}, err
 	}
 	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
 	slotByteSlice := f.getSlotByteSlice(recordPagePtr.Data[:], freeSlot)
 	copy(slotByteSlice, data)
 	mybitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
 	mybitset.Set(freeSlot)
-	if mybitset.FindLowestZeroBitIdx() != bitset.BitsetFindNoRes {
-		log.V(log.RecordLevel).Infof("InsertRecord, current page(%v) full!", freePage)
+	if mybitset.FindLowestZeroBitIdx() == bitset.BitsetFindNoRes {
+		log.V(log.RecordLevel).Infof("InsertRecord, current page(%v) full! Marked FirstFree 0", freePage)
 		// current bitset if full
 		if recordPagePtr.NextFree > 0 {
 			f.header.FirstFree = recordPagePtr.NextFree
@@ -138,15 +141,18 @@ func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
 	}
 
 	if err := f.storageFH.MarkDirty(rid.Page); err != nil {
-		return err
+		return types.RID{}, err
 	}
 	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
-		return err
+		return types.RID{}, err
 	}
 	f.header.RecordNum += 1
 	f.headerModified = true
-	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
-	return nil
+	//log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
+	return types.RID{
+		Page: freePage,
+		Slot: freeSlot,
+	}, nil
 }
 
 func (f *FileHandle) DeleteRec(rid types.RID) error {
@@ -180,10 +186,11 @@ func (f *FileHandle) DeleteRec(rid types.RID) error {
 	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
 		return err
 	}
+	log.V(log.RecordLevel).Infof("DelRecord(%v %v) succeeded!", rid.Page, rid.Slot)
 	return nil
 }
 
-func (f *FileHandle) GetRec(rid types.RID) (Record, error) {
+func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
 		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)

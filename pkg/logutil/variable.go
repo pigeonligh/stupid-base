@@ -16,4 +16,7 @@ const (
 
 	// BitsetLevel is bitset log level
 	BitsetLevel
+
+	// ExprLevel
+	ExprLevel
 )

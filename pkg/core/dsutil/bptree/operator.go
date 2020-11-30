@@ -10,10 +10,19 @@ import (
 
 // Operator is the operator provided for btree
 type Operator interface {
-	LoadRoot() (*TreeNode, error)
-	LoadNode(rid types.PageNum) (*TreeNode, error)
 	NewNode(isLeaf bool) (*TreeNode, error)
+	LoadNode(types.PageNum) (*TreeNode, error)
+	UpdateNode(*TreeNode) error
+	DeleteNode(*TreeNode) error
+
+	LoadRoot() (*TreeNode, error)
 	UpdateRoot(*TreeNode) error
 
-	CompareRows(types.RID, types.RID) int
+	CompareRows(types.RID, types.RID) (int, error)
+	CompareAttrs([]byte, []byte) (int, error)
+	GetAttr(types.RID) ([]byte, error)
+
+	NewValue(types.RID) (types.RID, error)
+	PushValue(types.RID, types.RID) (types.RID, error)
+	DeleteValue(types.RID, types.RID) (types.RID, error)
 }

@@ -16,10 +16,9 @@ import (
 //}
 
 type Value struct {
+	value     [types.MaxStringSize]byte
 	ValueSize int
 	ValueType types.ValueType
-	value     [64]byte
-	str       string
 }
 
 func (v *Value) GE(c *Value) bool {
@@ -193,7 +192,6 @@ func (v *Value) ToBool() bool {
 }
 
 func (v *Value) FromBool(val bool) {
-	v.value = [64]byte{}
 	ptr := (*bool)(types.ByteSliceToPointer(v.value[:]))
 	*ptr = val
 }
@@ -205,11 +203,16 @@ func NewValueFromBool(val bool) Value {
 }
 
 func (v *Value) ToStr() string {
-	return v.str
+	return string(v.value[:])
 }
 
 func (v *Value) FromStr(s string) {
-	v.str = s
+	v.value = [types.MaxStringSize]byte{}
+	byteSlice := []byte(s)
+	if len(byteSlice) > types.MaxStringSize {
+		byteSlice = byteSlice[0:types.MaxStringSize]
+	}
+	copy(v.value[:], byteSlice)
 }
 
 func NewValueFromStr(s string) Value {

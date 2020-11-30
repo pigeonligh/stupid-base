@@ -11,21 +11,21 @@ type Record struct {
 	size int
 }
 
-func NewEmptyRecord() Record {
-	return Record{
+func NewEmptyRecord() *Record {
+	return &Record{
 		Rid:  types.RID{},
 		Data: nil,
 		size: 0,
 	}
 }
 
-func NewRecord(rid types.RID, data []byte, size int) (Record, error) {
+func NewRecord(rid types.RID, data []byte, size int) (*Record, error) {
 	if len(data) != size {
 		return NewEmptyRecord(), errorutil.ErrorRecordLengthNotMatch
 	}
 	copiedData := make([]byte, size)
 	copy(copiedData, data)
-	return Record{
+	return &Record{
 		Rid:  rid,
 		Data: copiedData,
 		size: size,

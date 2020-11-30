@@ -54,7 +54,6 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 	header.RecordSize = recordSize
 	header.RecordNum = 0
 	header.RecordPerPage = recordPerPage(recordSize)
-	header.SlotMapSize = bitMapSize(header.RecordPerPage)
 
 	header.FileHeaderPage.Pages = 1
 	header.FileHeaderPage.FirstFree = 0
@@ -63,8 +62,12 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 		return err
 	}
 	if err = fileHandle.UnpinPage(pageHandle.Page); err != nil {
-		return nil
+		return err
 	}
+	if err = m.storage.CloseFile(filename); err != nil {
+		return err
+	}
+
 	return nil
 }
 

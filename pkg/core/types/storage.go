@@ -17,7 +17,7 @@ const (
 	PageSize = 4096
 
 	// PageHeaderSize is the size of a page header
-	PageHeaderSize = unsafe.Sizeof(PageHeader{})
+	PageHeaderSize = int(unsafe.Sizeof(PageHeader{}))
 
 	// PageDataSize is the size of a page data
 	PageDataSize = PageSize - PageHeaderSize

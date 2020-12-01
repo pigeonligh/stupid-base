@@ -19,4 +19,7 @@ const (
 
 	// ExprLevel
 	ExprLevel
+
+	// DbSysLevel
+	DbSysLevel
 )

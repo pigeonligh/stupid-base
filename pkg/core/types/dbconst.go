@@ -4,6 +4,14 @@ const MaxNameSize = 24
 const MaxAttrNums = 40
 const MaxStringSize = 255
 
+type ConstraintType int
+
+const (
+	ConstraintPrimary ConstraintType = iota
+	ConstraintForeign
+	ConstraintCheck
+)
+
 type ValueType = int
 
 const (
@@ -15,6 +23,16 @@ const (
 	VARCHAR
 	BOOL
 )
+
+var ValueTypeStringMap = map[ValueType]string{
+	NO_ATTR: "NO_ATTR",
+	INT:     "INT",
+	FLOAT:   "FLOAT",
+	STRING:  "STRING",
+	DATE:    "DATE",
+	VARCHAR: "VARCHAR",
+	BOOL:    "BOOL",
+}
 
 type OpType = int
 

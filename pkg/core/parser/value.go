@@ -17,7 +17,6 @@ import (
 
 type Value struct {
 	value     [types.MaxStringSize]byte
-	ValueSize int
 	ValueType types.ValueType
 }
 

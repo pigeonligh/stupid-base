@@ -2,6 +2,7 @@ package record
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/dsutil/bitset"
+	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -109,14 +110,14 @@ func (f *FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
 	return slice
 }
 
-func (f *FileHandle) InsertRec(data []byte, rid types.RID) (types.RID, error) {
+func (f *FileHandle) InsertRec(data []byte) (types.RID, error) {
 	if len(data) != f.header.RecordSize {
 		log.V(log.RecordLevel).Errorf("InsertRecord passed parameter len(data) won't match record size")
 		return types.RID{}, errorutil.ErrorRecordLengthNotMatch
 	}
-	if !rid.IsValid() {
-		rid = f.AllocateFreeRID()
-	}
+
+	rid := f.AllocateFreeRID()
+
 	freePage := rid.Page
 	freeSlot := rid.Slot
 
@@ -208,4 +209,39 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	}
 
 	return NewRecord(rid, slotByteSlice, f.header.RecordSize)
+}
+
+func (f *FileHandle) GetRecList() []*Record {
+	relScan := FileScan{}
+	_ = relScan.OpenFullScan(f)
+	recCollection := make([]*Record, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
+
+	for rec, err := relScan.GetNextRecord(); rec != nil && err != nil; rec, _ = relScan.GetNextRecord() {
+		recCollection = append(recCollection, rec)
+	}
+	return recCollection
+}
+
+// filter condition
+type FilterCond struct {
+	AttrSize   int
+	AttrOffset int
+	CompOp     types.OpType
+	Value      parser.Value
+}
+
+func (f *FileHandle) GetFilteredRecList(cond FilterCond) ([]*Record, error) {
+	relScan := FileScan{}
+	if err := relScan.OpenScan(f, cond.Value.ValueType, cond.AttrSize, cond.AttrOffset, cond.CompOp, cond.Value); err != nil {
+		return nil, err
+	}
+	recCollection := make([]*Record, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
+
+	for rec, err := relScan.GetNextRecord(); rec != nil; rec, _ = relScan.GetNextRecord() {
+		if err != nil {
+			return nil, err
+		}
+		recCollection = append(recCollection, rec)
+	}
+	return recCollection, nil
 }

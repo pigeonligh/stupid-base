@@ -69,7 +69,6 @@ func (m *Manager) CreateDb(dbName string) error {
 		return err
 	}
 	_ = os.Chdir("..")
-	m.rels[dbName] = nil
 	return nil
 }
 
@@ -82,7 +81,6 @@ func (m *Manager) DropDb(dbName string) error {
 		return errorutil.ErrorDbSysDropDbFails
 
 	}
-	delete(m.rels, dbName)
 	return nil
 }
 
@@ -147,7 +145,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 
 	// generating auto-increasing id
 	if !hasPrimary {
-		curSize += 8 + 1  // sizeof a int and additional null flag bit (useless for this auto-generated one)
+		curSize += 0  // sizeof a int and additional null flag bit (useless for this auto-generated one)
 		hasPrimary = true // auto-increasing
 		idAutoAttr := parser.AttrInfo{
 			AttrName:      strTo24ByteArray("_id_"),
@@ -167,11 +165,16 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
 	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
 
+
 	// todo check name duplicated?
 	for i := 0; i < len(attrList); i++ {
 		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
-		_, _ = tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
-		curSize += attrList[i].AttrSize + 1 // null flag bit
+		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
+		log.Debugf("%v %v %v", string(attrList[i].AttrName[:]), attrList[i].AttrSize, attrList[i].AttrOffset)
+		if err != nil {
+			return err
+		}
+		curSize += attrList[i].AttrSize  // null flag bit
 	}
 
 	_, _ = m.dbMeta.InsertRec(types.PointerToByteSlice(unsafe.Pointer(
@@ -191,7 +194,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return err
 	}
 
-	_ = tableMetaFile.Close()
+	_ = m.relManager.CloseFile(tableMetaFile.Filename)
 	m.rels[relName] = nil
 	return nil
 }
@@ -231,9 +234,10 @@ func (m *Manager) ShowDatabases() {
 	}
 
 	println("+" + strings.Repeat("-", maxLen+2) + "+")
-	println("| "+"Database"+strings.Repeat(" ", maxLen-len("Database")), " |")
+	println("| " + "Database" + strings.Repeat(" ", maxLen-len("Database")) + " |")
+	println("+" + strings.Repeat("-", maxLen+2) + "+")
 	for _, f := range names {
-		println("| "+f+strings.Repeat(" ", maxLen-len(f)), " |")
+		println("| " + f + strings.Repeat(" ", maxLen-len(f)) + " |")
 	}
 	println("+" + strings.Repeat("-", maxLen+2) + "+")
 }
@@ -250,9 +254,9 @@ func (m *Manager) ShowTables() {
 		}
 
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
-		println("| "+"Database"+strings.Repeat(" ", maxLen-len("Database")), " |")
+		println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
 		for rel := range m.rels {
-			println("| "+rel+strings.Repeat(" ", maxLen-len(rel)), " |")
+			println("| " + rel + strings.Repeat(" ", maxLen-len(rel)) + " |")
 		}
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
 
@@ -265,12 +269,17 @@ func PrintEmptySet() {
 	println("+---------------+")
 }
 
-func (m *Manager) DescribeTables(relName string) error {
+func (m *Manager) DescribeTable(relName string) error {
 	if !m.DbSelected() {
 		return errorutil.ErrorDbSysDbNotSelected
 	}
 	if _, found := m.rels[relName]; found {
-		fileHandle, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
+		fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
+		if err != nil {
+			log.V(log.DbSysLevel).Error(err)
+			return err
+		}
+		//_, _ = fileHandle.GetRec(types.RID{1, 2})
 		recordList := fileHandle.GetRecList()
 
 		colMaxLength := make(map[string]int)

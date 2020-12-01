@@ -10,7 +10,7 @@ import (
 )
 
 type FileHandle struct {
-	filename       string
+	Filename       string
 	header         types.RecordHeaderPage
 	headerModified bool
 	initialized    bool
@@ -32,7 +32,7 @@ func NewFileHandle(filename string) (*FileHandle, error) {
 		return nil, err
 	}
 	return &FileHandle{
-		filename:       filename,
+		Filename:       filename,
 		header:         copiedHeader,
 		headerModified: false,
 		initialized:    true,
@@ -58,7 +58,7 @@ func (f *FileHandle) Close() error {
 			return err
 		}
 		f.initialized = false
-		return storage.GetInstance().CloseFile(f.filename)
+		return storage.GetInstance().CloseFile(f.Filename)
 	}
 }
 
@@ -149,7 +149,7 @@ func (f *FileHandle) InsertRec(data []byte) (types.RID, error) {
 	}
 	f.header.RecordNum += 1
 	f.headerModified = true
-	//log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
+	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
 	return types.RID{
 		Page: freePage,
 		Slot: freeSlot,
@@ -214,10 +214,11 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 func (f *FileHandle) GetRecList() []*Record {
 	relScan := FileScan{}
 	_ = relScan.OpenFullScan(f)
-	recCollection := make([]*Record, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
+	recCollection := make([]*Record, 0, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
 
 	for rec, err := relScan.GetNextRecord(); rec != nil && err != nil; rec, _ = relScan.GetNextRecord() {
 		recCollection = append(recCollection, rec)
+
 	}
 	return recCollection
 }

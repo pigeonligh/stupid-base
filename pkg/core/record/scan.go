@@ -56,7 +56,9 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		return nil, errorutil.ErrorRecordScanNotInit
 	}
 	for {
-		f.cond.ResetCalculated()
+		if f.cond != nil {
+			f.cond.ResetCalculated()
+		}
 		var slot = bitset.BitsetFindNoRes
 		if f.currentPage != 0 {
 			slot = f.currentBitset.FindLowestOneBitIdx()
@@ -69,6 +71,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			}
 			pageHandle, err := f.file.storageFH.GetPage(f.currentPage)
 			if err != nil {
+				log.V(log.RecordLevel).Error(err)
 				panic(0)
 			}
 			recordPage := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))

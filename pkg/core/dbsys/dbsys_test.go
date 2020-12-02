@@ -61,11 +61,11 @@ func TestDbSys(t *testing.T) {
 			AutoIncrement: false,
 		},
 		{
-			AttrName:      strTo24ByteArray("attr3"),
-			RelName:       strTo24ByteArray(rel1),
-			AttrSize:      24,
-			AttrType:      types.STRING,
-			IndexNo:       0,
+			AttrName: strTo24ByteArray("attr3"),
+			RelName:  strTo24ByteArray(rel1),
+			AttrSize: 24,
+			AttrType: types.STRING,
+			IndexNo:  0,
 		},
 	}
 	if err := manager.CreateTable(rel1, attrInfoList, []ConstraintInfo{}); err != nil {
@@ -76,10 +76,6 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-
-
-
 
 	// delete
 	if err := manager.DropDb(db1); err != nil {

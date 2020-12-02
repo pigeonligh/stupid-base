@@ -62,7 +62,7 @@ func TestRecord(t *testing.T) {
 		rid, _ := f1.InsertRec(data)
 		ridVec = append(ridVec, rid)
 	}
-	t.Logf("%v\n", f1.header)
+	t.Logf("%v\n", f1.Header)
 
 	for i := 0; i < 5; i++ {
 		record, _ := f1.GetRec(ridVec[i])
@@ -79,7 +79,7 @@ func TestRecord(t *testing.T) {
 		_ = f1.DeleteRec(ridVec[i])
 	}
 
-	t.Logf("%v\n", f1.header)
+	t.Logf("%v\n", f1.Header)
 
 	//
 	fscan1 := FileScan{}

@@ -8,6 +8,7 @@ import (
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -106,6 +107,9 @@ func (m *Manager) OpenDb(dbName string) error {
 func (m *Manager) CloseDb(dbName string) error {
 	if m.DbSelected() {
 		_ = os.Chdir("..")
+		if err := m.relManager.CloseFile(m.dbMeta.Filename); err != nil {
+			return err
+		}
 		m.dbMeta = nil
 		m.rels = nil
 	}
@@ -145,7 +149,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 
 	// generating auto-increasing id
 	if !hasPrimary {
-		curSize += 0  // sizeof a int and additional null flag bit (useless for this auto-generated one)
+		curSize += 0      // sizeof a int and additional null flag bit (useless for this auto-generated one)
 		hasPrimary = true // auto-increasing
 		idAutoAttr := parser.AttrInfo{
 			AttrName:      strTo24ByteArray("_id_"),
@@ -164,18 +168,32 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 
 	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
 	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
-
-
 	// todo check name duplicated?
+	log.Debug(attrList)
 	for i := 0; i < len(attrList); i++ {
 		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
 		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
-		log.Debugf("%v %v %v", string(attrList[i].AttrName[:]), attrList[i].AttrSize, attrList[i].AttrOffset)
+		log.Debugf("%v %v %v", record.RecordData2TrimmedStringWithOffset(attrList[i].AttrName[:], 0), attrList[i].AttrSize, attrList[i].AttrOffset)
 		if err != nil {
 			return err
 		}
-		curSize += attrList[i].AttrSize  // null flag bit
+		curSize += attrList[i].AttrSize // null flag bit
 	}
+
+	// testetttsagdfafdsfdsafasdafasfasggffd
+	m.rels[relName] = nil
+	_ = m.DescribeTable(relName) // can get record from page 1
+	_ = m.relManager.CloseFile(tableMetaFile.Filename)
+
+	log.Debug("Open Again")
+	tableMetaFile, _ = m.relManager.OpenFile(getTableMetaFileName(relName)) // page1 can not be get
+	log.Debug(tableMetaFile.Header)
+	ph, err := tableMetaFile.StorageFH.GetPage(1)
+	log.Debug(err)
+	headerPage := (*types.RecordHeaderPage)(types.ByteSliceToPointer(ph.Data))
+	log.Debug(headerPage)
+	_ = tableMetaFile.StorageFH.UnpinPage(1)
+	_ = m.relManager.CloseFile(tableMetaFile.Filename)
 
 	_, _ = m.dbMeta.InsertRec(types.PointerToByteSlice(unsafe.Pointer(
 		&RelInfo{
@@ -194,8 +212,6 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return err
 	}
 
-	_ = m.relManager.CloseFile(tableMetaFile.Filename)
-	m.rels[relName] = nil
 	return nil
 }
 
@@ -279,19 +295,18 @@ func (m *Manager) DescribeTable(relName string) error {
 			log.V(log.DbSysLevel).Error(err)
 			return err
 		}
-		//_, _ = fileHandle.GetRec(types.RID{1, 2})
 		recordList := fileHandle.GetRecList()
 
 		colMaxLength := make(map[string]int)
-		colMaxLength["Field"] = 5
-		colMaxLength["Type"] = 4
-		colMaxLength["Size"] = 4
-		colMaxLength["Offset"] = 6
-		colMaxLength["IndexNo"] = 7
+		colMaxLength["Field"] = 6
+		colMaxLength["Type"] = 5
+		colMaxLength["Size"] = 5
+		colMaxLength["Offset"] = 7
+		colMaxLength["IndexNo"] = 8
 		colMaxLength["Null"] = 5
-		colMaxLength["IsPrimary"] = 9
-		colMaxLength["AutoIncrement"] = 13
-		colMaxLength["Default"] = 10
+		colMaxLength["IsPrimary"] = 10
+		colMaxLength["AutoIncrement"] = 14
+		colMaxLength["Default"] = 11
 
 		colList := []string{"Field", "Type", "Size", "Offset", "IndexNo", "Null", "IsPrimary", "AutoIncrement", "Default"}
 
@@ -310,7 +325,7 @@ func (m *Manager) DescribeTable(relName string) error {
 		}
 		println("+")
 		for i := 0; i < len(colList); i++ {
-			print("| " + colList[i] + strings.Repeat("-", colMaxLength[colList[i]]-len(colList[i])-1) + " ")
+			print("| " + colList[i] + strings.Repeat(" ", colMaxLength[colList[i]]-len(colList[i])) + " ")
 		}
 		println("|")
 		for i := 0; i < len(colList); i++ {
@@ -320,25 +335,30 @@ func (m *Manager) DescribeTable(relName string) error {
 		for _, rec := range recordList {
 			attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rec.Data))
 
-			attrName := record.RecordData2TrimmedStringWithOffset(attr.RelName[:], 0)
+			attrName := record.RecordData2TrimmedStringWithOffset(attr.AttrName[:], 0)
 			print("| " + attrName + strings.Repeat(" ", colMaxLength["Field"]-len(attrName)+1))
 
 			attrType := types.ValueTypeStringMap[attr.AttrType]
 			print("| " + attrType + strings.Repeat(" ", colMaxLength["Type"]-len(attrType)+1))
 
-			attrSize := string(rune(attr.AttrSize))
-			print("| " + attrSize + strings.Repeat(" ", colMaxLength["Offset"]-len(attrSize)+1))
+			attrSize := strconv.Itoa(attr.AttrSize)
+			print("| " + attrSize + strings.Repeat(" ", colMaxLength["Size"]-len(attrSize)+1))
 
-			attrOffset := string(rune(attr.AttrOffset))
-			print("| " + attrSize + strings.Repeat(" ", colMaxLength["Size"]-len(attrOffset)+1))
+			attrOffset := strconv.Itoa(attr.AttrOffset)
+			print("| " + attrOffset + strings.Repeat(" ", colMaxLength["Offset"]-len(attrOffset)+1))
 
-			indexNo := string(rune(attr.IndexNo))
-			print("| " + attrSize + strings.Repeat(" ", colMaxLength["Size"]-len(indexNo)+1))
+			indexNo := strconv.Itoa(attr.IndexNo)
+			print("| " + indexNo + strings.Repeat(" ", colMaxLength["IndexNo"]-len(indexNo)+1))
 
-			if attr.IsPrimary {
-				print("| " + "true" + strings.Repeat(" ", colMaxLength["Primary"]-4+1))
+			if attr.NullAllowed {
+				print("| " + "true" + strings.Repeat(" ", colMaxLength["Null"]-4+1))
 			} else {
-				print("| " + "false" + strings.Repeat(" ", colMaxLength["Primary"]-5+1))
+				print("| " + "false" + strings.Repeat(" ", colMaxLength["Null"]-5+1))
+			}
+			if attr.IsPrimary {
+				print("| " + "true" + strings.Repeat(" ", colMaxLength["IsPrimary"]-4+1))
+			} else {
+				print("| " + "false" + strings.Repeat(" ", colMaxLength["IsPrimary"]-5+1))
 			}
 
 			if attr.AutoIncrement {
@@ -353,7 +373,7 @@ func (m *Manager) DescribeTable(relName string) error {
 				defaultStr = string(rune(attr.Default.ToInt64()))
 			case types.BOOL:
 			}
-			print("| " + defaultStr + strings.Repeat(" ", colMaxLength["AutoIncrement"]-len(defaultStr)+1))
+			print("| " + defaultStr + strings.Repeat(" ", colMaxLength["Default"]-len(defaultStr)+1))
 			println("|")
 		}
 
@@ -361,9 +381,8 @@ func (m *Manager) DescribeTable(relName string) error {
 			print("+" + strings.Repeat("-", colMaxLength[colList[i]]+2))
 		}
 		println("+")
-
+		return nil
 	} else {
 		return errorutil.ErrorDbSysTableNotExisted
 	}
-	panic(0) // unreachable
 }

@@ -65,21 +65,21 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		}
 		for slot == bitset.BitsetFindNoRes {
 			f.currentPage += 1
-			if f.currentPage >= f.file.Header.Pages {
+			if f.currentPage >= f.file.header.Pages {
 				f.init = false
 				return nil, nil
 			}
-			pageHandle, err := f.file.StorageFH.GetPage(f.currentPage)
+			pageHandle, err := f.file.storageFH.GetPage(f.currentPage)
 			if err != nil {
 				log.V(log.RecordLevel).Errorf("GetPage(%v): %v", f.currentPage, err)
 				panic(0)
 			}
 			recordPage := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
 			f.currentBitData = recordPage.BitsetData
-			f.currentBitset = bitset.NewBitset(&f.currentBitData, f.file.Header.RecordPerPage)
+			f.currentBitset = bitset.NewBitset(&f.currentBitData, f.file.header.RecordPerPage)
 
 			slot = f.currentBitset.FindLowestOneBitIdx()
-			if err = f.file.StorageFH.UnpinPage(f.currentPage); err != nil {
+			if err = f.file.storageFH.UnpinPage(f.currentPage); err != nil {
 				panic(0)
 			}
 		}

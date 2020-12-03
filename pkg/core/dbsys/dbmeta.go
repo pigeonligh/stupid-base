@@ -20,6 +20,17 @@ import (
 //	AutoIncrement 	bool		// used for auto increasing
 //	Default			Value
 //}
+var TableDescribeColumn = []string {
+	"Field",
+	"Type",
+	"Size",
+	"Offset",
+	"IndexNo",
+	"Null",
+	"IsPrimary",
+	"AutoIncrement",
+	"Default",
+}
 
 const AttrInfoSize = int(unsafe.Sizeof(parser.AttrInfo{}))
 const RelInfoSize = int(unsafe.Sizeof(RelInfo{}))

@@ -146,7 +146,6 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 	}
 
 	curSize := 0
-
 	// generating auto-increasing id
 	if !hasPrimary {
 		curSize += 0      // sizeof a int and additional null flag bit (useless for this auto-generated one)
@@ -168,33 +167,26 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 
 	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
 	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
-	// todo check name duplicated?
-	log.Debug(attrList)
+	defer func() {
+		if err := m.relManager.CloseFile(tableMetaFile.Filename); err != nil {
+			log.V(log.DbSysLevel).Error(err)
+		}
+		m.rels[relName] = nil
+	}()
+
+
+	// add record to tableMetaFile todo check name duplicated?
 	for i := 0; i < len(attrList); i++ {
-		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
+		attrList[i].AttrOffset += curSize// used 4 bytes to mark if it's null
 		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
 		log.Debugf("%v %v %v", record.RecordData2TrimmedStringWithOffset(attrList[i].AttrName[:], 0), attrList[i].AttrSize, attrList[i].AttrOffset)
 		if err != nil {
 			return err
 		}
-		curSize += attrList[i].AttrSize // null flag bit
+		curSize += attrList[i].AttrSize + 1 // additional null flag bit
 	}
 
-	// testetttsagdfafdsfdsafasdafasfasggffd
-	m.rels[relName] = nil
-	_ = m.DescribeTable(relName) // can get record from page 1
-	_ = m.relManager.CloseFile(tableMetaFile.Filename)
-
-	log.Debug("Open Again")
-	tableMetaFile, _ = m.relManager.OpenFile(getTableMetaFileName(relName)) // page1 can not be get
-	log.Debug(tableMetaFile.Header)
-	ph, err := tableMetaFile.StorageFH.GetPage(1)
-	log.Debug(err)
-	headerPage := (*types.RecordHeaderPage)(types.ByteSliceToPointer(ph.Data))
-	log.Debug(headerPage)
-	_ = tableMetaFile.StorageFH.UnpinPage(1)
-	_ = m.relManager.CloseFile(tableMetaFile.Filename)
-
+	// insert relation to dbMetaFile
 	_, _ = m.dbMeta.InsertRec(types.PointerToByteSlice(unsafe.Pointer(
 		&RelInfo{
 			relName:    strTo24ByteArray(relName),
@@ -204,14 +196,15 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 			consCount:  len(constraintList),
 		}), RelInfoSize))
 
+	// create table record file
 	if err := m.relManager.CreateFile(relName, curSize); err != nil {
 		return err
 	}
-	// ToDo add constraint
+
+	// create constraint file todo
 	if err := m.relManager.CreateFile(getTableConstraintFileName(relName), ConstraintInfoSize); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -228,7 +221,7 @@ func (m *Manager) DropTable(relName string) error {
 		CompOp:     types.OpCompEQ,
 		Value:      parser.NewValueFromStr(relName),
 	})
-	// ToDo add constraint when deleting?
+	// ToDo add constraint when deleting
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }
 
@@ -268,7 +261,6 @@ func (m *Manager) ShowTables() {
 				maxLen = len(i)
 			}
 		}
-
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
 		println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
 		for rel := range m.rels {
@@ -295,6 +287,9 @@ func (m *Manager) DescribeTable(relName string) error {
 			log.V(log.DbSysLevel).Error(err)
 			return err
 		}
+		defer m.relManager.CloseFile(getTableMetaFileName(relName))
+
+
 		recordList := fileHandle.GetRecList()
 
 		colMaxLength := make(map[string]int)
@@ -385,4 +380,33 @@ func (m *Manager) DescribeTable(relName string) error {
 	} else {
 		return errorutil.ErrorDbSysTableNotExisted
 	}
+}
+
+func (m *Manager) PrintTables(relName string, showingMeta bool) error{
+	if !m.DbSelected() {
+		return errorutil.ErrorDbSysDbNotSelected
+	}
+	if _, found := m.rels[relName]; !found {
+		return errorutil.ErrorDbSysTableNotExisted
+	}
+
+	// get attr then header
+	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
+	if err != nil {
+		log.V(log.DbSysLevel).Error(err)
+		return err
+	}
+	defer m.relManager.CloseFile(fileHandle.Filename)
+
+	//tableHeader := make([]string, 0, types.MaxAttrNums)
+	//offSetList := make([]int, 0, types.MaxAttrNums)
+	//sizeList := make([]int, 0, types.MaxAttrNums)
+	//TypeList := make([]types.ValueType, 0, types.MaxAttrNums)
+	//for _ , rawAttr := range fileHandle.GetRecList() {
+	//
+	//}
+
+
+
+	return nil
 }

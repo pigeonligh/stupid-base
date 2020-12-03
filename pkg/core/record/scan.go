@@ -18,7 +18,11 @@ type FileScan struct {
 	init           bool
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
+func (f *FileScan) OpenFullScan(file *FileHandle) error {
+	return f.OpenScan(file, types.NO_ATTR, 0, 0, types.OpDefault, parser.Value{})
+}
+
+func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, attrSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
 	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}
@@ -30,7 +34,7 @@ func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSi
 		}
 		left := parser.NewExprEmpty()
 		left.AttrInfo.AttrOffset = attrOffset
-		left.Value.ValueSize = valueSize
+		left.AttrInfo.AttrSize = attrSize
 		left.Value.ValueType = valueType
 		left.NodeType = types.NodeAttr
 		left.IsNull = false
@@ -52,7 +56,9 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		return nil, errorutil.ErrorRecordScanNotInit
 	}
 	for {
-		f.cond.ResetCalculated()
+		if f.cond != nil {
+			f.cond.ResetCalculated()
+		}
 		var slot = bitset.BitsetFindNoRes
 		if f.currentPage != 0 {
 			slot = f.currentBitset.FindLowestOneBitIdx()
@@ -65,6 +71,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			}
 			pageHandle, err := f.file.storageFH.GetPage(f.currentPage)
 			if err != nil {
+				log.V(log.RecordLevel).Errorf("GetPage(%v): %v", f.currentPage, err)
 				panic(0)
 			}
 			recordPage := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -84,7 +91,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			panic(0)
 		} else {
 			if f.cond != nil {
-				err := f.cond.Calculate(record.Data, f.tableName)
+				err := f.cond.Calculate(record.Data)
 				if err != nil {
 					return nil, err
 				}

@@ -12,7 +12,6 @@ import (
 func TestRecord(t *testing.T) {
 	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel)
 	manager := GetInstance()
-
 	filename1 := "testfiles_test1.bin"
 	recordSize1 := 50
 
@@ -60,7 +59,7 @@ func TestRecord(t *testing.T) {
 
 		copy(data, recordSlice)
 
-		rid, _ := f1.InsertRec(data, types.RID{})
+		rid, _ := f1.InsertRec(data)
 		ridVec = append(ridVec, rid)
 	}
 	t.Logf("%v\n", f1.header)
@@ -68,9 +67,9 @@ func TestRecord(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		record, _ := f1.GetRec(ridVec[i])
 
-		id := recordData2IntWithOffset(record.Data, 0)
-		age := recordData2IntWithOffset(record.Data, 8)
-		name := recordData2TrimmedStringWithOffset(record.Data, 16)
+		id := RecordData2IntWithOffset(record.Data, 0)
+		age := RecordData2IntWithOffset(record.Data, 8)
+		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
 
 		t.Logf("Rid(%v %v)\n - id: %v, age: %v, name: %v\n", ridVec[i].Page, ridVec[i].Slot, id, age, name)
 
@@ -100,9 +99,9 @@ func TestRecord(t *testing.T) {
 		if record == nil {
 			break
 		}
-		id := recordData2IntWithOffset(record.Data, 0)
-		age := recordData2IntWithOffset(record.Data, 8)
-		name := recordData2TrimmedStringWithOffset(record.Data, 16)
+		id := RecordData2IntWithOffset(record.Data, 0)
+		age := RecordData2IntWithOffset(record.Data, 8)
+		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
 
 	}
@@ -122,9 +121,9 @@ func TestRecord(t *testing.T) {
 		if record == nil {
 			break
 		}
-		id := recordData2IntWithOffset(record.Data, 0)
-		age := recordData2IntWithOffset(record.Data, 8)
-		name := recordData2TrimmedStringWithOffset(record.Data, 16)
+		id := RecordData2IntWithOffset(record.Data, 0)
+		age := RecordData2IntWithOffset(record.Data, 8)
+		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
 
 	}
@@ -134,4 +133,22 @@ func TestRecord(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+
+	// test open file again
+	f1, err = manager.OpenFile(filename1)
+	if err != nil{
+		t.Error(err)
+		return
+	}
+
+	t.Log(f1.header)
+	recList := f1.GetRecList()
+	for _, record := range recList {
+		id := RecordData2IntWithOffset(record.Data, 0)
+		age := RecordData2IntWithOffset(record.Data, 8)
+		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
+		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
+	}
+
 }

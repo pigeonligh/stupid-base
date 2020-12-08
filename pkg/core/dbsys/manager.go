@@ -6,12 +6,8 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"io/ioutil"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
-	"syscall"
 	"unsafe"
 )
 
@@ -58,7 +54,7 @@ func (m *Manager) DbSelected() bool {
 }
 
 func (m *Manager) CreateDb(dbName string) error {
-	if err := os.Mkdir(dbName, syscall.S_IRWXU); err != nil {
+	if err := os.Mkdir(dbName, os.ModePerm); err != nil {
 		log.V(log.DbSysLevel).Error(err)
 		return errorutil.ErrorDbSysCreateDbFails
 	}
@@ -76,6 +72,7 @@ func (m *Manager) CreateDb(dbName string) error {
 func (m *Manager) DropDb(dbName string) error {
 	if m.DbSelected() {
 		_ = os.Chdir("..")
+		_ = m.relManager.CloseFile(m.dbMeta.Filename)
 	}
 	if err := os.RemoveAll(dbName); err != nil {
 		log.V(log.DbSysLevel).Error(err)
@@ -225,205 +222,3 @@ func (m *Manager) DropTable(relName string) error {
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }
 
-func (m *Manager) ShowDatabases() {
-	rootdir := "./"
-	if m.DbSelected() {
-		rootdir = "../"
-	}
-	files, _ := ioutil.ReadDir(rootdir)
-	names := make([]string, 0, len(files))
-	maxLen := len("Database")
-	for _, f := range files {
-		if f.IsDir() {
-			names = append(names, f.Name())
-			if len(f.Name()) > maxLen {
-				maxLen = len(f.Name())
-			}
-		}
-	}
-
-	println("+" + strings.Repeat("-", maxLen+2) + "+")
-	println("| " + "Database" + strings.Repeat(" ", maxLen-len("Database")) + " |")
-	println("+" + strings.Repeat("-", maxLen+2) + "+")
-	for _, f := range names {
-		println("| " + f + strings.Repeat(" ", maxLen-len(f)) + " |")
-	}
-	println("+" + strings.Repeat("-", maxLen+2) + "+")
-}
-
-func (m *Manager) ShowTables() {
-	if !m.DbSelected() {
-		PrintEmptySet()
-	} else {
-		maxLen := len(m.dbSelected)
-		for i := range m.rels {
-			if len(i) > maxLen {
-				maxLen = len(i)
-			}
-		}
-		println("+" + strings.Repeat("-", maxLen+2) + "+")
-		println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
-		for rel := range m.rels {
-			println("| " + rel + strings.Repeat(" ", maxLen-len(rel)) + " |")
-		}
-		println("+" + strings.Repeat("-", maxLen+2) + "+")
-
-	}
-}
-
-func PrintEmptySet() {
-	println("+---------------+")
-	println("|     empty     |")
-	println("+---------------+")
-}
-
-func (m *Manager) DescribeTable(relName string) error {
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
-	}
-	if _, found := m.rels[relName]; found {
-		fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
-		if err != nil {
-			log.V(log.DbSysLevel).Error(err)
-			return err
-		}
-		defer m.relManager.CloseFile(getTableMetaFileName(relName))
-
-
-		recordList := fileHandle.GetRecList()
-
-		colMaxLength := make(map[string]int)
-		colMaxLength["Field"] = 6
-		colMaxLength["Type"] = 5
-		colMaxLength["Size"] = 5
-		colMaxLength["Offset"] = 7
-		colMaxLength["IndexNo"] = 8
-		colMaxLength["Null"] = 5
-		colMaxLength["IsPrimary"] = 10
-		colMaxLength["AutoIncrement"] = 14
-		colMaxLength["Default"] = 11
-
-		colList := []string{"Field", "Type", "Size", "Offset", "IndexNo", "Null", "IsPrimary", "AutoIncrement", "Default"}
-
-		for _, rec := range recordList {
-			attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rec.Data))
-			if len(record.RecordData2TrimmedStringWithOffset(attr.RelName[:], 0)) > colMaxLength["Field"] {
-				colMaxLength["Field"] = len(record.RecordData2TrimmedStringWithOffset(attr.RelName[:], 0))
-			}
-			if len(types.ValueTypeStringMap[attr.AttrType]) > colMaxLength["Type"] {
-				colMaxLength["Type"] = len(types.ValueTypeStringMap[attr.AttrType])
-			}
-		}
-
-		for i := 0; i < len(colList); i++ {
-			print("+" + strings.Repeat("-", colMaxLength[colList[i]]+2))
-		}
-		println("+")
-		for i := 0; i < len(colList); i++ {
-			print("| " + colList[i] + strings.Repeat(" ", colMaxLength[colList[i]]-len(colList[i])) + " ")
-		}
-		println("|")
-		for i := 0; i < len(colList); i++ {
-			print("+" + strings.Repeat("-", colMaxLength[colList[i]]+2))
-		}
-		println("+")
-		for _, rec := range recordList {
-			attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rec.Data))
-
-			attrName := record.RecordData2TrimmedStringWithOffset(attr.AttrName[:], 0)
-			print("| " + attrName + strings.Repeat(" ", colMaxLength["Field"]-len(attrName)+1))
-
-			attrType := types.ValueTypeStringMap[attr.AttrType]
-			print("| " + attrType + strings.Repeat(" ", colMaxLength["Type"]-len(attrType)+1))
-
-			attrSize := strconv.Itoa(attr.AttrSize)
-			print("| " + attrSize + strings.Repeat(" ", colMaxLength["Size"]-len(attrSize)+1))
-
-			attrOffset := strconv.Itoa(attr.AttrOffset)
-			print("| " + attrOffset + strings.Repeat(" ", colMaxLength["Offset"]-len(attrOffset)+1))
-
-			indexNo := strconv.Itoa(attr.IndexNo)
-			print("| " + indexNo + strings.Repeat(" ", colMaxLength["IndexNo"]-len(indexNo)+1))
-
-			if attr.NullAllowed {
-				print("| " + "true" + strings.Repeat(" ", colMaxLength["Null"]-4+1))
-			} else {
-				print("| " + "false" + strings.Repeat(" ", colMaxLength["Null"]-5+1))
-			}
-			if attr.IsPrimary {
-				print("| " + "true" + strings.Repeat(" ", colMaxLength["IsPrimary"]-4+1))
-			} else {
-				print("| " + "false" + strings.Repeat(" ", colMaxLength["IsPrimary"]-5+1))
-			}
-
-			if attr.AutoIncrement {
-				print("| " + "true" + strings.Repeat(" ", colMaxLength["AutoIncrement"]-4+1))
-			} else {
-				print("| " + "false" + strings.Repeat(" ", colMaxLength["AutoIncrement"]-5+1))
-			}
-
-			defaultStr := ""
-			switch attr.Default.ValueType {
-			case types.INT:
-				defaultStr = string(rune(attr.Default.ToInt64()))
-			case types.BOOL:
-			}
-			print("| " + defaultStr + strings.Repeat(" ", colMaxLength["Default"]-len(defaultStr)+1))
-			println("|")
-		}
-
-		for i := 0; i < len(colList); i++ {
-			print("+" + strings.Repeat("-", colMaxLength[colList[i]]+2))
-		}
-		println("+")
-		return nil
-	} else {
-		return errorutil.ErrorDbSysTableNotExisted
-	}
-}
-
-func (m *Manager) PrintTables(relName string, showingMeta bool) error{
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
-	}
-	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDbSysTableNotExisted
-	}
-
-	// get attr then header
-	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
-	if err != nil {
-		log.V(log.DbSysLevel).Error(err)
-		return err
-	}
-	defer m.relManager.CloseFile(fileHandle.Filename)
-
-	tableHeaderList := make([]string, 0, types.MaxAttrNums)
-	offsetList := make([]int, 0, types.MaxAttrNums)
-	sizeList := make([]int, 0, types.MaxAttrNums)
-	typeList := make([]types.ValueType, 0, types.MaxAttrNums)
-
-	var rawAttrList = fileHandle.GetRecList()
-	if !showingMeta {
-		for _ , rawAttr := range rawAttrList {
-			attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
-			tableHeaderList = append(tableHeaderList, record.RecordData2TrimmedStringWithOffset(attr.AttrName[:], 0))
-			offsetList = append(offsetList, attr.AttrOffset)
-			sizeList = append(sizeList, attr.AttrSize)
-			typeList = append(typeList, attr.AttrType)
-		}
-	}else {
-		tableHeaderList = TableDescribeColumn
-		offsetList = []int{offsetAttrName, offsetAttrType, offsetAttrSize, offsetAttrOffset, offsetIndexNo, offsetNull, offsetPrimary, offsetAutoIncre, offsetDefault}
-		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(parser.Value{}))}
-		typeList = []int{types.STRING, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR}	// since the default value type is different, just assigned a NO_ATTR
-
-
-
-	}
-
-
-
-
-	return nil
-}

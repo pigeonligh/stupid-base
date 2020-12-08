@@ -398,13 +398,30 @@ func (m *Manager) PrintTables(relName string, showingMeta bool) error{
 	}
 	defer m.relManager.CloseFile(fileHandle.Filename)
 
-	//tableHeader := make([]string, 0, types.MaxAttrNums)
-	//offSetList := make([]int, 0, types.MaxAttrNums)
-	//sizeList := make([]int, 0, types.MaxAttrNums)
-	//TypeList := make([]types.ValueType, 0, types.MaxAttrNums)
-	//for _ , rawAttr := range fileHandle.GetRecList() {
-	//
-	//}
+	tableHeaderList := make([]string, 0, types.MaxAttrNums)
+	offsetList := make([]int, 0, types.MaxAttrNums)
+	sizeList := make([]int, 0, types.MaxAttrNums)
+	typeList := make([]types.ValueType, 0, types.MaxAttrNums)
+
+	var rawAttrList = fileHandle.GetRecList()
+	if !showingMeta {
+		for _ , rawAttr := range rawAttrList {
+			attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
+			tableHeaderList = append(tableHeaderList, record.RecordData2TrimmedStringWithOffset(attr.AttrName[:], 0))
+			offsetList = append(offsetList, attr.AttrOffset)
+			sizeList = append(sizeList, attr.AttrSize)
+			typeList = append(typeList, attr.AttrType)
+		}
+	}else {
+		tableHeaderList = TableDescribeColumn
+		offsetList = []int{offsetAttrName, offsetAttrType, offsetAttrSize, offsetAttrOffset, offsetIndexNo, offsetNull, offsetPrimary, offsetAutoIncre, offsetDefault}
+		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(parser.Value{}))}
+		typeList = []int{types.STRING, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR}	// since the default value type is different, just assigned a NO_ATTR
+
+
+
+	}
+
 
 
 

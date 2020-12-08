@@ -6,6 +6,20 @@ import (
 	"unsafe"
 )
 
+
+const offsetAttrName = 0
+const offsetRelName = offsetAttrName + 0
+const offsetAttrSize = offsetRelName + types.MaxNameSize
+const offsetAttrOffset = offsetAttrSize + 8
+const offsetAttrType = offsetAttrOffset + 8
+const offsetIndexNo = offsetAttrType + int(unsafe.Sizeof(parser.Value{}))
+const offsetConstraint = offsetIndexNo + 8
+const offsetNull = offsetConstraint + int(unsafe.Sizeof(types.RID{}))
+const offsetPrimary = offsetNull + 1
+const offsetAutoIncre = offsetPrimary + 1
+const offsetDefault = offsetAutoIncre + 1
+
+
 // defined in parser/expr
 //type AttrInfo struct {
 //	AttrName   		[types.MaxNameSize]byte

@@ -64,7 +64,7 @@ func PrintEmptySet() {
 }
 
 
-func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableShowingDescribedInfo, error){
+func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TablePrintInfo, error){
 	if !m.DbSelected() {
 		return nil, errorutil.ErrorDbSysDbNotSelected
 	}
@@ -148,7 +148,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableS
 		}
 	}
 
-	return &TableShowingDescribedInfo{
+	return &TablePrintInfo{
 		TableHeaderList: tableHeaderList,
 		OffsetList:      offsetList,
 		SizeList:        sizeList,
@@ -160,7 +160,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableS
 	}, nil
 }
 
-type TableShowingDescribedInfo struct {
+type TablePrintInfo struct {
 	TableHeaderList []string
 	OffsetList      []int
 	SizeList        []int
@@ -171,7 +171,7 @@ type TableShowingDescribedInfo struct {
 	ShowingMeta     bool
 }
 
-func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TableShowingDescribedInfo) {
+func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrintInfo) {
 	if info.ShowingMeta && len(info.VariantTypeList) != len(recordList) {
 		log.Error("variant type list length doesn't match record length")
 	}

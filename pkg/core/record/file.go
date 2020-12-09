@@ -248,3 +248,11 @@ func (f *FileHandle) GetFilteredRecList(cond FilterCond) ([]*Record, error) {
 	}
 	return recCollection, nil
 }
+
+func GetRidListFromRecList(recList []*Record) []types.RID {
+	ridCollection := make([]types.RID, len(recList), len(recList))
+	for i, rec := range recList {
+		ridCollection[i] = rec.Rid
+	}
+	return ridCollection
+}

@@ -6,13 +6,22 @@ import (
 	"unsafe"
 )
 
+type ConstraintType int
+
+const (
+	ConstraintPrimary ConstraintType = iota
+	ConstraintForeign
+	ConstraintCheck
+)
+
 const ConstraintInfoSize = int(unsafe.Sizeof(ConstraintInfo{}))
 
 type ConstraintInfo struct {
 	attrSrc  [types.MaxNameSize]byte // attr in current table
+	relSrc	[types.MaxNameSize]byte // attr in current table
 	foreign  ConstraintForeignInfo
 	check    ConstraintCheckInfo
-	consType types.ConstraintType
+	consType ConstraintType
 }
 
 type ConstraintForeignInfo struct {

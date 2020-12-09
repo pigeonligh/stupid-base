@@ -4,14 +4,6 @@ const MaxNameSize = 24
 const MaxAttrNums = 40
 const MaxStringSize = 255
 
-type ConstraintType int
-
-const (
-	ConstraintPrimary ConstraintType = iota
-	ConstraintForeign
-	ConstraintCheck
-)
-
 type ValueType = int
 
 const (

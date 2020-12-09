@@ -6,6 +6,20 @@ import (
 	"unsafe"
 )
 
+
+const offsetAttrName = 0
+const offsetRelName = offsetAttrName + types.MaxNameSize
+const offsetAttrSize = offsetRelName + types.MaxNameSize
+const offsetAttrOffset = offsetAttrSize + 8
+const offsetAttrType = offsetAttrOffset + 8
+const offsetIndexNo = offsetAttrType + 8
+const offsetConstraint = offsetIndexNo + 8	// size of above equals 96 (including constraint RID)
+const offsetNull = 96	// these 3 bit takes up 8 bytes, it seems it's 8 byte alignment
+const offsetPrimary = 97
+const offsetAutoIncre = 98
+const offsetDefault = 104
+
+
 // defined in parser/expr
 //type AttrInfo struct {
 //	AttrName   		[types.MaxNameSize]byte

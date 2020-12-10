@@ -7,17 +7,17 @@ import (
 )
 
 type AttrInfo struct {
-	AttrName      [types.MaxNameSize]byte
-	RelName       [types.MaxNameSize]byte //24 * 2
-	AttrSize      int                     // used by expr::NodeAttr
-	AttrOffset    int                     // used by expr::NodeAttr
-	AttrType      types.ValueType
-	IndexNo       int       // used by system manager
-	ConstraintRID types.RID // used by system manager
-	NullAllowed   bool      // used by system manager
-	IsPrimary     bool      // used by system manager
-	AutoIncrement bool      // used for auto increasing
-	Default       Value
+	AttrName             [types.MaxNameSize]byte
+	RelName              [types.MaxNameSize]byte //24 * 2
+	AttrSize             int                     // used by expr::NodeAttr
+	AttrOffset           int                     // used by expr::NodeAttr
+	AttrType             types.ValueType
+	IndexNo              int       // used by system manager
+	ConstraintRID        types.RID // used by system manager, deprecated
+	NullAllowed          bool      // used by system manager
+	IsPrimary            bool      // used by system manager
+	HasForeignConstraint bool      // will be checked if necessary
+	Default              Value
 }
 
 type Expr struct {
@@ -132,7 +132,6 @@ func (expr *Expr) Calculate(data []byte) error {
 					expr.Value.FromBool(false)
 				}
 				//log.V(log.ExprLevel).Infof("Compare: left %v, right %v, res: %v", expr.Left.Value.ToInt64(), expr.Right.Value.ToInt64(), expr.CompIsTrue())
-
 			}
 		}
 		return nil

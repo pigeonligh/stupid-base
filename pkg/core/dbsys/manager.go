@@ -21,12 +21,16 @@ func getTableConstraintFileName(table string) string {
 	return table + ".constraint-meta"
 }
 
+type AttrInfoMap map[string]*parser.AttrInfo
+
 type Manager struct {
 	relManager *record.Manager
 	//idxManager
-	rels       map[string]*record.FileHandle
+	rels       map[string]AttrInfoMap
 	dbMeta     *record.FileHandle
 	dbSelected string
+	dbFK       *record.FileHandle // maintain a database's overall foreign constraint
+	dbPK       *record.FileHandle // maintain a database's overall primary constraint
 }
 
 var instance *Manager
@@ -73,6 +77,10 @@ func (m *Manager) DropDb(dbName string) error {
 	if m.DbSelected() {
 		_ = os.Chdir("..")
 		_ = m.relManager.CloseFile(m.dbMeta.Filename)
+		m.rels = nil
+		m.dbMeta = nil
+		m.dbFK = nil
+		m.dbPK = nil
 	}
 	if err := os.RemoveAll(dbName); err != nil {
 		log.V(log.DbSysLevel).Error(err)
@@ -92,7 +100,7 @@ func (m *Manager) OpenDb(dbName string) error {
 	}
 	m.dbSelected = dbName
 	m.dbMeta, _ = m.relManager.OpenFile(DbMetaName)
-	m.rels = make(map[string]*record.FileHandle)
+	m.rels = make(map[string]AttrInfoMap)
 	recList := m.dbMeta.GetRecList()
 	for i := 0; i < len(recList); i++ {
 		relname := record.RecordData2TrimmedStringWithOffset(recList[i].Data, 0, types.MaxNameSize)
@@ -127,40 +135,23 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 	if len(relName) >= types.MaxNameSize {
 		return errorutil.ErrorDbSysMaxNameExceeded
 	}
+
 	// judge primary
-	hasPrimary := false
+	primaryKeyCnt := 0
 	for i := 0; i < len(attrList); i++ {
-		hasPrimary = hasPrimary || attrList[i].IsPrimary
-	}
-	if hasPrimary {
-		if len(attrList) >= types.MaxAttrNums {
-			return errorutil.ErrorDbSysMaxAttrExceeded
-		}
-	} else {
-		if len(attrList) >= types.MaxAttrNums-1 {
-			return errorutil.ErrorDbSysMaxAttrExceeded
+		if attrList[i].IsPrimary {
+			primaryKeyCnt += 1
 		}
 	}
 
-	curSize := 0
-	// generating auto-increasing id
-	if !hasPrimary {
-		curSize += 0      // sizeof a int and additional null flag bit (useless for this auto-generated one)
-		hasPrimary = true // auto-increasing
-		idAutoAttr := parser.AttrInfo{
-			AttrName:      strTo24ByteArray("_id_"),
-			RelName:       strTo24ByteArray(relName),
-			AttrSize:      8,
-			AttrOffset:    0,
-			AttrType:      types.INT,
-			IndexNo:       0,           // TODO
-			ConstraintRID: types.RID{}, // TODO
-			NullAllowed:   false,
-			IsPrimary:     true,
-			AutoIncrement: true,
-		}
-		attrList = append([]parser.AttrInfo{idAutoAttr}, attrList...)
+	if len(attrList) >= types.MaxAttrNums {
+		return errorutil.ErrorDbSysMaxAttrExceeded
 	}
+	if primaryKeyCnt >= 2 {
+		return errorutil.ErrorDbSysPrimaryKeyCntExceed
+	}
+
+	curSize := 0
 
 	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
 	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
@@ -171,10 +162,9 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		m.rels[relName] = nil
 	}()
 
-
 	// add record to tableMetaFile todo check name duplicated?
 	for i := 0; i < len(attrList); i++ {
-		attrList[i].AttrOffset += curSize// used 4 bytes to mark if it's null
+		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
 		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
 		log.Debugf("%v %v %v", record.RecordData2TrimmedStringWithOffset(attrList[i].AttrName[:], 0), attrList[i].AttrSize, attrList[i].AttrOffset)
 		if err != nil {
@@ -190,7 +180,6 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 			recordSize: curSize,
 			idxCount:   0,
 			attrCount:  len(attrList),
-			consCount:  len(constraintList),
 		}), RelInfoSize))
 
 	// create table record file
@@ -199,9 +188,9 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 	}
 
 	// create constraint file todo
-	if err := m.relManager.CreateFile(getTableConstraintFileName(relName), ConstraintInfoSize); err != nil {
-		return err
-	}
+	//if err := m.relManager.CreateFile(getTableConstraintFileName(relName), ConstraintInfoSize); err != nil {
+	//	return err
+	//}
 	return nil
 }
 
@@ -222,3 +211,31 @@ func (m *Manager) DropTable(relName string) error {
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }
 
+// GetAttrInfoMap used for create fast map to accelerate get attribute
+func (m *Manager) GetAttrInfoMap(relName string) AttrInfoMap {
+
+	// m.rels must found, as it has been guaranteed in parent calls
+	if infoMap, _ := m.rels[relName]; infoMap != nil {
+		return infoMap
+	} else {
+		infoMap = m.buildAttrInfoMap(relName)
+		m.rels[relName] = infoMap
+		return infoMap
+	}
+}
+
+func (m *Manager) buildAttrInfoMap(relName string) AttrInfoMap {
+	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
+	defer m.relManager.CloseFile(fileHandle.Filename)
+	if err != nil {
+		// once build attr info map is recalled, it must be existed
+		panic(0)
+	}
+	attrInfoMap := make(map[string]*parser.AttrInfo, 0)
+	var rawAttrList = fileHandle.GetRecList()
+	for _, rawAttr := range rawAttrList {
+		attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
+		attrInfoMap[ByteArray24tostr(attr.AttrName)] = attr
+	}
+	return attrInfoMap
+}

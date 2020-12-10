@@ -77,8 +77,6 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 
-
-
 	// delete
 	if err := manager.DropDb(db1); err != nil {
 		t.Error(err)

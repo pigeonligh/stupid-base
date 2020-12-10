@@ -134,10 +134,9 @@ func TestRecord(t *testing.T) {
 		return
 	}
 
-
 	// test open file again
 	f1, err = manager.OpenFile(filename1)
-	if err != nil{
+	if err != nil {
 		t.Error(err)
 		return
 	}

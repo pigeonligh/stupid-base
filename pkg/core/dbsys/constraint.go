@@ -14,19 +14,28 @@ const (
 	ConstraintCheck
 )
 
-const ConstraintInfoSize = int(unsafe.Sizeof(ConstraintInfo{}))
-
 type ConstraintInfo struct {
-	attrSrc  [types.MaxNameSize]byte // attr in current table
-	relSrc	[types.MaxNameSize]byte // attr in current table
-	foreign  ConstraintForeignInfo
-	check    ConstraintCheckInfo
-	consType ConstraintType
+	// a temporary placeholder
 }
 
+const ConstraintForeignInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
+const FkFileName = "FOREIGN_KEY_FILE"
+
+// ADD CONSTRAINT fkName FOREIGN KEY (columnList) REFERENCES tableName(columnList)
 type ConstraintForeignInfo struct {
-	attrDst [types.MaxNameSize]byte // attr in foreign table (must be primary)
+	fkName  [types.MaxNameSize]byte // foreign key name, specified by user
+	relSrc  [types.MaxNameSize]byte // src table (referencing)
+	attrSrc [types.MaxNameSize]byte // attr in src table
 	relDst  [types.MaxNameSize]byte // foreign table(relation) name
+	attrDst [types.MaxNameSize]byte // attr in foreign table (must be primary)
+}
+
+const ConstraintPrimaryInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
+const PkFileName = "PRIMARY_KEY_FILE"
+
+type ConstraintPrimaryInfo struct {
+	relSrc  [types.MaxNameSize]byte // src table (referencing)
+	attrSrc [types.MaxNameSize]byte // attr in current table
 }
 
 type ConstraintCheckInfo struct {

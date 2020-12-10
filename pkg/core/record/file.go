@@ -193,6 +193,12 @@ func (f *FileHandle) DeleteRec(rid types.RID) error {
 	return nil
 }
 
+func (f *FileHandle) DeleteRecByBatch(ridList []types.RID) {
+	for _, rid := range ridList {
+		_ = f.DeleteRec(rid)
+	}
+}
+
 func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
@@ -238,7 +244,7 @@ func (f *FileHandle) GetFilteredRecList(cond FilterCond) ([]*Record, error) {
 	if err := relScan.OpenScan(f, cond.Value.ValueType, cond.AttrSize, cond.AttrOffset, cond.CompOp, cond.Value); err != nil {
 		return nil, err
 	}
-	recCollection := make([]*Record, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
+	recCollection := make([]*Record, 0)
 
 	for rec, err := relScan.GetNextRecord(); rec != nil; rec, _ = relScan.GetNextRecord() {
 		if err != nil {
@@ -255,4 +261,40 @@ func GetRidListFromRecList(recList []*Record) []types.RID {
 		ridCollection[i] = rec.Rid
 	}
 	return ridCollection
+}
+
+func FilterOnRecList(recList []*Record, condList []FilterCond) []*Record {
+
+	exprList := make([]*parser.Expr, 0)
+
+	for _, cond := range condList {
+		left := parser.NewExprEmpty()
+		left.AttrInfo.AttrOffset = cond.AttrOffset
+		left.AttrInfo.AttrSize = cond.AttrSize
+		left.Value.ValueType = cond.Value.ValueType
+		left.NodeType = types.NodeAttr
+		left.IsNull = false
+		left.IsCalculated = false
+		right := parser.NewExprConst(cond.Value)
+		expr := parser.NewExprComp(left, cond.CompOp, right)
+		exprList = append(exprList, expr)
+	}
+
+	filterList := make([]*Record, 0)
+
+	for _, rec := range recList {
+		compRes := true
+		for i := 0; i < len(exprList); i++ {
+			exprList[i].ResetCalculated()
+			err := exprList[i].Calculate(rec.Data)
+			if err != nil {
+				return make([]*Record, 0)
+			}
+			compRes = compRes && exprList[i].CompIsTrue()
+		}
+		if compRes {
+			filterList = append(filterList, rec)
+		}
+	}
+	return filterList
 }

@@ -16,6 +16,8 @@ type Iterator struct {
 	nodePos    int
 	valueIndex types.RID
 
+	node *TreeNode
+
 	ended bool
 }
 

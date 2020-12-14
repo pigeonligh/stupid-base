@@ -41,24 +41,24 @@ func TestDbSys(t *testing.T) {
 	//rel3 = "rel3"
 	attrInfoList := []parser.AttrInfo{
 		{
-			AttrName:      strTo24ByteArray("attr1"),
-			RelName:       strTo24ByteArray(rel1),
-			AttrSize:      8,
-			AttrType:      types.INT,
-			IndexNo:       0,
-			NullAllowed:   false,
-			IsPrimary:     false,
-			AutoIncrement: false,
+			AttrName:             strTo24ByteArray("attr1"),
+			RelName:              strTo24ByteArray(rel1),
+			AttrSize:             8,
+			AttrType:             types.INT,
+			IndexNo:              0,
+			NullAllowed:          false,
+			IsPrimary:            false,
+			HasForeignConstraint: false,
 		},
 		{
-			AttrName:      strTo24ByteArray("attr2"),
-			RelName:       strTo24ByteArray(rel1),
-			AttrSize:      8,
-			AttrType:      types.FLOAT,
-			IndexNo:       0,
-			NullAllowed:   true,
-			IsPrimary:     false,
-			AutoIncrement: false,
+			AttrName:             strTo24ByteArray("attr2"),
+			RelName:              strTo24ByteArray(rel1),
+			AttrSize:             8,
+			AttrType:             types.FLOAT,
+			IndexNo:              0,
+			NullAllowed:          true,
+			IsPrimary:            false,
+			HasForeignConstraint: false,
 		},
 		{
 			AttrName: strTo24ByteArray("attr3"),
@@ -76,8 +76,6 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-
 
 	// delete
 	if err := manager.DropDb(db1); err != nil {

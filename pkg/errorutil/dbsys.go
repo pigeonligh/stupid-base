@@ -21,4 +21,12 @@ var (
 	ErrorDbSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
 
 	ErrorDbSysMaxNameExceeded = errors.New("max rel name size 24 exceed")
+
+	ErrorDbSysPrimaryKeyCntExceed = errors.New("primary key cnt exceed")
+
+	ErrorDbSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
+
+	ErrorDbSysForeignKeyExists = errors.New("foreign key exists")
+
+	ErrorDbSysRelationOrAttrNotExists = errors.New("relation or attr not exists")
 )

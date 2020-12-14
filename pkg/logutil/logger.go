@@ -42,14 +42,14 @@ func (logger *Logger) wrap(s string) string {
 
 // Debug logs important message
 func (logger *Logger) Debug(v ...interface{}) {
-	if logger.debugLogger != nil && debugMode {
+	if logger.debugLogger != nil && mode == modeDebug {
 		logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
 	}
 }
 
 // Debugf logs important message
 func (logger *Logger) Debugf(format string, v ...interface{}) {
-	if logger.debugLogger != nil && debugMode {
+	if logger.debugLogger != nil && mode == modeDebug {
 		logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
 	}
 }

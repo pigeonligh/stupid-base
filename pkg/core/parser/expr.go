@@ -7,28 +7,18 @@ import (
 )
 
 type AttrInfo struct {
-	AttrName   string
-	TableName  string
-	AttrOffset int
-	NotNull    bool // TODO
+	AttrName      [types.MaxNameSize]byte
+	RelName       [types.MaxNameSize]byte //24 * 2
+	AttrSize      int                     // used by expr::NodeAttr
+	AttrOffset    int                     // used by expr::NodeAttr
+	AttrType      types.ValueType
+	IndexNo       int       // used by system manager
+	ConstraintRID types.RID // used by system manager
+	NullAllowed   bool      // used by system manager
+	IsPrimary     bool      // used by system manager
+	AutoIncrement bool      // used for auto increasing
+	Default       Value
 }
-
-// Used by SM_Manager::CreateTable
-//struct AttrInfo {
-//char     *AttrName;           // Attribute name
-//ValueType attrType;            // Type of attribute
-//int      attrLength;          // Length of attribute
-//};
-//
-//// Used by Printer class
-//struct DataAttrInfo {
-//char     relName[MAXNAME+1];  // Relation name
-//char     AttrName[MAXNAME+1]; // Attribute name
-//int      offset;              // Offset of attribute
-//ValueType attrType;            // Type of attribute
-//int      attrLength;          // Length of attribute
-//int      indexNo;             // Attribute index number
-//};
 
 type Expr struct {
 	Left  *Expr
@@ -80,17 +70,17 @@ func (expr *Expr) CompIsTrue() bool {
 	return expr.Value.ToBool() && types.IsOpComp(expr.OpType)
 }
 
-func (expr *Expr) Calculate(data []byte, relationName string) error {
+func (expr *Expr) Calculate(data []byte) error {
 	if expr.IsCalculated {
 		return nil
 	}
 	if expr.Left != nil {
-		if err := expr.Left.Calculate(data, relationName); err != nil {
+		if err := expr.Left.Calculate(data); err != nil {
 			return err
 		}
 	}
 	if expr.Right != nil {
-		if err := expr.Right.Calculate(data, relationName); err != nil {
+		if err := expr.Right.Calculate(data); err != nil {
 			return err
 		}
 	}
@@ -147,35 +137,31 @@ func (expr *Expr) Calculate(data []byte, relationName string) error {
 		}
 		return nil
 	case types.NodeAttr:
-		if len(relationName) == 0 || relationName == expr.AttrInfo.TableName {
-			expr.IsCalculated = true
-			//if data[expr.AttrInfo.AttrOffset- 1] == 0 {
-			//	// TODO add null for attr
-			//	expr.IsNull = true
-			//	panic(0)
-			//}
-			expr.IsNull = false
-			switch expr.Value.ValueType {
-			case types.INT:
-				expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-			case types.FLOAT:
-				expr.Value.FromFloat64(*(*float64)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-			case types.BOOL:
-				expr.Value.FromBool(*(*bool)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-			case types.STRING:
-				fallthrough
-			case types.VARCHAR:
-				expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.Value.ValueSize]))
-			case types.DATE:
-				expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-			case types.NO_ATTR:
-			default:
-				log.V(log.ExprLevel).Warningf("data is not implemented\n")
-			}
-
-		} else {
-			log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, expr.AttrInfo.TableName)
+		expr.IsCalculated = true
+		//if data[expr.AttrInfo.AttrOffset- 1] == 0 {
+		//	// TODO add null for attr
+		//	expr.IsNull = true
+		//	panic(0)
+		//}
+		expr.IsNull = false
+		switch expr.Value.ValueType {
+		case types.INT:
+			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+		case types.FLOAT:
+			expr.Value.FromFloat64(*(*float64)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+		case types.BOOL:
+			expr.Value.FromBool(*(*bool)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+		case types.STRING:
+			fallthrough
+		case types.VARCHAR:
+			expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize]))
+		case types.DATE:
+			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+		case types.NO_ATTR:
+		default:
+			log.V(log.ExprLevel).Warningf("data is not implemented\n")
 		}
+		//log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, string(expr.AttrInfo.RelName[:]))
 		return nil
 	}
 	panic(0)

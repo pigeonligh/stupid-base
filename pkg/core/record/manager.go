@@ -48,7 +48,6 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 	if err != nil {
 		return err
 	}
-
 	// set up the header page
 	header := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
 	header.RecordSize = recordSize
@@ -107,6 +106,8 @@ func (m *Manager) CloseFile(filename string) error {
 			return err
 		}
 		delete(m.files, filename)
+		log.V(log.RecordLevel).Infof("CloseFile succeeded: %v", filename)
+		return m.storage.CloseFile(filename)
 	}
 	return nil
 }

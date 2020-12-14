@@ -13,12 +13,19 @@ import (
 // Level is log level type
 type Level = uint
 
+type modeType = string
+
+const (
+	modeDebug   modeType = "debug"
+	modeRelease modeType = "release"
+)
+
 var (
 	loggers *Logger
 
 	logLevel Level = 0 // block the logs
 
-	debugMode bool = false
+	mode modeType = modeRelease
 )
 
 func init() {
@@ -32,7 +39,11 @@ func init() {
 
 // SetDebugMode sets debug mode
 func SetDebugMode(debug bool) {
-	debugMode = debug
+	if debug {
+		mode = modeDebug
+	} else {
+		mode = modeRelease
+	}
 }
 
 // SetOutput sets log's output

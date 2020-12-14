@@ -5,6 +5,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 type FileScan struct {
@@ -17,32 +18,32 @@ type FileScan struct {
 	init           bool
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, valueSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
+func (f *FileScan) OpenFullScan(file *FileHandle) error {
+	return f.OpenScan(file, types.NO_ATTR, 0, 0, types.OpDefault, parser.Value{})
+}
+
+func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, attrSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
 	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}
 
 	var expr *parser.Expr = nil
-	if compOp != types.OpDefault {
+	if compOp != types.OpDefault && value.ValueType != types.NO_ATTR {
+		if value.ValueType != valueType {
+			return errorutil.ErrorRecordScanValueTypeNotMatch
+		}
 		left := parser.NewExprEmpty()
 		left.AttrInfo.AttrOffset = attrOffset
-		left.Value.ValueSize = valueSize
+		left.AttrInfo.AttrSize = attrSize
 		left.Value.ValueType = valueType
 		left.NodeType = types.NodeAttr
 		left.IsNull = false
 		left.IsCalculated = false
 
-		var right *parser.Expr
-		if value.ValueType != types.NO_ATTR {
-			if value.ValueType != valueType {
-				return errorutil.ErrorRecordScanValueTypeNotMatch
-			}
-			right = parser.NewExprConst(value)
-		} else {
-			right = parser.NewExprEmpty()
-		}
-
+		right := parser.NewExprConst(value)
 		expr = parser.NewExprComp(left, compOp, right)
+	} else {
+		log.V(log.RecordLevel).Infof("open scan with no comp or value type specified\n")
 	}
 	f.file = file
 	f.cond = expr
@@ -55,8 +56,9 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		return nil, errorutil.ErrorRecordScanNotInit
 	}
 	for {
-		f.cond.ResetCalculated()
-		//log.V(log.RecordLevel).Info("Iter flag")
+		if f.cond != nil {
+			f.cond.ResetCalculated()
+		}
 		var slot = bitset.BitsetFindNoRes
 		if f.currentPage != 0 {
 			slot = f.currentBitset.FindLowestOneBitIdx()
@@ -69,6 +71,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			}
 			pageHandle, err := f.file.storageFH.GetPage(f.currentPage)
 			if err != nil {
+				log.V(log.RecordLevel).Errorf("GetPage(%v): %v", f.currentPage, err)
 				panic(0)
 			}
 			recordPage := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -88,7 +91,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			panic(0)
 		} else {
 			if f.cond != nil {
-				err := f.cond.Calculate(record.Data, f.tableName)
+				err := f.cond.Calculate(record.Data)
 				if err != nil {
 					return nil, err
 				}
@@ -101,11 +104,3 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 		}
 	}
 }
-
-//Expr *_condition = nullptr;
-//MyBitset* _current_bitmap = nullptr;
-//unsigned *_current_bitdata = nullptr;
-//
-//unsigned _current_page = 0;
-//
-//std::string _table_name;

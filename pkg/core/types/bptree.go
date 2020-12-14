@@ -16,6 +16,25 @@ const (
 	NodeMinItem = NodeMaxItem / 2
 )
 
+type IMNodePageHeader struct {
+	IsLeaf   bool
+	Size     int
+	Capacity int
+
+	Index     PageNum
+	NextIndex PageNum
+	PrevIndex PageNum
+}
+
+type IMNodePage struct {
+	PageHeader
+
+	IMNodePageHeader
+
+	Keys    [NodeMaxItem]RID
+	Indexes [NodeMaxItem]RID
+}
+
 type IMValue struct {
 	Row  RID
 	Next RID

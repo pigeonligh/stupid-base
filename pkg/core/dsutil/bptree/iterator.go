@@ -38,7 +38,7 @@ func (iter *Iterator) prepareValue() error {
 	if err != nil {
 		return err
 	}
-	iter.valueIndex = node.indexes[iter.nodePos]
+	iter.valueIndex = node.Indexes[iter.nodePos]
 	return nil
 }
 
@@ -75,15 +75,15 @@ func (iter *Iterator) Next() error {
 			return err
 		}
 		iter.nodePos++
-		if iter.nodePos == node.size {
-			iter.nodeIndex = node.nextIndex
+		if iter.nodePos == node.Size {
+			iter.nodeIndex = node.NextIndex
 			iter.nodePos = 0
 			node, err = iter.getNode()
 			if err != nil {
 				return err
 			}
 		}
-		nextIndex = node.indexes[iter.nodePos]
+		nextIndex = node.Indexes[iter.nodePos]
 	}
 	iter.valueIndex = nextIndex
 	return nil
@@ -91,6 +91,9 @@ func (iter *Iterator) Next() error {
 
 // Get returns the value of the iterator
 func (iter *Iterator) Get() (types.RID, error) {
+	if iter.ended {
+		return types.RID{}, nil
+	}
 	nowValue, err := iter.get()
 	if err != nil {
 		return types.RID{}, err

@@ -11,77 +11,89 @@ import (
 
 // TreeNode is node for bptree
 type TreeNode struct {
-	isLeaf   bool
-	size     int
-	capacity int
+	/*
+		isLeaf   bool
+		size     int
+		capacity int
 
-	index     types.PageNum
-	nextIndex types.PageNum
-	prevIndex types.PageNum
+		index     types.PageNum
+		nextIndex types.PageNum
+		prevIndex types.PageNum
 
-	keys    [types.NodeMaxItem]types.RID
-	indexes [types.NodeMaxItem]types.RID
+		keys    [types.NodeMaxItem]types.RID
+		indexes [types.NodeMaxItem]types.RID
+	*/
+	types.IMNodePage
 }
 
 // NewTreeNode returns a tree node
 func NewTreeNode(index types.PageNum, capacity int) *TreeNode {
 	return &TreeNode{
-		index:     index,
-		nextIndex: types.InvalidPageNum,
-		prevIndex: types.InvalidPageNum,
-		size:      0,
-		capacity:  capacity,
+		IMNodePage: types.IMNodePage{
+			IMNodePageHeader: types.IMNodePageHeader{
+				Index:     index,
+				NextIndex: types.InvalidPageNum,
+				PrevIndex: types.InvalidPageNum,
+				Size:      0,
+				Capacity:  capacity,
+			},
+		},
 	}
+}
+
+// NewTreeNodeByData returns a tree node
+func NewTreeNodeByData(data []byte) (*TreeNode, error) {
+	return &TreeNode{}, nil
 }
 
 // Close should be called when node is deleted
 func (tn *TreeNode) Close() {
-	tn.index = types.InvalidPageNum
-	tn.nextIndex = types.InvalidPageNum
-	tn.prevIndex = types.InvalidPageNum
-	for i := 0; i < tn.size; i++ {
-		tn.keys[i] = types.RID{}
-		tn.indexes[i] = types.RID{}
+	tn.Index = types.InvalidPageNum
+	tn.NextIndex = types.InvalidPageNum
+	tn.PrevIndex = types.InvalidPageNum
+	for i := 0; i < tn.Size; i++ {
+		tn.Keys[i] = types.RID{}
+		tn.Indexes[i] = types.RID{}
 	}
 }
 
 func (tn *TreeNode) getChild(pos int, oper *Operator) (*TreeNode, error) {
-	if pos < 0 || pos >= tn.size {
+	if pos < 0 || pos >= tn.Size {
 		return nil, errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	return (*oper).LoadNode(tn.indexes[pos].Page)
+	return (*oper).LoadNode(tn.Indexes[pos].Page)
 }
 
 func (tn *TreeNode) updateKey(pos int, node *TreeNode) error {
-	if pos < 0 || pos >= tn.size {
+	if pos < 0 || pos >= tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	tn.keys[pos] = node.keys[0]
+	tn.Keys[pos] = node.Keys[0]
 	return nil
 }
 
 func (tn *TreeNode) insertData(pos int, key, index types.RID) error {
-	if pos < 0 || pos > tn.size {
+	if pos < 0 || pos > tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	for i := tn.size; i > pos; i-- {
-		tn.keys[i] = tn.keys[i-1]
-		tn.indexes[i] = tn.indexes[i-1]
+	for i := tn.Size; i > pos; i-- {
+		tn.Keys[i] = tn.Keys[i-1]
+		tn.Indexes[i] = tn.Indexes[i-1]
 	}
-	tn.keys[pos] = key
-	tn.indexes[pos] = index
-	tn.size++
+	tn.Keys[pos] = key
+	tn.Indexes[pos] = index
+	tn.Size++
 	return nil
 }
 
 func (tn *TreeNode) eraseData(pos int) error {
-	if pos < 0 || pos >= tn.size {
+	if pos < 0 || pos >= tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	for i := pos; i < tn.size; i++ {
-		tn.keys[i] = tn.keys[i+1]
-		tn.indexes[i] = tn.indexes[i+1]
+	for i := pos; i < tn.Size; i++ {
+		tn.Keys[i] = tn.Keys[i+1]
+		tn.Indexes[i] = tn.Indexes[i+1]
 	}
-	tn.size--
+	tn.Size--
 	return nil
 }

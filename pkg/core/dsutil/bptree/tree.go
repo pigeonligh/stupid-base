@@ -47,8 +47,8 @@ func (t *BpTree) Insert(row *types.RID) error {
 			if err != nil {
 				return err
 			}
-			newRoot.insertData(0, oldRoot.keys[0], types.MakeRID(oldRoot.index, -1))
-			newRoot.insertData(0, newNode.keys[0], types.MakeRID(newNode.index, -1))
+			newRoot.insertData(0, oldRoot.Keys[0], types.MakeRID(oldRoot.Index, -1))
+			newRoot.insertData(0, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
 		}
 		err = t.updateRoot(newRoot)
 		if err != nil {
@@ -101,13 +101,13 @@ func (t *BpTree) Begin() (*Iterator, error) {
 	}
 	var err error
 	node := t.root
-	for !node.isLeaf {
+	for !node.IsLeaf {
 		node, err = node.getChild(0, t.operator)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return newIterator(t.operator, node.index, 0), nil
+	return newIterator(t.operator, node.Index, 0), nil
 }
 
 // End get the iterator of the end

@@ -55,7 +55,15 @@ const (
 )
 
 func IsOpComp(op OpType) bool {
-	return op == OpDefault || op == OpCompEQ || op == OpCompLT || op == OpCompGT || op == OpCompLE || op == OpCompGE || op == OpCompNE || op == OpCompIS || op == OpCompISNOT
+	return op == OpDefault ||
+		op == OpCompEQ ||
+		op == OpCompLT ||
+		op == OpCompGT ||
+		op == OpCompLE ||
+		op == OpCompGE ||
+		op == OpCompNE ||
+		op == OpCompIS ||
+		op == OpCompISNOT
 }
 
 type NodeType = int
@@ -68,16 +76,16 @@ const (
 	NodeAttr
 )
 
-//enum class AggregationType {
-//T_NONE = 0,
-//T_AVG,
-//T_SUM,
-//T_MIN,
-//T_MAX
-//};
+// enum class AggregationType {
+// T_NONE = 0,
+// T_AVG,
+// T_SUM,
+// T_MIN,
+// T_MAX
+// };
 
-//enum class ConstraintType {
-//PRIMARY_CONSTRAINT,
-//FOREIGN_CONSTRAINT,
-//CHECK_CONSTRAINT
-//};
+// enum class ConstraintType {
+// PRIMARY_CONSTRAINT,
+// FOREIGN_CONSTRAINT,
+// CHECK_CONSTRAINT
+// };

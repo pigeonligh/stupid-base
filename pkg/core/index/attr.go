@@ -2,11 +2,11 @@ package index
 
 import "github.com/pigeonligh/stupid-base/pkg/core/types"
 
-type OffsetPair struct {
+type SingleAttr struct {
 }
 
 type AttrDefine struct {
-	offsets []OffsetPair
+	offsets []SingleAttr
 }
 
 func NewAttr() *AttrDefine {
@@ -16,7 +16,7 @@ func NewAttr() *AttrDefine {
 func loadAttrFromHeader(header *types.IndexHeaderPage) *AttrDefine {
 	// TODO
 	return &AttrDefine{
-		offsets: []OffsetPair{},
+		offsets: []SingleAttr{},
 	}
 }
 
@@ -29,6 +29,6 @@ func (attr *AttrDefine) dataToAttrs(rid types.RID, data []byte) []byte {
 	return []byte{}
 }
 
-func (attr *AttrDefine) AddOffsetPair(offset OffsetPair) {
+func (attr *AttrDefine) AddSingleAttr(offset SingleAttr) {
 	attr.offsets = append(attr.offsets, offset)
 }

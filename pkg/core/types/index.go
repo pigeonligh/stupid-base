@@ -4,17 +4,41 @@ import "unsafe"
 
 const (
 	// NodePageHeaderSize is the size of node page header
-	NodePageHeaderSize = 0
+	NodePageHeaderSize = int(unsafe.Sizeof(IMNodePageHeader{}))
 
 	// NodePageSize is the size of node page data
 	NodePageSize = PageDataSize - NodePageHeaderSize
 
 	// NodeMaxItem is the max number of node items
-	NodeMaxItem = NodePageSize / 2 / int(unsafe.Sizeof(RID{}))
+	NodeMaxItem = 32 // NodePageSize / 2 / int(unsafe.Sizeof(RID{}))
 
 	// NodeMinItem is the min number of node items
 	NodeMinItem = NodeMaxItem / 2
+
+	IMValuePageHeaderSize = 0
+
+	IMValuePageSize = PageDataSize - IMValuePageHeaderSize
+
+	IMValueItem = IMValuePageSize / int(unsafe.Sizeof(IMValue{}))
 )
+
+type IndexHeaderPage struct {
+	FileHeaderPage
+
+	FirstFreeValue RID
+	RootPage       PageNum
+}
+
+type IMValue struct {
+	Row  RID
+	Next RID
+}
+
+type IMValuePage struct {
+	PageHeader
+
+	Values []IMValue
+}
 
 type IMNodePageHeader struct {
 	IsLeaf   bool
@@ -33,9 +57,4 @@ type IMNodePage struct {
 
 	Keys    [NodeMaxItem]RID
 	Indexes [NodeMaxItem]RID
-}
-
-type IMValue struct {
-	Row  RID
-	Next RID
 }

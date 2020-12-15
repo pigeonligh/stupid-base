@@ -11,18 +11,6 @@ import (
 
 // TreeNode is node for bptree
 type TreeNode struct {
-	/*
-		isLeaf   bool
-		size     int
-		capacity int
-
-		index     types.PageNum
-		nextIndex types.PageNum
-		prevIndex types.PageNum
-
-		keys    [types.NodeMaxItem]types.RID
-		indexes [types.NodeMaxItem]types.RID
-	*/
 	types.IMNodePage
 }
 
@@ -43,7 +31,12 @@ func NewTreeNode(index types.PageNum, capacity int) *TreeNode {
 
 // NewTreeNodeByData returns a tree node
 func NewTreeNodeByData(data []byte) (*TreeNode, error) {
+	// TODO
 	return &TreeNode{}, nil
+}
+
+func InitTreeNode(node *TreeNode, isLeaf bool) {
+	// TODO
 }
 
 // Close should be called when node is deleted

@@ -27,6 +27,8 @@ type IndexHeaderPage struct {
 
 	FirstFreeValue RID
 	RootPage       PageNum
+
+	// TODO: offsets
 }
 
 type IMValue struct {

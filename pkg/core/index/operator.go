@@ -10,14 +10,23 @@ import (
 type Operator struct {
 	Filename string
 
-	handle *storage.FileHandle
+	iHandle *storage.FileHandle
+	rHandle *storage.FileHandle
 
 	headerPage     types.IndexHeaderPage
 	headerModified bool
 	initialized    bool
 }
 
-func NewOperator(filename string) (*Operator, error) {
+type offsetPair struct {
+	//
+}
+
+func NewOperator(filename string, record *storage.FileHandle, offsets []offsetPair) (*Operator, error) {
+	return nil, nil
+}
+
+func LoadOperator(filename string, record *storage.FileHandle) (*Operator, error) {
 	handle, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
 		return nil, err
@@ -33,7 +42,8 @@ func NewOperator(filename string) (*Operator, error) {
 	}
 	return &Operator{
 		Filename:       filename,
-		handle:         handle,
+		iHandle:        handle,
+		rHandle:        record,
 		headerPage:     copiedHeader,
 		headerModified: false,
 		initialized:    true,
@@ -44,17 +54,17 @@ func (oper *Operator) Close() error {
 	if !oper.initialized || !oper.headerModified {
 		return nil
 	}
-	pageHandle, err := oper.handle.GetPage(0)
+	pageHandle, err := oper.iHandle.GetPage(0)
 	if err != nil {
 		return err
 	}
 	pageData := (*types.IndexHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
 	*pageData = oper.headerPage
 
-	if err = oper.handle.MarkDirty(pageHandle.Page); err != nil {
+	if err = oper.iHandle.MarkDirty(pageHandle.Page); err != nil {
 		return err
 	}
-	if err = oper.handle.UnpinPage(pageHandle.Page); err != nil {
+	if err = oper.iHandle.UnpinPage(pageHandle.Page); err != nil {
 		return err
 	}
 	oper.initialized = false
@@ -66,7 +76,7 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 	var page *storage.PageHandle
 	var err error
 	if oper.headerPage.FirstFree != 0 {
-		page, err = oper.handle.GetPage(oper.headerPage.FirstFree)
+		page, err = oper.iHandle.GetPage(oper.headerPage.FirstFree)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +84,7 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 		oper.headerPage.FirstFree = currentPage.NextFree
 		oper.headerModified = true
 	} else {
-		page, err = oper.handle.NewPage(oper.headerPage.Pages + 1)
+		page, err = oper.iHandle.NewPage(oper.headerPage.Pages + 1)
 		if err != nil {
 			return nil, err
 		}
@@ -86,12 +96,14 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 		return nil, err
 	}
 	bptree.InitTreeNode(node, isLeaf)
-	// TODO: pin
+	if err = oper.iHandle.UnpinPage(page.Page); err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
 func (oper *Operator) LoadNode(pageNum types.PageNum) (*bptree.TreeNode, error) {
-	page, err := oper.handle.GetPage(pageNum)
+	page, err := oper.iHandle.GetPage(pageNum)
 	if err != nil {
 		return nil, err
 	}
@@ -99,18 +111,20 @@ func (oper *Operator) LoadNode(pageNum types.PageNum) (*bptree.TreeNode, error) 
 	if err != nil {
 		return nil, err
 	}
-	// TODO: pin
+	if err = oper.iHandle.UnpinPage(page.Page); err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
 func (oper *Operator) UpdateNode(node *bptree.TreeNode) error {
-	page, err := oper.handle.GetPage(node.Index)
+	page, err := oper.iHandle.GetPage(node.Index)
 	if err != nil {
 		return err
 	}
 	currentPage := (*types.IMNodePage)(types.ByteSliceToPointer(page.Data))
 	*currentPage = node.IMNodePage
-	err = oper.handle.MarkDirty(node.Index)
+	err = oper.iHandle.MarkDirty(node.Index)
 	if err != nil {
 		return err
 	}
@@ -118,14 +132,14 @@ func (oper *Operator) UpdateNode(node *bptree.TreeNode) error {
 }
 
 func (oper *Operator) DeleteNode(node *bptree.TreeNode) error {
-	page, err := oper.handle.GetPage(node.Index)
+	page, err := oper.iHandle.GetPage(node.Index)
 	if err != nil {
 		return err
 	}
 
 	currentPage := (*types.IMNodePage)(types.ByteSliceToPointer(page.Data))
 	currentPage.NextFree = oper.headerPage.FirstFree
-	err = oper.handle.MarkDirty(node.Index)
+	err = oper.iHandle.MarkDirty(node.Index)
 	if err != nil {
 		return err
 	}
@@ -174,7 +188,7 @@ func (oper *Operator) createFreeValues() error {
 	var page *storage.PageHandle
 	var err error
 	if oper.headerPage.FirstFree != 0 {
-		page, err = oper.handle.GetPage(oper.headerPage.FirstFree)
+		page, err = oper.iHandle.GetPage(oper.headerPage.FirstFree)
 		if err != nil {
 			return err
 		}
@@ -182,7 +196,7 @@ func (oper *Operator) createFreeValues() error {
 		oper.headerPage.FirstFree = currentPage.NextFree
 		oper.headerModified = true
 	} else {
-		page, err = oper.handle.NewPage(oper.headerPage.Pages + 1)
+		page, err = oper.iHandle.NewPage(oper.headerPage.Pages + 1)
 		if err != nil {
 			return err
 		}
@@ -192,7 +206,7 @@ func (oper *Operator) createFreeValues() error {
 	oper.headerPage.FirstFreeValue = initValuePage(page.Data)
 	oper.headerModified = true
 
-	err = oper.handle.MarkDirty(page.Page)
+	err = oper.iHandle.MarkDirty(page.Page)
 	if err != nil {
 		return err
 	}
@@ -200,7 +214,7 @@ func (oper *Operator) createFreeValues() error {
 }
 
 func (oper *Operator) getIndexedValue(index types.RID) (*IndexedValue, error) {
-	page, err := oper.handle.GetPage(index.Page)
+	page, err := oper.iHandle.GetPage(index.Page)
 	if err != nil {
 		return nil, err
 	}
@@ -208,13 +222,13 @@ func (oper *Operator) getIndexedValue(index types.RID) (*IndexedValue, error) {
 }
 
 func (oper *Operator) updateIndexedValue(value *IndexedValue) error {
-	page, err := oper.handle.GetPage(value.index.Page)
+	page, err := oper.iHandle.GetPage(value.index.Page)
 	if err != nil {
 		return err
 	}
 	setValue(value, page.Data)
 
-	err = oper.handle.MarkDirty(page.Page)
+	err = oper.iHandle.MarkDirty(page.Page)
 	if err != nil {
 		return err
 	}

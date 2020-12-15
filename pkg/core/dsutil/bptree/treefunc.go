@@ -9,7 +9,7 @@ import (
 )
 
 func (t *BpTree) updateRoot(root *TreeNode) error {
-	err := (*t.operator).UpdateRoot(root)
+	err := t.operator.UpdateRoot(root)
 	if err != nil {
 		return err
 	}
@@ -19,13 +19,18 @@ func (t *BpTree) updateRoot(root *TreeNode) error {
 
 func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 	if node == nil {
-		newNode, err := (*t.operator).NewNode(true)
+		newNode, err := t.operator.NewNode(true)
 		if err != nil {
 			return nil, err
 		}
-		rid, err := (*t.operator).NewValue(*row)
-		newNode.insertData(0, *row, rid)
-		if err = (*t.operator).UpdateNode(newNode); err != nil {
+		rid, err := t.operator.NewValue(*row)
+		if err != nil {
+			return nil, err
+		}
+		if err = newNode.insertData(0, *row, rid); err != nil {
+			return nil, err
+		}
+		if err = t.operator.UpdateNode(newNode); err != nil {
 			return nil, err
 		}
 		return newNode, nil
@@ -33,12 +38,12 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 	if node.IsLeaf {
 		insertPos := -1
 		for i := 0; i < node.Size; i++ {
-			cmpResult, err := (*t.operator).CompareRows(*row, node.Keys[i])
+			cmpResult, err := t.operator.CompareRows(*row, node.Keys[i])
 			if err != nil {
 				return nil, err
 			}
 			if cmpResult == 0 {
-				rid, err := (*t.operator).PushValue(node.Indexes[i], *row)
+				rid, err := t.operator.PushValue(node.Indexes[i], *row)
 				if err != nil {
 					return nil, err
 				}
@@ -51,7 +56,7 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 			}
 		}
 		if insertPos != -1 {
-			newIndex, err := (*t.operator).NewValue(*row)
+			newIndex, err := t.operator.NewValue(*row)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +72,7 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 		for i := 0; i < node.Size; i++ {
 			cmpResult := 1
 			if i+1 < node.Size {
-				cmpResult, err = (*t.operator).CompareRows(*row, node.Keys[i+1])
+				cmpResult, err = t.operator.CompareRows(*row, node.Keys[i+1])
 				if err != nil {
 					return nil, err
 				}
@@ -90,13 +95,17 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 			}
 		}
 		if newNode != nil {
-			node.insertData(insertPos, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
+			if err = node.insertData(
+				insertPos, newNode.Keys[0], types.MakeRID(newNode.Index, -1),
+			); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	if node.Size == node.Capacity {
 		// Split
-		newNode, err := (*t.operator).NewNode(node.IsLeaf)
+		newNode, err := t.operator.NewNode(node.IsLeaf)
 		if err != nil {
 			return nil, err
 		}
@@ -115,26 +124,26 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 		newNode.NextIndex = node.NextIndex
 		node.NextIndex = newNode.Index
 
-		nextNode, err := (*t.operator).LoadNode(newNode.NextIndex)
+		nextNode, err := t.operator.LoadNode(newNode.NextIndex)
 		if err != nil {
 			return nil, err
 		}
 		if nextNode != nil {
 			nextNode.PrevIndex = newNode.Index
-			if err = (*t.operator).UpdateNode(nextNode); err != nil {
+			if err = t.operator.UpdateNode(nextNode); err != nil {
 				return nil, err
 			}
 		}
 
-		if err = (*t.operator).UpdateNode(node); err != nil {
+		if err = t.operator.UpdateNode(node); err != nil {
 			return nil, err
 		}
-		if err = (*t.operator).UpdateNode(newNode); err != nil {
+		if err = t.operator.UpdateNode(newNode); err != nil {
 			return nil, err
 		}
 		return newNode, nil
 	}
-	if err := (*t.operator).UpdateNode(node); err != nil {
+	if err := t.operator.UpdateNode(node); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -143,18 +152,20 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 	if node.IsLeaf {
 		for i := 0; i < node.Size; i++ {
-			cmpResult, err := (*t.operator).CompareRows(*row, node.Keys[i])
+			cmpResult, err := t.operator.CompareRows(*row, node.Keys[i])
 			if err != nil {
 				return false, err
 			}
 			if cmpResult == 0 {
-				rid, err := (*t.operator).DeleteValue(node.Indexes[i], *row)
+				rid, err := t.operator.DeleteValue(node.Indexes[i], *row)
 				if err != nil {
 					return false, err
 				}
 				node.Indexes[i] = rid
 				if rid.Page == types.InvalidPageNum {
-					node.eraseData(i)
+					if err = node.eraseData(i); err != nil {
+						return false, err
+					}
 				}
 				break
 			}
@@ -167,7 +178,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		for i := 0; i < node.Size; i++ {
 			cmpResult := 1
 			if i+1 < node.Size {
-				cmpResult, err = (*t.operator).CompareRows(*row, node.Keys[i+1])
+				cmpResult, err = t.operator.CompareRows(*row, node.Keys[i+1])
 				if err != nil {
 					return false, err
 				}
@@ -195,7 +206,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 			}
 		}
 	}
-	prevNode, err := (*t.operator).LoadNode(node.PrevIndex)
+	prevNode, err := t.operator.LoadNode(node.PrevIndex)
 	if err != nil {
 		return false, nil
 	}
@@ -211,12 +222,12 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		}
 		node.Size = 0
 
-		if err = (*t.operator).UpdateNode(prevNode); err != nil {
+		if err = t.operator.UpdateNode(prevNode); err != nil {
 			return false, err
 		}
 	}
 	if node.Size == 0 {
-		nextNode, err := (*t.operator).LoadNode(node.NextIndex)
+		nextNode, err := t.operator.LoadNode(node.NextIndex)
 		if err != nil {
 			return false, nil
 		}
@@ -226,18 +237,18 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		if nextNode != nil {
 			nextNode.PrevIndex = node.PrevIndex
 		}
-		if err = (*t.operator).UpdateNode(prevNode); err != nil {
+		if err = t.operator.UpdateNode(prevNode); err != nil {
 			return false, err
 		}
-		if err = (*t.operator).UpdateNode(nextNode); err != nil {
+		if err = t.operator.UpdateNode(nextNode); err != nil {
 			return false, err
 		}
-		if err = (*t.operator).DeleteNode(node); err != nil {
+		if err = t.operator.DeleteNode(node); err != nil {
 			return false, err
 		}
 		return true, nil
 	}
-	if err := (*t.operator).UpdateNode(node); err != nil {
+	if err := t.operator.UpdateNode(node); err != nil {
 		return false, err
 	}
 	return false, nil
@@ -250,11 +261,11 @@ func (t *BpTree) query(node *TreeNode, key []byte, allowEqual bool) (types.PageN
 
 	if node.IsLeaf {
 		for i := 0; i < node.Size; i++ {
-			attr, err := (*t.operator).GetAttr(node.Keys[i])
+			attr, err := t.operator.GetAttr(node.Keys[i])
 			if err != nil {
 				return types.InvalidPageNum, -1, err
 			}
-			cmpResult, err := (*t.operator).CompareAttrs(key, attr)
+			cmpResult, err := t.operator.CompareAttrs(key, attr)
 			if err != nil {
 				return types.InvalidPageNum, -1, err
 			}
@@ -274,11 +285,11 @@ func (t *BpTree) query(node *TreeNode, key []byte, allowEqual bool) (types.PageN
 	for i := 0; i < node.Size; i++ {
 		cmpResult := 1
 		if i+1 < node.Size {
-			attr, err := (*t.operator).GetAttr(node.Keys[i+1])
+			attr, err := t.operator.GetAttr(node.Keys[i+1])
 			if err != nil {
 				return types.InvalidPageNum, -1, err
 			}
-			cmpResult, err = (*t.operator).CompareAttrs(key, attr)
+			cmpResult, err = t.operator.CompareAttrs(key, attr)
 			if err != nil {
 				return types.InvalidPageNum, -1, err
 			}

@@ -10,13 +10,11 @@ import (
 
 // Iterator is the iterator for bptree values
 type Iterator struct {
-	operator *Operator
+	operator Operator
 
 	nodeIndex  types.PageNum
 	nodePos    int
 	valueIndex types.RID
-
-	node *TreeNode
 
 	ended bool
 }
@@ -25,14 +23,16 @@ func endIterator() *Iterator {
 	return &Iterator{ended: true}
 }
 
-func newIterator(oper *Operator, nodeIndex types.PageNum, nodePos int) *Iterator {
+func newIterator(oper Operator, nodeIndex types.PageNum, nodePos int) *Iterator {
+	// TODO
 	return &Iterator{}
 }
 
 func (iter *Iterator) getNode() (*TreeNode, error) {
-	return (*iter.operator).LoadNode(iter.nodeIndex)
+	return iter.operator.LoadNode(iter.nodeIndex)
 }
 
+/*
 func (iter *Iterator) prepareValue() error {
 	node, err := iter.getNode()
 	if err != nil {
@@ -41,6 +41,7 @@ func (iter *Iterator) prepareValue() error {
 	iter.valueIndex = node.Indexes[iter.nodePos]
 	return nil
 }
+*/
 
 // EqualTo checks the two Iterators are equal or not
 func (iter *Iterator) EqualTo(target *Iterator) bool {
@@ -102,5 +103,5 @@ func (iter *Iterator) Get() (types.RID, error) {
 }
 
 func (iter *Iterator) get() (*types.IMValue, error) {
-	return (*iter.operator).LoadValue(iter.valueIndex)
+	return iter.operator.LoadValue(iter.valueIndex)
 }

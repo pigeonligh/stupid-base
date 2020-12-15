@@ -50,11 +50,11 @@ func (tn *TreeNode) Close() {
 	}
 }
 
-func (tn *TreeNode) getChild(pos int, oper *Operator) (*TreeNode, error) {
+func (tn *TreeNode) getChild(pos int, oper Operator) (*TreeNode, error) {
 	if pos < 0 || pos >= tn.Size {
 		return nil, errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	return (*oper).LoadNode(tn.Indexes[pos].Page)
+	return oper.LoadNode(tn.Indexes[pos].Page)
 }
 
 func (tn *TreeNode) updateKey(pos int, node *TreeNode) error {

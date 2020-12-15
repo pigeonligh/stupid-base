@@ -10,13 +10,13 @@ import (
 
 // BpTree is structure of bptree
 type BpTree struct {
-	operator *Operator
+	operator Operator
 	root     *TreeNode
 }
 
 // NewBpTree returns a bptree by an operator
-func NewBpTree(oper *Operator) (*BpTree, error) {
-	root, err := (*oper).LoadRoot()
+func NewBpTree(oper Operator) (*BpTree, error) {
+	root, err := oper.LoadRoot()
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +43,18 @@ func (t *BpTree) Insert(row *types.RID) error {
 		if t.root == nil {
 			newRoot = newNode
 		} else {
-			newRoot, err = (*t.operator).NewNode(false)
+			newRoot, err = t.operator.NewNode(false)
 			if err != nil {
 				return err
 			}
-			newRoot.insertData(0, oldRoot.Keys[0], types.MakeRID(oldRoot.Index, -1))
-			newRoot.insertData(0, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
+			err = newRoot.insertData(0, oldRoot.Keys[0], types.MakeRID(oldRoot.Index, -1))
+			if err != nil {
+				return err
+			}
+			err = newRoot.insertData(0, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
+			if err != nil {
+				return err
+			}
 		}
 		err = t.updateRoot(newRoot)
 		if err != nil {

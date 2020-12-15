@@ -71,7 +71,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 		return nil, errorutil.ErrorDbSysTableNotExisted
 	}
 
-	// get attr then header
+	// get attrName then header
 	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
 	if err != nil {
 		log.V(log.DbSysLevel).Error(err)
@@ -245,4 +245,48 @@ func (m *Manager) DescribeTable(relName string) error {
 	recList := fileHandle.GetRecList()
 	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
 	return nil
+}
+
+func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
+	printInfo := &TablePrintInfo{
+		TableHeaderList: make([]string, 0),
+		OffsetList:      make([]int, 0),
+		SizeList:        make([]int, 0),
+		TypeList:        make([]int, 0),
+		NullList:        make([]bool, 0),
+		ColWidMap:       make(map[string]int, 0),
+		ShowingMeta:     false,
+	}
+	// construct a record list
+	recordNums := len(table[0].valueList)
+	recordSize := 0
+	for _, col := range table {
+		if len(col.valueList) != recordNums {
+			panic(0)
+		}
+		printInfo.ColWidMap[col.attrName] = len(col.attrName)
+		printInfo.TableHeaderList = append(printInfo.TableHeaderList, col.attrName)
+		printInfo.OffsetList = append(printInfo.OffsetList, recordSize)
+		printInfo.SizeList = append(printInfo.SizeList, col.attrSize)
+		printInfo.TypeList = append(printInfo.TypeList, col.attrType)
+		printInfo.NullList = append(printInfo.NullList, col.nullAllowed)
+
+		recordSize += col.attrSize + 1
+	}
+	recList := make([]*record.Record, 0)
+
+	for i := 0; i < recordNums; i++ {
+		rec := record.Record{
+			Rid:  types.RID{},
+			Data: make([]byte, recordSize),
+		}
+		for j := 0; j < len(table); j++ {
+			copy(rec.Data[printInfo.OffsetList[j]:printInfo.OffsetList[j]+printInfo.SizeList[j]], table[i].valueList[i].Value[0:printInfo.SizeList[j]])
+			if len(table[i].valueList[i].Format2String()) > printInfo.ColWidMap[table[i].attrName] {
+				printInfo.ColWidMap[table[i].attrName] = len(table[i].valueList[i].Format2String())
+			}
+		}
+		recList = append(recList, &rec)
+	}
+	m.PrintTableByInfo(recList, printInfo)
 }

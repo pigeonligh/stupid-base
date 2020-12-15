@@ -17,6 +17,10 @@ func getTableMetaFileName(table string) string {
 	return table + ".table-meta"
 }
 
+func getTableDataFileName(table string) string {
+	return table + ".table-data"
+}
+
 func getTableConstraintFileName(table string) string {
 	return table + ".constraint-meta"
 }
@@ -81,11 +85,11 @@ func (m *Manager) DropDb(dbName string) error {
 		m.dbMeta = nil
 		m.dbFK = nil
 		m.dbPK = nil
+		m.dbSelected = ""
 	}
 	if err := os.RemoveAll(dbName); err != nil {
 		log.V(log.DbSysLevel).Error(err)
 		return errorutil.ErrorDbSysDropDbFails
-
 	}
 	return nil
 }
@@ -183,7 +187,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		}), RelInfoSize))
 
 	// create table record file
-	if err := m.relManager.CreateFile(relName, curSize); err != nil {
+	if err := m.relManager.CreateFile(getTableDataFileName(relName), curSize); err != nil {
 		return err
 	}
 
@@ -228,7 +232,7 @@ func (m *Manager) buildAttrInfoMap(relName string) AttrInfoMap {
 	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
 	defer m.relManager.CloseFile(fileHandle.Filename)
 	if err != nil {
-		// once build attr info map is recalled, it must be existed
+		// once build attrName info map is recalled, it must be existed
 		panic(0)
 	}
 	attrInfoMap := make(map[string]*parser.AttrInfo, 0)
@@ -238,4 +242,41 @@ func (m *Manager) buildAttrInfoMap(relName string) AttrInfoMap {
 		attrInfoMap[ByteArray24tostr(attr.AttrName)] = attr
 	}
 	return attrInfoMap
+}
+
+// maybe it can be used for select & join
+func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string, condList []record.FilterCond) TemporalTable {
+	retTempTable := make(TemporalTable, 0)
+
+	attrInfoMap := m.GetAttrInfoMap(relName)
+
+	datafile, err := m.relManager.OpenFile(getTableDataFileName(relName))
+	if err != nil {
+		log.V(log.DbSysLevel).Error(errorutil.ErrorDbSysTableNotExisted)
+		return nil
+	}
+	defer m.relManager.CloseFile(datafile.Filename)
+
+	recordList := record.FilterOnRecList(datafile.GetRecList(), condList)
+	for _, attr := range attrNameList {
+		col := TableColumn{
+			relName:   relName,
+			attrName:  attr,
+			valueList: make([]parser.Value, 0),
+		}
+		offset := attrInfoMap[attr].AttrOffset
+		length := attrInfoMap[attr].AttrSize
+		attrType := attrInfoMap[attr].AttrType
+		for _, rec := range recordList {
+			if rec.Data[offset+length] == 1 {
+				attrType = types.NO_ATTR // mark null here
+			}
+			col.valueList = append(col.valueList, parser.NewValueFromByteSlice(rec.Data[offset:offset+length], attrType))
+		}
+		col.attrSize = length
+		col.attrType = attrType
+		col.nullAllowed = attrInfoMap[attr].NullAllowed
+		retTempTable = append(retTempTable, col)
+	}
+	return retTempTable
 }

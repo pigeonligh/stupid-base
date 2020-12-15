@@ -55,3 +55,13 @@ type RelInfo struct {
 	primaryCount int // primary constraint count
 	foreignCount int // foreign constraint count
 }
+
+type TemporalTable = []TableColumn
+type TableColumn struct {
+	relName     string
+	attrName    string
+	attrSize    int
+	attrType    int
+	nullAllowed bool
+	valueList   []parser.Value
+}

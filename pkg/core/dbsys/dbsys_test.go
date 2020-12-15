@@ -2,6 +2,7 @@ package dbsys
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"testing"
@@ -76,6 +77,8 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	tmpTable := manager.GetTemporalTableByAttrs(rel1, []string{"attr1", "attr2"}, []record.FilterCond{})
+	manager.PrintTableByTmpColumns(tmpTable)
 
 	// delete
 	if err := manager.DropDb(db1); err != nil {

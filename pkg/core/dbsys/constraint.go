@@ -25,9 +25,9 @@ const FkFileName = "FOREIGN_KEY_FILE"
 type ConstraintForeignInfo struct {
 	fkName  [types.MaxNameSize]byte // foreign key name, specified by user
 	relSrc  [types.MaxNameSize]byte // src table (referencing)
-	attrSrc [types.MaxNameSize]byte // attr in src table
+	attrSrc [types.MaxNameSize]byte // attrName in src table
 	relDst  [types.MaxNameSize]byte // foreign table(relation) name
-	attrDst [types.MaxNameSize]byte // attr in foreign table (must be primary)
+	attrDst [types.MaxNameSize]byte // attrName in foreign table (must be primary)
 }
 
 const ConstraintPrimaryInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
@@ -35,7 +35,7 @@ const PkFileName = "PRIMARY_KEY_FILE"
 
 type ConstraintPrimaryInfo struct {
 	relSrc  [types.MaxNameSize]byte // src table (referencing)
-	attrSrc [types.MaxNameSize]byte // attr in current table
+	attrSrc [types.MaxNameSize]byte // attrName in current table
 }
 
 type ConstraintCheckInfo struct {

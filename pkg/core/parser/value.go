@@ -1,8 +1,12 @@
 package parser
 
 import (
+	"bytes"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"strconv"
+	"strings"
+	"time"
 	"unsafe"
 )
 
@@ -16,8 +20,34 @@ import (
 //}
 
 type Value struct {
-	value     [types.MaxStringSize]byte
+	Value     [types.MaxStringSize]byte
 	ValueType types.ValueType
+}
+
+// similar to the functions in pkg/core/dbsys/utils.go:21
+// data2StringByTypes
+func (v *Value) Format2String() string {
+	ret := ""
+	switch v.ValueType {
+	case types.INT:
+		val := *(*int)(types.ByteSliceToPointer(v.Value[:]))
+		ret = strconv.Itoa(val)
+	case types.FLOAT:
+		val := *(*float64)(types.ByteSliceToPointer(v.Value[:]))
+		ret = strconv.FormatFloat(val, 'g', 10, 64) // TODO: more dynamic float converting
+	case types.STRING, types.VARCHAR:
+		ret = string(v.Value[:])
+	case types.DATE:
+		val := *(*int)(types.ByteSliceToPointer(v.Value[:]))
+		unixTime := time.Unix(int64(val), 0)
+		ret = unixTime.Format(time.RFC822)
+	case types.BOOL:
+		val := *(*bool)(types.ByteSliceToPointer(v.Value[:]))
+		ret = strconv.FormatBool(val)
+	}
+	// NO ATTR return "" by default
+
+	return strings.TrimSpace(string(bytes.Trim([]byte(ret), string(byte(0)))))
 }
 
 func (v *Value) GE(c *Value) bool {
@@ -157,11 +187,11 @@ func (v *Value) EQ(c *Value) bool {
 }
 
 func (v *Value) ToInt64() int {
-	return *(*int)(unsafe.Pointer(&v.value))
+	return *(*int)(unsafe.Pointer(&v.Value))
 }
 
 func (v *Value) FromInt64(val int) {
-	ptr := (*int)(types.ByteSliceToPointer(v.value[:]))
+	ptr := (*int)(types.ByteSliceToPointer(v.Value[:]))
 	*ptr = val
 }
 
@@ -172,11 +202,11 @@ func NewValueFromInt64(val int) Value {
 }
 
 func (v *Value) ToFloat64() float64 {
-	return *(*float64)(unsafe.Pointer(&v.value))
+	return *(*float64)(unsafe.Pointer(&v.Value))
 }
 
 func (v *Value) FromFloat64(val float64) {
-	ptr := (*float64)(types.ByteSliceToPointer(v.value[:]))
+	ptr := (*float64)(types.ByteSliceToPointer(v.Value[:]))
 	*ptr = val
 }
 
@@ -187,11 +217,11 @@ func NewValueFromFloat64(val float64) Value {
 }
 
 func (v *Value) ToBool() bool {
-	return *(*bool)(unsafe.Pointer(&v.value))
+	return *(*bool)(unsafe.Pointer(&v.Value))
 }
 
 func (v *Value) FromBool(val bool) {
-	ptr := (*bool)(types.ByteSliceToPointer(v.value[:]))
+	ptr := (*bool)(types.ByteSliceToPointer(v.Value[:]))
 	*ptr = val
 }
 
@@ -202,20 +232,26 @@ func NewValueFromBool(val bool) Value {
 }
 
 func (v *Value) ToStr() string {
-	return string(v.value[:])
+	return string(v.Value[:])
 }
 
 func (v *Value) FromStr(s string) {
-	v.value = [types.MaxStringSize]byte{}
+	v.Value = [types.MaxStringSize]byte{}
 	byteSlice := []byte(s)
 	if len(byteSlice) > types.MaxStringSize {
 		byteSlice = byteSlice[0:types.MaxStringSize]
 	}
-	copy(v.value[:], byteSlice)
+	copy(v.Value[:], byteSlice)
 }
 
 func NewValueFromStr(s string) Value {
 	ret := Value{ValueType: types.STRING}
 	ret.FromStr(s)
+	return ret
+}
+
+func NewValueFromByteSlice(byteSlice []byte, valueType types.ValueType) Value {
+	ret := Value{ValueType: valueType}
+	copy(ret.Value[:], byteSlice)
 	return ret
 }

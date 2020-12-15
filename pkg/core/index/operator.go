@@ -2,8 +2,10 @@ package index
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/dsutil/bptree"
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
@@ -11,22 +13,50 @@ type Operator struct {
 	Filename string
 
 	iHandle *storage.FileHandle
-	rHandle *storage.FileHandle
+	rHandle *record.FileHandle
 
 	headerPage     types.IndexHeaderPage
 	headerModified bool
 	initialized    bool
+
+	attr *AttrDefine
 }
 
-type offsetPair struct {
-	//
+func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (*Operator, error) {
+	// Make sure the file is created, please
+	handle, err := storage.GetInstance().OpenFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	headerPage, err := handle.GetPage(0)
+	if err != nil {
+		log.V(log.IndexLavel).Errorf("handle.GetPage(0) failed")
+		return nil, err
+	}
+	currentHeader := (*types.IndexHeaderPage)(types.ByteSliceToPointer(headerPage.Data))
+	currentHeader.FirstFree = 0
+	currentHeader.FirstFreeValue = types.RID{}
+	currentHeader.Pages = 0
+	currentHeader.RootPage = 0
+	attr.writeAttrToHeader(currentHeader)
+	if err := handle.MarkDirty(0); err != nil {
+		return nil, err
+	}
+	if err := handle.UnpinPage(0); err != nil {
+		return nil, err
+	}
+	return &Operator{
+		Filename:       filename,
+		iHandle:        handle,
+		rHandle:        record,
+		headerPage:     *currentHeader,
+		headerModified: false,
+		initialized:    true,
+		attr:           loadAttrFromHeader(currentHeader),
+	}, nil
 }
 
-func NewOperator(filename string, record *storage.FileHandle, offsets []offsetPair) (*Operator, error) {
-	return nil, nil
-}
-
-func LoadOperator(filename string, record *storage.FileHandle) (*Operator, error) {
+func LoadOperator(filename string, record *record.FileHandle) (*Operator, error) {
 	handle, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
 		return nil, err
@@ -47,6 +77,7 @@ func LoadOperator(filename string, record *storage.FileHandle) (*Operator, error
 		headerPage:     copiedHeader,
 		headerModified: false,
 		initialized:    true,
+		attr:           loadAttrFromHeader(&copiedHeader),
 	}, nil
 }
 
@@ -103,6 +134,9 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 }
 
 func (oper *Operator) LoadNode(pageNum types.PageNum) (*bptree.TreeNode, error) {
+	if pageNum <= 0 || pageNum > oper.headerPage.Pages {
+		return nil, errorutil.ErrorInvalidPage
+	}
 	page, err := oper.iHandle.GetPage(pageNum)
 	if err != nil {
 		return nil, err
@@ -128,6 +162,10 @@ func (oper *Operator) UpdateNode(node *bptree.TreeNode) error {
 	if err != nil {
 		return err
 	}
+	err = oper.iHandle.UnpinPage(node.Index)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -140,6 +178,10 @@ func (oper *Operator) DeleteNode(node *bptree.TreeNode) error {
 	currentPage := (*types.IMNodePage)(types.ByteSliceToPointer(page.Data))
 	currentPage.NextFree = oper.headerPage.FirstFree
 	err = oper.iHandle.MarkDirty(node.Index)
+	if err != nil {
+		return err
+	}
+	err = oper.iHandle.UnpinPage(node.Index)
 	if err != nil {
 		return err
 	}
@@ -175,13 +217,15 @@ func (oper *Operator) CompareRows(row1, row2 types.RID) (int, error) {
 }
 
 func (oper *Operator) CompareAttrs(attr1, attr2 []byte) (int, error) {
-	// TODO: compare bytes
-	return 0, nil
+	return compareBytes(attr1, attr2), nil
 }
 
-func (oper *Operator) GetAttr(types.RID) ([]byte, error) {
-	// TODO: get attr from row
-	return nil, nil
+func (oper *Operator) GetAttr(rid types.RID) ([]byte, error) {
+	record, err := oper.rHandle.GetRec(rid)
+	if err != nil {
+		return nil, err
+	}
+	return oper.attr.dataToAttrs(rid, record.Data), nil
 }
 
 func (oper *Operator) createFreeValues() error {
@@ -210,6 +254,10 @@ func (oper *Operator) createFreeValues() error {
 	if err != nil {
 		return err
 	}
+	err = oper.iHandle.UnpinPage(page.Page)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -218,7 +266,11 @@ func (oper *Operator) getIndexedValue(index types.RID) (*IndexedValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getValue(index, page.Data), nil
+	value := getValue(index, page.Data)
+	if err = oper.iHandle.UnpinPage(index.Page); err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 func (oper *Operator) updateIndexedValue(value *IndexedValue) error {
@@ -229,6 +281,10 @@ func (oper *Operator) updateIndexedValue(value *IndexedValue) error {
 	setValue(value, page.Data)
 
 	err = oper.iHandle.MarkDirty(page.Page)
+	if err != nil {
+		return err
+	}
+	err = oper.iHandle.UnpinPage(page.Page)
 	if err != nil {
 		return err
 	}

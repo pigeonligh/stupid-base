@@ -27,8 +27,9 @@ func NewBpTree(oper Operator) (*BpTree, error) {
 }
 
 // Close closes the bptree
-func (t *BpTree) Close() {
+func (t *BpTree) Close() error {
 	// TODO
+	return nil
 }
 
 // Insert adds a row into bptree

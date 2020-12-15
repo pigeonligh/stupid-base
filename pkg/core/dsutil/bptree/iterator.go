@@ -105,3 +105,7 @@ func (iter *Iterator) Get() (types.RID, error) {
 func (iter *Iterator) get() (*types.IMValue, error) {
 	return iter.operator.LoadValue(iter.valueIndex)
 }
+
+func (iter *Iterator) End() bool {
+	return iter.ended
+}

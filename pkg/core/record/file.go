@@ -219,6 +219,15 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	return NewRecord(rid, slotByteSlice, f.header.RecordSize)
 }
 
+func (f *FileHandle) ForcePage(page types.PageNum) {
+	if err := f.storageFH.MarkDirty(page); err != nil {
+		panic(0)
+	}
+	if err := f.storageFH.ForcePage(page); err != nil {
+		panic(0)
+	}
+}
+
 func (f *FileHandle) GetRecList() []*Record {
 	relScan := FileScan{}
 	_ = relScan.OpenFullScan(f)

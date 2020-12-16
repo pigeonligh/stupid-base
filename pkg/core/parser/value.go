@@ -24,7 +24,7 @@ type Value struct {
 	ValueType types.ValueType
 }
 
-// similar to the functions in pkg/core/dbsys/utils.go:21
+// similar to the functions in pkg/core/dbsys/datautils.go:21
 // data2StringByTypes
 func (v *Value) Format2String() string {
 	ret := ""

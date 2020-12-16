@@ -1,6 +1,7 @@
 package dbsys
 
 import (
+	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -12,9 +13,14 @@ import (
 )
 
 const DbMetaName = "db.meta"
+const PrimaryKeyIndexName = "PK_INDEX"
 
 func getTableMetaFileName(table string) string {
 	return table + ".table-meta"
+}
+
+func getTableIdxFileName(table string) string {
+	return table + ".table-index"
 }
 
 func getTableDataFileName(table string) string {
@@ -25,11 +31,9 @@ func getTableConstraintFileName(table string) string {
 	return table + ".constraint-meta"
 }
 
-type AttrInfoMap map[string]*parser.AttrInfo
-
 type Manager struct {
 	relManager *record.Manager
-	//idxManager
+	idxManager *index.Manager
 	rels       map[string]AttrInfoMap
 	dbMeta     *record.FileHandle
 	dbSelected string
@@ -46,6 +50,7 @@ func GetInstance() *Manager {
 		defer log.V(log.DbSysLevel).Info("DbSys Manager has been initialized.")
 		instance = &Manager{
 			relManager: record.GetInstance(),
+			idxManager: index.GetInstance(),
 			rels:       nil,
 			dbSelected: "",
 		}
@@ -140,39 +145,47 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return errorutil.ErrorDbSysMaxNameExceeded
 	}
 
-	// judge primary
-	primaryKeyCnt := 0
+	attrNameMap := make(map[string]bool)
+	totalSize := 0
 	for i := 0; i < len(attrList); i++ {
-		if attrList[i].IsPrimary {
-			primaryKeyCnt += 1
+		// check if it's too big a record
+		totalSize += attrList[i].AttrSize + 1
+		// check name duplicated by the way
+		if _, found := attrNameMap[ByteArray24tostr(attrList[i].AttrName)]; found {
+			return errorutil.ErrorDbSysCreatetTableWithDupAttr
+		} else {
+			attrNameMap[ByteArray24tostr(attrList[i].AttrName)] = true
 		}
 	}
-
+	if totalSize >= types.PageSize-int(unsafe.Sizeof(types.RecordHeaderPage{})) {
+		return errorutil.ErrorDbSysBigRecordNotSupported
+	}
 	if len(attrList) >= types.MaxAttrNums {
 		return errorutil.ErrorDbSysMaxAttrExceeded
 	}
-	if primaryKeyCnt >= 2 {
-		return errorutil.ErrorDbSysPrimaryKeyCntExceed
-	}
 
+	// start to create file after all the checking above
 	curSize := 0
 
 	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
+
 	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
+
 	defer func() {
-		if err := m.relManager.CloseFile(tableMetaFile.Filename); err != nil {
-			log.V(log.DbSysLevel).Error(err)
+		if err1 := m.relManager.CloseFile(tableMetaFile.Filename); err1 != nil {
+			log.V(log.DbSysLevel).Error(err1)
+			panic(0)
 		}
 		m.rels[relName] = nil
 	}()
 
-	// add record to tableMetaFile todo check name duplicated?
+	// add record to tableMetaFile
 	for i := 0; i < len(attrList); i++ {
 		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
 		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
 		log.Debugf("%v %v %v", record.RecordData2TrimmedStringWithOffset(attrList[i].AttrName[:], 0), attrList[i].AttrSize, attrList[i].AttrOffset)
 		if err != nil {
-			return err
+			panic(0)
 		}
 		curSize += attrList[i].AttrSize + 1 // additional null flag bit
 	}
@@ -180,10 +193,13 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 	// insert relation to dbMetaFile
 	_, _ = m.dbMeta.InsertRec(types.PointerToByteSlice(unsafe.Pointer(
 		&RelInfo{
-			relName:    strTo24ByteArray(relName),
-			recordSize: curSize,
-			idxCount:   0,
-			attrCount:  len(attrList),
+			relName:      strTo24ByteArray(relName),
+			recordSize:   curSize,
+			attrCount:    len(attrList),
+			nextIndexNo:  -1,
+			indexCount:   0,
+			primaryCount: 0,
+			foreignCount: 0,
 		}), RelInfoSize))
 
 	// create table record file
@@ -191,10 +207,10 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return err
 	}
 
-	// create constraint file todo
-	//if err := m.relManager.CreateFile(getTableConstraintFileName(relName), ConstraintInfoSize); err != nil {
-	//	return err
-	//}
+	// create table index file
+	if err := m.relManager.CreateFile(getTableIdxFileName(relName), int(unsafe.Sizeof(IndexInfo{}))); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -202,8 +218,14 @@ func (m *Manager) DropTable(relName string) error {
 	if !m.DbSelected() {
 		return errorutil.ErrorDbSysDbNotSelected
 	}
+	if _, found := m.rels[relName]; !found {
+		return errorutil.ErrorDbSysTableNotExisted
+	}
+
 	_ = os.Remove(getTableMetaFileName(relName))
+	_ = os.Remove(getTableIdxFileName(relName))
 	_ = os.Remove(getTableConstraintFileName(relName))
+	_ = os.Remove(getTableDataFileName(relName))
 
 	recList, _ := m.dbMeta.GetFilteredRecList(record.FilterCond{
 		AttrSize:   types.MaxNameSize,
@@ -213,70 +235,4 @@ func (m *Manager) DropTable(relName string) error {
 	})
 	// ToDo add constraint when deleting
 	return m.dbMeta.DeleteRec(recList[0].Rid)
-}
-
-// GetAttrInfoMap used for create fast map to accelerate get attribute
-func (m *Manager) GetAttrInfoMap(relName string) AttrInfoMap {
-
-	// m.rels must found, as it has been guaranteed in parent calls
-	if infoMap, _ := m.rels[relName]; infoMap != nil {
-		return infoMap
-	} else {
-		infoMap = m.buildAttrInfoMap(relName)
-		m.rels[relName] = infoMap
-		return infoMap
-	}
-}
-
-func (m *Manager) buildAttrInfoMap(relName string) AttrInfoMap {
-	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
-	defer m.relManager.CloseFile(fileHandle.Filename)
-	if err != nil {
-		// once build attrName info map is recalled, it must be existed
-		panic(0)
-	}
-	attrInfoMap := make(map[string]*parser.AttrInfo, 0)
-	var rawAttrList = fileHandle.GetRecList()
-	for _, rawAttr := range rawAttrList {
-		attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
-		attrInfoMap[ByteArray24tostr(attr.AttrName)] = attr
-	}
-	return attrInfoMap
-}
-
-// maybe it can be used for select & join
-func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string, condList []record.FilterCond) TemporalTable {
-	retTempTable := make(TemporalTable, 0)
-
-	attrInfoMap := m.GetAttrInfoMap(relName)
-
-	datafile, err := m.relManager.OpenFile(getTableDataFileName(relName))
-	if err != nil {
-		log.V(log.DbSysLevel).Error(errorutil.ErrorDbSysTableNotExisted)
-		return nil
-	}
-	defer m.relManager.CloseFile(datafile.Filename)
-
-	recordList := record.FilterOnRecList(datafile.GetRecList(), condList)
-	for _, attr := range attrNameList {
-		col := TableColumn{
-			relName:   relName,
-			attrName:  attr,
-			valueList: make([]parser.Value, 0),
-		}
-		offset := attrInfoMap[attr].AttrOffset
-		length := attrInfoMap[attr].AttrSize
-		attrType := attrInfoMap[attr].AttrType
-		for _, rec := range recordList {
-			if rec.Data[offset+length] == 1 {
-				attrType = types.NO_ATTR // mark null here
-			}
-			col.valueList = append(col.valueList, parser.NewValueFromByteSlice(rec.Data[offset:offset+length], attrType))
-		}
-		col.attrSize = length
-		col.attrType = attrType
-		col.nullAllowed = attrInfoMap[attr].NullAllowed
-		retTempTable = append(retTempTable, col)
-	}
-	return retTempTable
 }

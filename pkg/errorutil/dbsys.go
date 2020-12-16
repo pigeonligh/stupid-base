@@ -29,4 +29,14 @@ var (
 	ErrorDbSysForeignKeyExists = errors.New("foreign key exists")
 
 	ErrorDbSysRelationOrAttrNotExists = errors.New("relation or attr not exists")
+
+	ErrorDbSysCreatetTableWithDupAttr = errors.New("attr duplicated")
+
+	ErrorDbSysBigRecordNotSupported = errors.New("big record not supported")
+
+	ErrorDbSysColIndexAlreadyExisted = errors.New("column index already created")
+
+	ErrorDbSysIndexNameAlreadyExisted = errors.New("index name already created")
+
+	ErrorDbSysInvalidIndexName = errors.New("invalid idx name > 24")
 )

@@ -19,16 +19,104 @@ const (
 	TableDropConstraint
 )
 
-func (m *Manager) CreateIndex(relName string, attrList []string) {
-	//TODO
+func getIndexFilePrefix(relName string, attrList []string) string {
+	filename := relName
+	for _, attr := range attrList {
+		filename += "." + attr
+	}
+	return filename
 }
 
-func (m *Manager) DropIndex(relName string, attrList []string) {
-	// TODO
+func getIndexFileName(prefix string) string {
+	return prefix + ".index"
 }
 
-func (m *Manager) AddPrimaryKey(relName string, attrList []string) {
-	// TODO
+func (m *Manager) CreateIndex(idxName string, relName string, attrList []string) error {
+	if !m.checkTableAndAttrExistence(relName, attrList) {
+		return errorutil.ErrorDbSysRelationOrAttrNotExists
+	}
+	if len(idxName) > 24 {
+		return errorutil.ErrorDbSysInvalidIndexName
+	}
+
+	_, idxName2RidsMap := m.getIdxInfoMapWithRid(relName)
+	if _, found := idxName2RidsMap[idxName]; found {
+		return errorutil.ErrorDbSysIndexNameAlreadyExisted
+	}
+
+	attrInfoCollection := m.getAttrInfoDetailedCollection(relName)
+	for _, attr := range attrList {
+		if attrInfoCollection.infoMap[attr].IndexNo <= 0 {
+			return errorutil.ErrorDbSysColIndexAlreadyExisted
+		}
+	}
+
+	// insert each record rid to index file
+	dataFile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+	defer m.relManager.CloseFile(getTableDataFileName(relName))
+
+	_ = m.idxManager.CreateIndex(getIndexFileName(idxName))
+	idxFile, _ := m.idxManager.OpenIndex(getIndexFileName(idxName))
+	defer m.idxManager.CloseIndex(getIndexFileName(idxName))
+
+	for _, rec := range dataFile.GetRecList() {
+		_ = idxFile.InsertEntry(rec.Rid)
+	}
+
+	// update each attr and index file
+	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
+	relInfo := relInfoMap[relName]
+	relInfoRid := relInfoRidMap[relName]
+
+	for _, attr := range attrList {
+		attrInfo := attrInfoCollection.infoMap[attr]
+		attrRid := attrInfoCollection.ridMap[attr]
+		attrInfo.IndexNo = relInfo.nextIndexNo
+		m.updateAttrInfo(relName, attr, attrRid, attrInfo, false)
+		m.insertOrRemoveIndexInfo(relName, &IndexInfo{
+			indexNo:   relInfo.nextIndexNo,
+			indexName: strTo24ByteArray(idxName),
+			column:    strTo24ByteArray(attr),
+		}, true, nil)
+	}
+
+	relInfo.indexCount += 1
+	relInfo.nextIndexNo += 1
+	m.updateRelInfo(relName, relInfoRid, relInfo, false)
+	m.getAttrInfoMapViaCache(relName, true, attrInfoCollection.infoMap)
+	return nil
+}
+
+func (m *Manager) DropIndex(idxName string) {
+
+}
+
+func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
+
+	if !m.DbSelected() {
+		return errorutil.ErrorDbSysDbNotSelected
+	}
+	if !m.checkTableAndAttrExistence(relName, attrList) {
+		return errorutil.ErrorDbSysRelationOrAttrNotExists
+	}
+	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
+	if relInfoMap[relName].primaryCount >= 1 {
+		return errorutil.ErrorDbSysPrimaryKeyCntExceed
+	}
+	if rec, err := m.dbMeta.GetRec(relInfoRidMap[relName]); err != nil {
+		panic(0)
+	} else {
+		// todo check duplicated for primary key
+		// index may already exists, won't create
+		if err := m.CreateIndex(PrimaryKeyIndexName, relName, attrList); err != nil {
+			return err
+		}
+		// otherwise update relation info
+		rel := (*RelInfo)(types.ByteSliceToPointer(rec.Data))
+		rel.primaryCount += len(attrList)
+		m.dbMeta.ForcePage(relInfoRidMap[relName].Page)
+	}
+	return nil
 }
 
 func (m *Manager) DropPrimaryKey(relName string) {
@@ -64,14 +152,13 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 		return errorutil.ErrorDbSysForeignKeyExists
 	}
 
-	for i := 0; i < len(srcAttrList); i++ {
-		if !m.CheckTableAndAttrExistence(srcRel, srcAttrList[i]) {
-			return errorutil.ErrorDbSysRelationOrAttrNotExists
-		}
-		if !m.CheckTableAndAttrExistence(dstRel, dstAttrList[i]) {
-			return errorutil.ErrorDbSysRelationOrAttrNotExists
-		}
+	if !m.checkTableAndAttrExistence(srcRel, srcAttrList) {
+		return errorutil.ErrorDbSysRelationOrAttrNotExists
 	}
+	if !m.checkTableAndAttrExistence(dstRel, dstAttrList) {
+		return errorutil.ErrorDbSysRelationOrAttrNotExists
+	}
+
 	// todo check value boundary, index query is a must
 
 	// write back
@@ -98,18 +185,4 @@ func (m *Manager) AddColumn(fkName string) {
 func (m *Manager) DropColumn(relName string, attrName string) {
 	// TODO
 	// check foreign constraint
-}
-
-func (m *Manager) CheckTableAndAttrExistence(relName string, attrName string) bool {
-	if len(m.dbSelected) == 0 {
-		panic(0)
-	}
-	if _, found := m.rels[relName]; !found {
-		return false
-	}
-	attrInfoMap := m.GetAttrInfoMap(relName)
-	if _, found := attrInfoMap[attrName]; !found {
-		return false
-	}
-	return true
 }

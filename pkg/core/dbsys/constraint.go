@@ -23,7 +23,7 @@ const FkFileName = "FOREIGN_KEY_FILE"
 
 // ADD CONSTRAINT fkName FOREIGN KEY (columnList) REFERENCES tableName(columnList)
 type ConstraintForeignInfo struct {
-	fkName  [types.MaxNameSize]byte // foreign key name, specified by user
+	fkName  [types.MaxNameSize]byte // foreign key name, specified by user or random generated
 	relSrc  [types.MaxNameSize]byte // src table (referencing)
 	attrSrc [types.MaxNameSize]byte // attrName in src table
 	relDst  [types.MaxNameSize]byte // foreign table(relation) name

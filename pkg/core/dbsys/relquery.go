@@ -12,7 +12,7 @@ import (
 func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string, condList []record.FilterCond) TemporalTable {
 	retTempTable := make(TemporalTable, 0)
 
-	attrInfoMap := m.getAttrInfoMapViaCache(relName, false)
+	attrInfoMap := m.getAttrInfoMapViaCache(relName, false, nil)
 
 	datafile, err := m.relManager.OpenFile(getTableDataFileName(relName))
 	if err != nil {

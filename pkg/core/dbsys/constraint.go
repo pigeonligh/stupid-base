@@ -3,6 +3,7 @@ package dbsys
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"unsafe"
 )
 
@@ -30,15 +31,34 @@ type ConstraintForeignInfo struct {
 	attrDst [types.MaxNameSize]byte // attrName in foreign table (must be primary)
 }
 
-const ConstraintPrimaryInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
-const PkFileName = "PRIMARY_KEY_FILE"
+//primary key will not be recorded use a file
+//const ConstraintPrimaryInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
+//const PkFileName = "PRIMARY_KEY_FILE"
+//
+//type ConstraintPrimaryInfo struct {
+//	relSrc  [types.MaxNameSize]byte // src table (referencing)
+//	attrSrc [types.MaxNameSize]byte // attrName in current table
+//}
 
-type ConstraintPrimaryInfo struct {
-	relSrc  [types.MaxNameSize]byte // src table (referencing)
-	attrSrc [types.MaxNameSize]byte // attrName in current table
-}
-
+// may be further implemented
 type ConstraintCheckInfo struct {
 	value  parser.Value
 	compOp types.OpType // must be a comparison op for check in constraint
+}
+
+func (m *Manager) checkDbTableAndAttrExistence(relName string, attrNameList []string) error {
+	if len(m.dbSelected) == 0 {
+		return errorutil.ErrorDbSysDbNotSelected
+	}
+	if _, found := m.rels[relName]; !found {
+		return errorutil.ErrorDbSysRelationNotExisted
+	}
+
+	attrInfoMap := m.getAttrInfoMapViaCache(relName, false, nil)
+	for _, attr := range attrNameList {
+		if _, found := attrInfoMap[attr]; !found {
+			return errorutil.ErrorDbSysAttrNotExisted
+		}
+	}
+	return nil
 }

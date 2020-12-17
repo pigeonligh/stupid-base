@@ -3,7 +3,6 @@ package dbsys
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"unsafe"
 )
 
@@ -135,23 +134,6 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 		fkMap:          pkMap,
 		col2idxNameMap: attrIndexMap,
 	}
-}
-
-func (m *Manager) checkDbTableAndAttrExistence(relName string, attrNameList []string) error {
-	if len(m.dbSelected) == 0 {
-		return errorutil.ErrorDbSysDbNotSelected
-	}
-	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDbSysRelationNotExisted
-	}
-
-	attrInfoMap := m.getAttrInfoMapViaCache(relName, false, nil)
-	for _, attr := range attrNameList {
-		if _, found := attrInfoMap[attr]; !found {
-			return errorutil.ErrorDbSysAttrNotExisted
-		}
-	}
-	return nil
 }
 
 // insert or delete, no update

@@ -15,7 +15,9 @@ var (
 
 	ErrorDbSysTableExisted = errors.New("table existed")
 
-	ErrorDbSysTableNotExisted = errors.New("table not existed")
+	ErrorDbSysRelationNotExisted = errors.New("table not existed")
+
+	ErrorDbSysAttrNotExisted = errors.New("table attribute not existed")
 
 	// some rules
 	ErrorDbSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
@@ -34,9 +36,12 @@ var (
 
 	ErrorDbSysBigRecordNotSupported = errors.New("big record not supported")
 
+	// index related
 	ErrorDbSysColIndexAlreadyExisted = errors.New("column index already created")
 
 	ErrorDbSysIndexNameAlreadyExisted = errors.New("index name already created")
+
+	ErrorDbSysIndexNameNotExisted = errors.New("index name not existed")
 
 	ErrorDbSysInvalidIndexName = errors.New("invalid idx name > 24")
 )

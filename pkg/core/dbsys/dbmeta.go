@@ -58,12 +58,12 @@ type RelInfo struct {
 }
 
 type IndexInfo struct {
-	indexNo   int
-	indexName [types.MaxNameSize]byte
-	column    [types.MaxNameSize]byte
+	idxNo   int
+	idxName [types.MaxNameSize]byte
+	col     [types.MaxNameSize]byte
 }
 
-// used for database query, since only some of the column are selected
+// used for database query, since only some of the col are selected
 type TemporalTable = []TableColumn
 type TableColumn struct {
 	relName     string

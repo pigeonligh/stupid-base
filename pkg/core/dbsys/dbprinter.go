@@ -68,7 +68,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 		return nil, errorutil.ErrorDbSysDbNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return nil, errorutil.ErrorDbSysTableNotExisted
+		return nil, errorutil.ErrorDbSysRelationNotExisted
 	}
 
 	// get attrName then header
@@ -163,7 +163,7 @@ type TablePrintInfo struct {
 	SizeList        []int
 	TypeList        []types.ValueType
 	NullList        []bool
-	ColWidMap       map[string]int    // column width is computed from every item in the table
+	ColWidMap       map[string]int    // col width is computed from every item in the table
 	VariantTypeList []types.ValueType // since table meta "Default" can be variant-type, so this field is needed
 	ShowingMeta     bool
 }
@@ -190,7 +190,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 	}
 	println("+")
 
-	// print content by iterating each row & column
+	// print content by iterating each row & col
 
 	for i, rec := range recordList {
 		str := ""
@@ -200,7 +200,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 				byteSlice := rec.Data[info.OffsetList[j] : info.OffsetList[j]+info.SizeList[j]]
 				switch {
 				case info.TypeList[j] == types.NO_ATTR:
-					// this is the Default column, which has no attribute
+					// this is the Default col, which has no attribute
 					str = data2StringByTypes(byteSlice, info.VariantTypeList[i])
 				case info.TableHeaderList[j] == "Type":
 					str = types.ValueTypeStringMap[*(*int)(types.ByteSliceToPointer(byteSlice))]
@@ -212,7 +212,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 				byteSlice := rec.Data[info.OffsetList[j] : info.OffsetList[j]+info.SizeList[j]]
 				if info.NullList[j] {
 					if rec.Data[info.OffsetList[j]+info.SizeList[j]] == 1 {
-						// a single column always takes up (size + 1 bit)
+						// a single col always takes up (size + 1 bit)
 						str = "NULL"
 					} else {
 						str = data2StringByTypes(byteSlice, info.TypeList[j])

@@ -16,7 +16,7 @@ func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string,
 
 	datafile, err := m.relManager.OpenFile(getTableDataFileName(relName))
 	if err != nil {
-		log.V(log.DbSysLevel).Error(errorutil.ErrorDbSysTableNotExisted)
+		log.V(log.DbSysLevel).Error(errorutil.ErrorDbSysRelationNotExisted)
 		return nil
 	}
 	defer m.relManager.CloseFile(datafile.Filename)

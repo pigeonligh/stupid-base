@@ -3,26 +3,12 @@ package dbsys
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"unsafe"
 )
 
-type AttrInfoMap map[string]*parser.AttrInfo
-type AttrInfoRidMap map[string]types.RID
-
 type RelInfoMap map[string]*RelInfo
 type RelInfoRidMap map[string]types.RID
-
-type IdxNo2InfoMap map[int]*IndexInfo
-type IdxName2RidsMap map[string][]types.RID
-
-type IdxNo2ColNameMap map[int][]string
-type AttrInfoDetailedCollection struct {
-	infoMap AttrInfoMap
-	ridMap  AttrInfoRidMap
-	pkMap   AttrInfoMap // primary key map
-	fkMap   AttrInfoMap // foreign key map
-	idxMap  IdxNo2ColNameMap
-}
 
 // getRelInfoMapWithRid used for create fast map to accelerate get relation
 func (m *Manager) getRelInfoMapWithRid() (RelInfoMap, RelInfoRidMap) {
@@ -38,24 +24,55 @@ func (m *Manager) getRelInfoMapWithRid() (RelInfoMap, RelInfoRidMap) {
 	return relInfoMap, relInfoRidMap
 }
 
-// getIdxInfoMapWithRid
-func (m *Manager) getIdxInfoMapWithRid(relName string) (IdxNo2InfoMap, IdxName2RidsMap) {
+type IdxNo2ColsMap map[int][]string
+type IdxName2ColsMap map[string][]string
+type IdxName2RidsMap map[string][]types.RID
+
+type IdxInfoDetailedCollection struct {
+	no2cols   IdxNo2ColsMap
+	name2cols IdxName2ColsMap
+	name2rids IdxName2RidsMap
+}
+
+func (m *Manager) getIdxDetailedInfoCollection(relName string) IdxInfoDetailedCollection {
 	// is checked opened before
-	idxNo2InfoMap := make(IdxNo2InfoMap, 0)
+	idxNo2ColsMap := make(IdxNo2ColsMap, 0)
+	idxName2ColsMap := make(IdxName2ColsMap, 0)
 	idxName2RidsMap := make(IdxName2RidsMap, 0)
 
 	fh, _ := m.relManager.OpenFile(getTableIdxFileName(relName))
 	var rawIdxList = fh.GetRecList()
 	for _, rawIdx := range rawIdxList {
 		idx := (*IndexInfo)(types.ByteSliceToPointer(rawIdx.Data))
-		idxName := ByteArray24tostr(idx.indexName)
+		idxName := ByteArray24tostr(idx.idxName)
+
 		if _, found := idxName2RidsMap[idxName]; !found {
 			idxName2RidsMap[idxName] = []types.RID{}
+			idxName2ColsMap[idxName] = []string{}
+			idxNo2ColsMap[idx.idxNo] = []string{}
 		}
 		idxName2RidsMap[idxName] = append(idxName2RidsMap[idxName], rawIdx.Rid)
-		idxNo2InfoMap[idx.indexNo] = idx
+		idxName2ColsMap[idxName] = append(idxName2ColsMap[idxName], ByteArray24tostr(idx.col))
+		idxNo2ColsMap[idx.idxNo] = append(idxNo2ColsMap[idx.idxNo], ByteArray24tostr(idx.col))
+
 	}
-	return idxNo2InfoMap, idxName2RidsMap
+	return IdxInfoDetailedCollection{
+		no2cols:   idxNo2ColsMap,
+		name2cols: idxName2ColsMap,
+		name2rids: idxName2RidsMap,
+	}
+}
+
+type AttrInfoMap map[string]*parser.AttrInfo
+type AttrInfoRidMap map[string]types.RID
+
+type Col2IdxNoMap map[string]int
+type AttrInfoDetailedCollection struct {
+	infoMap        AttrInfoMap
+	ridMap         AttrInfoRidMap
+	pkMap          AttrInfoMap // primary key map
+	fkMap          AttrInfoMap // foreign key map
+	col2idxNameMap Col2IdxNoMap
 }
 
 // getAttrInfoMapViaCache used for create fast map to accelerate get attribute
@@ -93,51 +110,48 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 	pkMap := make(AttrInfoMap, 0)
 	fkMap := make(AttrInfoMap, 0)
 	attrInfoRidMap := make(AttrInfoRidMap, 0)
-	attrIndexMap := make(IdxNo2ColNameMap, 0)
+	attrIndexMap := make(Col2IdxNoMap, 0)
 
 	var rawAttrList = fileHandle.GetRecList()
 	for _, rawAttr := range rawAttrList {
 		attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
-		attrInfoMap[ByteArray24tostr(attr.AttrName)] = attr
-		attrInfoRidMap[ByteArray24tostr(attr.AttrName)] = rawAttr.Rid
+		attrName := ByteArray24tostr(attr.AttrName)
+		attrInfoMap[attrName] = attr
+		attrInfoRidMap[attrName] = rawAttr.Rid
 		if attr.IsPrimary {
-			pkMap[ByteArray24tostr(attr.AttrName)] = attr
+			pkMap[attrName] = attr
 		}
 		if attr.HasForeignConstraint {
-			fkMap[ByteArray24tostr(attr.AttrName)] = attr
+			fkMap[attrName] = attr
 		}
 		if attr.IndexNo != -1 {
-			if _, found := attrIndexMap[attr.IndexNo]; !found {
-				attrIndexMap[attr.IndexNo] = make([]string, 0)
-				attrIndexMap[attr.IndexNo] = append(attrIndexMap[attr.IndexNo], ByteArray24tostr(attr.AttrName))
-			} else {
-				attrIndexMap[attr.IndexNo] = append(attrIndexMap[attr.IndexNo], ByteArray24tostr(attr.AttrName))
-			}
+			attrIndexMap[attrName] = attr.IndexNo
 		}
 	}
 	return AttrInfoDetailedCollection{
-		infoMap: attrInfoMap,
-		ridMap:  attrInfoRidMap,
-		pkMap:   pkMap,
-		fkMap:   pkMap,
-		idxMap:  attrIndexMap,
+		infoMap:        attrInfoMap,
+		ridMap:         attrInfoRidMap,
+		pkMap:          pkMap,
+		fkMap:          pkMap,
+		col2idxNameMap: attrIndexMap,
 	}
 }
 
-func (m *Manager) checkTableAndAttrExistence(relName string, attrNameList []string) bool {
+func (m *Manager) checkDbTableAndAttrExistence(relName string, attrNameList []string) error {
 	if len(m.dbSelected) == 0 {
-		panic(0)
+		return errorutil.ErrorDbSysDbNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return false
+		return errorutil.ErrorDbSysRelationNotExisted
 	}
+
 	attrInfoMap := m.getAttrInfoMapViaCache(relName, false, nil)
 	for _, attr := range attrNameList {
 		if _, found := attrInfoMap[attr]; !found {
-			return false
+			return errorutil.ErrorDbSysAttrNotExisted
 		}
 	}
-	return true
+	return nil
 }
 
 // insert or delete, no update
@@ -176,7 +190,7 @@ func (m *Manager) updateRelInfo(relName string, relRID types.RID, relInfo *RelIn
 	}
 }
 
-func (m *Manager) updateAttrInfo(relName string, attrName string, attrRID types.RID, attrInfo *parser.AttrInfo, remove bool) {
+func (m *Manager) updateAttrInfo(relName string, attrRID types.RID, attrInfo *parser.AttrInfo, remove bool) {
 	// removal constraint will be checked in the previous callers
 	if fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName)); err != nil {
 		panic(0)

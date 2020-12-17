@@ -32,15 +32,16 @@ func getIndexFileName(prefix string) string {
 }
 
 func (m *Manager) CreateIndex(idxName string, relName string, attrList []string) error {
-	if !m.checkTableAndAttrExistence(relName, attrList) {
-		return errorutil.ErrorDbSysRelationOrAttrNotExists
+	// todo check duplicated for primary key
+	if err := m.checkDbTableAndAttrExistence(relName, attrList); err != nil {
+		return err
 	}
 	if len(idxName) > 24 {
 		return errorutil.ErrorDbSysInvalidIndexName
 	}
 
-	_, idxName2RidsMap := m.getIdxInfoMapWithRid(relName)
-	if _, found := idxName2RidsMap[idxName]; found {
+	idxInfoCollection := m.getIdxDetailedInfoCollection(relName)
+	if _, found := idxInfoCollection.name2cols[idxName]; found {
 		return errorutil.ErrorDbSysIndexNameAlreadyExisted
 	}
 
@@ -72,11 +73,11 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string)
 		attrInfo := attrInfoCollection.infoMap[attr]
 		attrRid := attrInfoCollection.ridMap[attr]
 		attrInfo.IndexNo = relInfo.nextIndexNo
-		m.updateAttrInfo(relName, attr, attrRid, attrInfo, false)
+		m.updateAttrInfo(relName, attrRid, attrInfo, false)
 		m.insertOrRemoveIndexInfo(relName, &IndexInfo{
-			indexNo:   relInfo.nextIndexNo,
-			indexName: strTo24ByteArray(idxName),
-			column:    strTo24ByteArray(attr),
+			idxNo:   relInfo.nextIndexNo,
+			idxName: strTo24ByteArray(idxName),
+			col:     strTo24ByteArray(attr),
 		}, true, nil)
 	}
 
@@ -87,8 +88,44 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string)
 	return nil
 }
 
-func (m *Manager) DropIndex(idxName string) {
+func (m *Manager) DropIndex(relName string, idxName string) error {
+	// 1. update relation info idxcount
+	// 2. update each attr info
+	// 3. remove from index file
+	if !m.DbSelected() {
+		return errorutil.ErrorDbSysDbNotSelected
+	}
 
+	// 3
+	idxDetailedInfoCollection := m.getIdxDetailedInfoCollection(relName)
+	if rids, found := idxDetailedInfoCollection.name2rids[idxName]; !found {
+		// check existence
+		return errorutil.ErrorDbSysIndexNameNotExisted
+	} else {
+		idxfh, err := m.relManager.OpenFile(getTableIdxFileName(relName))
+		if err != nil {
+			panic(0)
+		}
+		defer m.relManager.CloseFile(idxfh.Filename)
+		idxfh.DeleteRecByBatch(rids)
+	}
+
+	// 1
+	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
+	relInfo := relInfoMap[relName]
+	relInfo.indexCount -= 1
+	m.updateRelInfo(relName, relInfoRidMap[relName], relInfo, false)
+
+	// 2
+	attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(relName)
+	for _, attr := range idxDetailedInfoCollection.name2cols[idxName] {
+		attrInfo := attrInfoDetailedCollection.infoMap[attr]
+		attrRid := attrInfoDetailedCollection.ridMap[attr]
+		attrInfo.IndexNo = -1
+		m.updateAttrInfo(relName, attrRid, attrInfo, false)
+	}
+
+	return nil
 }
 
 func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
@@ -96,8 +133,8 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 	if !m.DbSelected() {
 		return errorutil.ErrorDbSysDbNotSelected
 	}
-	if !m.checkTableAndAttrExistence(relName, attrList) {
-		return errorutil.ErrorDbSysRelationOrAttrNotExists
+	if err := m.checkDbTableAndAttrExistence(relName, attrList); err != nil {
+		return err
 	}
 	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
 	if relInfoMap[relName].primaryCount >= 1 {
@@ -106,7 +143,6 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 	if rec, err := m.dbMeta.GetRec(relInfoRidMap[relName]); err != nil {
 		panic(0)
 	} else {
-		// todo check duplicated for primary key
 		// index may already exists, won't create
 		if err := m.CreateIndex(PrimaryKeyIndexName, relName, attrList); err != nil {
 			return err
@@ -124,11 +160,14 @@ func (m *Manager) DropPrimaryKey(relName string) {
 }
 
 func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []string, dstRel string, dstAttrList []string) error {
-	if len(m.dbSelected) == 0 {
-		return errorutil.ErrorDbSysDbNotSelected
-	}
 	if len(srcAttrList) != len(dstAttrList) {
 		return errorutil.ErrorDbSysForeignKeyLenNotMatch
+	}
+	if err := m.checkDbTableAndAttrExistence(srcRel, srcAttrList); err != nil {
+		return err
+	}
+	if err := m.checkDbTableAndAttrExistence(dstRel, dstAttrList); err != nil {
+		return err
 	}
 
 	fkFile, err := m.relManager.OpenFile(FkFileName)
@@ -150,13 +189,6 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	filterCond.Value.FromStr(fkName)
 	if len(record.FilterOnRecList(rawFKList, []record.FilterCond{filterCond})) == 0 {
 		return errorutil.ErrorDbSysForeignKeyExists
-	}
-
-	if !m.checkTableAndAttrExistence(srcRel, srcAttrList) {
-		return errorutil.ErrorDbSysRelationOrAttrNotExists
-	}
-	if !m.checkTableAndAttrExistence(dstRel, dstAttrList) {
-		return errorutil.ErrorDbSysRelationOrAttrNotExists
 	}
 
 	// todo check value boundary, index query is a must

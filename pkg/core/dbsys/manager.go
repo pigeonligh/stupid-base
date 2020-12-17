@@ -219,7 +219,7 @@ func (m *Manager) DropTable(relName string) error {
 		return errorutil.ErrorDbSysDbNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDbSysTableNotExisted
+		return errorutil.ErrorDbSysRelationNotExisted
 	}
 
 	_ = os.Remove(getTableMetaFileName(relName))

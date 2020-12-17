@@ -7,13 +7,12 @@ import (
 	"unsafe"
 )
 
-type ConstraintType int
-
-const (
-	ConstraintPrimary ConstraintType = iota
-	ConstraintForeign
-	ConstraintCheck
-)
+//type ConstraintType int
+//const (
+//	ConstraintPrimary ConstraintType = iota
+//	ConstraintForeign
+//	ConstraintCheck
+//)
 
 type ConstraintInfo struct {
 	// a temporary placeholder
@@ -54,10 +53,12 @@ func (m *Manager) checkDbTableAndAttrExistence(relName string, attrNameList []st
 		return errorutil.ErrorDbSysRelationNotExisted
 	}
 
-	attrInfoMap := m.getAttrInfoMapViaCache(relName, false, nil)
-	for _, attr := range attrNameList {
-		if _, found := attrInfoMap[attr]; !found {
-			return errorutil.ErrorDbSysAttrNotExisted
+	if attrNameList != nil {
+		attrInfoMap := m.getAttrInfoMapViaCacheOrReload(relName, false, nil)
+		for _, attr := range attrNameList {
+			if _, found := attrInfoMap[attr]; !found {
+				return errorutil.ErrorDbSysAttrNotExisted
+			}
 		}
 	}
 	return nil

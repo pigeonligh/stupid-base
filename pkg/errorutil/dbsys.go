@@ -26,13 +26,13 @@ var (
 
 	ErrorDbSysPrimaryKeyCntExceed = errors.New("primary key cnt exceed")
 
+	ErrorDbSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
+
 	ErrorDbSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
 
 	ErrorDbSysForeignKeyExists = errors.New("foreign key exists")
 
-	ErrorDbSysRelationOrAttrNotExists = errors.New("relation or attr not exists")
-
-	ErrorDbSysCreatetTableWithDupAttr = errors.New("attr duplicated")
+	ErrorDbSysCreateTableWithDupAttr = errors.New("attr duplicated")
 
 	ErrorDbSysBigRecordNotSupported = errors.New("big record not supported")
 

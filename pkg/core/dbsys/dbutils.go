@@ -74,11 +74,11 @@ type AttrInfoDetailedCollection struct {
 	col2idxNameMap Col2IdxNoMap
 }
 
-// getAttrInfoMapViaCache used for create fast map to accelerate get attribute
+// getAttrInfoMapViaCacheOrReload used for create fast map to accelerate get attribute
 // return nothing when *reload* parameter is specified
 // if attrInfoMap is provided as non-nil, then won't further call m.getAttrInfoDetailedCollection
 // which is a heavy function
-func (m *Manager) getAttrInfoMapViaCache(relName string, reload bool, attrInfoMap AttrInfoMap) AttrInfoMap {
+func (m *Manager) getAttrInfoMapViaCacheOrReload(relName string, reload bool, attrInfoMap AttrInfoMap) AttrInfoMap {
 
 	// m.rels must found, as it has been guaranteed in parent calls
 	// dose not consider update

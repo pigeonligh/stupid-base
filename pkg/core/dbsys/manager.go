@@ -152,7 +152,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		totalSize += attrList[i].AttrSize + 1
 		// check name duplicated by the way
 		if _, found := attrNameMap[ByteArray24tostr(attrList[i].AttrName)]; found {
-			return errorutil.ErrorDbSysCreatetTableWithDupAttr
+			return errorutil.ErrorDbSysCreateTableWithDupAttr
 		} else {
 			attrNameMap[ByteArray24tostr(attrList[i].AttrName)] = true
 		}

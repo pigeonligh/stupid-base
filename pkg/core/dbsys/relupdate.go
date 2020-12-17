@@ -84,7 +84,7 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string)
 	relInfo.indexCount += 1
 	relInfo.nextIndexNo += 1
 	m.updateRelInfo(relName, relInfoRid, relInfo, false)
-	m.getAttrInfoMapViaCache(relName, true, attrInfoCollection.infoMap)
+	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoCollection.infoMap)
 	return nil
 }
 
@@ -129,10 +129,9 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 }
 
 func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
-
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
-	}
+	// 0. check primary exists
+	// 1. add primary count to dbmeta
+	// 2. update each attr info
 	if err := m.checkDbTableAndAttrExistence(relName, attrList); err != nil {
 		return err
 	}
@@ -140,6 +139,8 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 	if relInfoMap[relName].primaryCount >= 1 {
 		return errorutil.ErrorDbSysPrimaryKeyCntExceed
 	}
+
+	// 1
 	if rec, err := m.dbMeta.GetRec(relInfoRidMap[relName]); err != nil {
 		panic(0)
 	} else {
@@ -150,13 +151,60 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 		// otherwise update relation info
 		rel := (*RelInfo)(types.ByteSliceToPointer(rec.Data))
 		rel.primaryCount += len(attrList)
-		m.dbMeta.ForcePage(relInfoRidMap[relName].Page)
+		m.dbMeta.ForcePage(rec.Rid.Page)
 	}
+
+	// 2
+	attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(relName)
+	for _, attr := range attrList {
+		attrInfo := attrInfoDetailedCollection.infoMap[attr]
+		attrRid := attrInfoDetailedCollection.ridMap[attr]
+		attrInfo.IsPrimary = true
+		m.updateAttrInfo(relName, attrRid, attrInfo, false)
+	}
+	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoDetailedCollection.infoMap)
 	return nil
 }
 
-func (m *Manager) DropPrimaryKey(relName string) {
-	// TODO
+func (m *Manager) DropPrimaryKey(relName string) error{
+	// 0. check primary exists
+	// 1. set primary count to 0
+	// 2. update each attr info
+
+	// 0
+	if err := m.checkDbTableAndAttrExistence(relName, nil); err != nil {
+		return err
+	}
+	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
+	if relInfoMap[relName].primaryCount == 0 {
+		return errorutil.ErrorDbSysPrimaryKeyDoNotExist
+	}
+
+	// 1
+	if rec, err := m.dbMeta.GetRec(relInfoRidMap[relName]); err != nil {
+		panic(0)
+	} else {
+		// must remove index first
+		if err := m.DropIndex(relName, PrimaryKeyIndexName); err != nil {
+			return err
+		}
+		// otherwise update relation info
+		rel := (*RelInfo)(types.ByteSliceToPointer(rec.Data))
+		rel.primaryCount = 0
+		m.dbMeta.ForcePage(rec.Rid.Page)
+	}
+
+	// 2
+	attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(relName)
+	for key := range attrInfoDetailedCollection.pkMap {
+		attrInfo := attrInfoDetailedCollection.infoMap[key]
+		attrRid := attrInfoDetailedCollection.ridMap[key]
+		attrInfo.IsPrimary = false
+		m.updateAttrInfo(relName, attrRid, attrInfo, false)
+	}
+	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoDetailedCollection.infoMap)
+
+	return nil
 }
 
 func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []string, dstRel string, dstAttrList []string) error {

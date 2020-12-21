@@ -19,10 +19,10 @@ type Operator struct {
 	headerModified bool
 	initialized    bool
 
-	attr *AttrDefine
+	attr *types.AttrSet
 }
 
-func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (*Operator, error) {
+func NewOperator(filename string, record *record.FileHandle, attr *types.AttrSet) (*Operator, error) {
 	// Make sure the file is created, please
 	handle, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
@@ -38,7 +38,7 @@ func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (
 	currentHeader.FirstFreeValue = types.RID{}
 	currentHeader.Pages = 1
 	currentHeader.RootPage = 0
-	attr.writeAttrToHeader(currentHeader)
+	attr.WriteAttrToHeader(currentHeader)
 	if err := handle.MarkDirty(0); err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (
 		headerPage:     *currentHeader,
 		headerModified: false,
 		initialized:    true,
-		attr:           loadAttrFromHeader(currentHeader),
+		attr:           types.LoadAttrFromHeader(currentHeader),
 	}, nil
 }
 
@@ -77,7 +77,7 @@ func LoadOperator(filename string, record *record.FileHandle) (*Operator, error)
 		headerPage:     copiedHeader,
 		headerModified: false,
 		initialized:    true,
-		attr:           loadAttrFromHeader(&copiedHeader),
+		attr:           types.LoadAttrFromHeader(&copiedHeader),
 	}, nil
 }
 
@@ -225,7 +225,7 @@ func (oper *Operator) GetAttr(rid types.RID) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return oper.attr.dataToAttrs(rid, record.Data), nil
+	return oper.attr.DataToAttrs(rid, record.Data), nil
 }
 
 func (oper *Operator) createFreeValues() error {

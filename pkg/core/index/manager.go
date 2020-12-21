@@ -5,6 +5,7 @@ import (
 
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
@@ -28,7 +29,7 @@ func GetInstance() *Manager {
 	return instance
 }
 
-func (m *Manager) CreateIndex(filename string, attr AttrDefine) error {
+func (m *Manager) CreateIndex(filename string, attr types.AttrSet) error {
 	var err error
 	if err = m.storage.CreateFile(filename); err != nil {
 		return err

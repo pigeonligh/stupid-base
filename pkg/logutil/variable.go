@@ -25,4 +25,7 @@ const (
 
 	// IndexLevel
 	IndexLevel
+
+	// QueryLanguageLevel
+	QueryLanguageLevel
 )

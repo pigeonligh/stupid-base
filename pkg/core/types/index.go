@@ -20,15 +20,24 @@ const (
 	IMValuePageSize = PageDataSize - IMValuePageHeaderSize
 
 	IMValueItem = IMValuePageSize / int(unsafe.Sizeof(IMValue{}))
+
+	IMAttrSize = (PageDataSize - int(unsafe.Sizeof(IndexHeaderPageWithoutAttr{})))
+	IMAttrItem = IMAttrSize / int(unsafe.Sizeof(AttrInfo{}))
 )
 
-type IndexHeaderPage struct {
+type IndexHeaderPageWithoutAttr struct {
 	FileHeaderPage
 
 	FirstFreeValue RID
 	RootPage       PageNum
 
-	// TODO: offsets
+	AttrSize int
+}
+
+type IndexHeaderPage struct {
+	IndexHeaderPageWithoutAttr
+
+	Attrs [IMAttrItem]AttrInfo
 }
 
 type IMValue struct {
@@ -39,7 +48,7 @@ type IMValue struct {
 type IMValuePage struct {
 	PageHeader
 
-	Values []IMValue
+	Values [IMValueItem]IMValue
 }
 
 type IMNodePageHeader struct {

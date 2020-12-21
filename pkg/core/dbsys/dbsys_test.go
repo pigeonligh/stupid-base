@@ -1,11 +1,12 @@
 package dbsys
 
 import (
+	"testing"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"testing"
 )
 
 func TestDbSys(t *testing.T) {
@@ -42,31 +43,37 @@ func TestDbSys(t *testing.T) {
 	//rel3 = "rel3"
 	attrInfoList := []parser.AttrInfo{
 		{
-			AttrName:             strTo24ByteArray("attr1"),
-			RelName:              strTo24ByteArray(rel1),
-			AttrSize:             8,
-			AttrType:             types.INT,
-			IndexNo:              0,
-			NullAllowed:          false,
-			IsPrimary:            false,
-			HasForeignConstraint: false,
+			AttrName: strTo24ByteArray("attr1"),
+			RelName:  strTo24ByteArray(rel1),
+			AttrInfo: types.AttrInfo{
+				AttrSize:             8,
+				AttrType:             types.INT,
+				IndexNo:              0,
+				NullAllowed:          false,
+				IsPrimary:            false,
+				HasForeignConstraint: false,
+			},
 		},
 		{
-			AttrName:             strTo24ByteArray("attr2"),
-			RelName:              strTo24ByteArray(rel1),
-			AttrSize:             8,
-			AttrType:             types.FLOAT,
-			IndexNo:              0,
-			NullAllowed:          true,
-			IsPrimary:            false,
-			HasForeignConstraint: false,
+			AttrName: strTo24ByteArray("attr2"),
+			RelName:  strTo24ByteArray(rel1),
+			AttrInfo: types.AttrInfo{
+				AttrSize:             8,
+				AttrType:             types.FLOAT,
+				IndexNo:              0,
+				NullAllowed:          true,
+				IsPrimary:            false,
+				HasForeignConstraint: false,
+			},
 		},
 		{
 			AttrName: strTo24ByteArray("attr3"),
 			RelName:  strTo24ByteArray(rel1),
-			AttrSize: 24,
-			AttrType: types.STRING,
-			IndexNo:  0,
+			AttrInfo: types.AttrInfo{
+				AttrSize: 24,
+				AttrType: types.STRING,
+				IndexNo:  0,
+			},
 		},
 	}
 	if err := manager.CreateTable(rel1, attrInfoList, []ConstraintInfo{}); err != nil {

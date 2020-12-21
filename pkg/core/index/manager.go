@@ -3,6 +3,7 @@ package index
 import (
 	"sync"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
@@ -17,8 +18,8 @@ var once sync.Once
 
 func GetInstance() *Manager {
 	once.Do(func() {
-		log.V(log.IndexLavel).Info("Index Manager starts to initialize.")
-		defer log.V(log.IndexLavel).Info("Index Manager has been initialized.")
+		log.V(log.IndexLevel).Info("Index Manager starts to initialize.")
+		defer log.V(log.IndexLevel).Info("Index Manager has been initialized.")
 		instance = &Manager{
 			storage: storage.GetInstance(),
 			files:   make(map[string]*FileHandle),
@@ -27,22 +28,56 @@ func GetInstance() *Manager {
 	return instance
 }
 
-func (m *Manager) CreateIndex(filename string) error {
-	// TODO
-	return nil
+func (m *Manager) CreateIndex(filename string, attr AttrDefine) error {
+	var err error
+	if err = m.storage.CreateFile(filename); err != nil {
+		return err
+	}
+	_, err = NewOperator(filename, nil, &attr)
+	return err
 }
 
-func (m *Manager) OpenIndex(filename string) (*FileHandle, error) {
-	// TODO
-	return nil, nil
+func (m *Manager) OpenIndex(filename string, record *record.FileHandle) (*FileHandle, error) {
+	if file, found := m.files[filename]; found {
+		// TODO: should return warn for open file which is opened
+		log.V(log.IndexLevel).Infof("OpenFile: %v has already opened! ", filename)
+		return file, nil
+	}
+	// IM_FileHandle
+	oper, err := LoadOperator(filename, record)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := NewFileHandle(oper)
+	if err != nil {
+		return nil, err
+	}
+	log.V(log.IndexLevel).Infof("OpenFile succeeded: %v", filename)
+	m.files[filename] = handle
+	return handle, nil
 }
 
-func (m *Manager) CloseIndex(efilename string) error {
-	// TODO
+func (m *Manager) CloseIndex(filename string) error {
+	if handle, found := m.files[filename]; found {
+		if err := handle.Close(); err != nil {
+			return err
+		}
+		delete(m.files, filename)
+		log.V(log.IndexLevel).Infof("CloseFile succeeded: %v", filename)
+		return m.storage.CloseFile(filename)
+	}
 	return nil
 }
 
 func (m *Manager) DestroyIndex(filename string) error {
-	// TODO
+	if _, found := m.files[filename]; found {
+		// TODO: should return warn for open file which is opened
+		log.V(log.IndexLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
+		return nil
+	}
+	if err := m.storage.DestroyFile(filename); err != nil {
+		return err
+	}
+	log.V(log.IndexLevel).Infof("DestroyFile succeeded: %v", filename)
 	return nil
 }

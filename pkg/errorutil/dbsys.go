@@ -28,9 +28,13 @@ var (
 
 	ErrorDbSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
+
+	// foreign key
 	ErrorDbSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
 
 	ErrorDbSysForeignKeyExists = errors.New("foreign key exists")
+
+	ErrorDbSysFkNotRefPk = errors.New("foreign key not reference primary key")
 
 	ErrorDbSysCreateTableWithDupAttr = errors.New("attr duplicated")
 

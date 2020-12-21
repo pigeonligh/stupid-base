@@ -208,6 +208,10 @@ func (m *Manager) DropPrimaryKey(relName string) error{
 }
 
 func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []string, dstRel string, dstAttrList []string) error {
+	// 1. check table&attr existence
+	// 2. check fk constraint existence
+	// 3. check is primary key
+	// 4. if it's a primary key already? can a primary key reference other foreign keys
 	if len(srcAttrList) != len(dstAttrList) {
 		return errorutil.ErrorDbSysForeignKeyLenNotMatch
 	}
@@ -225,21 +229,42 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	}
 
 	// check foreign key
-	rawFKList := fkFile.GetRecList()
 	filterCond := record.FilterCond{
 		AttrSize:   types.MaxNameSize,
 		AttrOffset: 0,
 		CompOp:     types.OpCompEQ,
-		Value: parser.Value{
-			ValueType: types.STRING,
-		},
+		Value: parser.NewValueFromStr(fkName),
 	}
-	filterCond.Value.FromStr(fkName)
-	if len(record.FilterOnRecList(rawFKList, []record.FilterCond{filterCond})) == 0 {
+	if len(record.FilterOnRecList(fkFile.GetRecList(), []record.FilterCond{filterCond})) == 0 {
 		return errorutil.ErrorDbSysForeignKeyExists
 	}
 
 	// todo check value boundary, index query is a must
+
+	// update attr info & check primary constraint
+	{
+		attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(dstRel)
+		for _, attr := range dstAttrList {
+			attrInfo := attrInfoDetailedCollection.infoMap[attr]
+			attrRid := attrInfoDetailedCollection.ridMap[attr]
+			attrInfo.HasForeignConstraint = true
+			if !attrInfo.IsPrimary {
+				return errorutil.ErrorDbSysFkNotRefPk
+			}
+			m.updateAttrInfo(dstRel, attrRid, attrInfo, false)
+		}
+		m.getAttrInfoMapViaCacheOrReload(dstRel, true, attrInfoDetailedCollection.infoMap)
+	}
+	{
+		attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(srcRel)
+		for _, attr := range srcAttrList {
+			attrInfo := attrInfoDetailedCollection.infoMap[attr]
+			attrRid := attrInfoDetailedCollection.ridMap[attr]
+			attrInfo.HasForeignConstraint = true
+			m.updateAttrInfo(srcRel, attrRid, attrInfo, false)
+		}
+		m.getAttrInfoMapViaCacheOrReload(srcRel, true, attrInfoDetailedCollection.infoMap)
+	}
 
 	// write back
 	for i := 0; i < len(srcAttrList); i++ {
@@ -252,17 +277,26 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 		constraint.relSrc = strTo24ByteArray(srcRel)
 		_, _ = fkFile.InsertRec(rec)
 	}
+
 	return nil
 }
 
 func (m *Manager) DropForeignKey(fkName string) {
+	// todo
+	// 1. check fk exists
+	// 2. remove from attr info
+	// 3. remove from foreign key file
+
 }
 
-func (m *Manager) AddColumn(fkName string) {
-
+func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInfo) {
+	// todo
+	// 1. check name exists
+	// 2. check info valid
+	// 3. check attrInfo valid (foreign key, primary key)
 }
 
 func (m *Manager) DropColumn(relName string, attrName string) {
 	// TODO
-	// check foreign constraint
+	// check foreign constraint, if has foreign constraint -> drop
 }

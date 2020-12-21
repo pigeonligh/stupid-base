@@ -22,4 +22,7 @@ const (
 
 	// DbSysLevel
 	DbSysLevel
+
+	// IndexLevel
+	IndexLevel
 )

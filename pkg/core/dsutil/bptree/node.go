@@ -5,103 +5,96 @@ Copyright (c) 2020, pigeonligh.
 package bptree
 
 import (
-	"unsafe"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
-const (
-	NodePageHeaderSize = 0
-	NodePageSize       = types.PageDataSize - NodePageHeaderSize
-	NodeMaxItem        = NodePageSize / 2 / unsafe.Sizeof(types.RID{})
-	NodeMinItem        = NodeMaxItem / 2
-)
-
 // TreeNode is node for bptree
 type TreeNode struct {
-	isLeaf   bool
-	size     int
-	capacity int
-
-	index     *types.RID
-	nextIndex *types.RID
-
-	keys    [NodeMaxItem]*types.RID
-	indexes [NodeMaxItem]*types.RID
-
-	children [NodeMaxItem]*TreeNode
+	types.IMNodePage
 }
 
-func NewTreeNode(index *types.RID, capacity int) *TreeNode {
+// NewTreeNode returns a tree node
+func NewTreeNode(index types.PageNum, capacity int) *TreeNode {
 	return &TreeNode{
-		index:     index.Clone(),
-		nextIndex: nil,
-		size:      0,
-		capacity:  capacity,
+		IMNodePage: types.IMNodePage{
+			IMNodePageHeader: types.IMNodePageHeader{
+				Index:     index,
+				NextIndex: types.InvalidPageNum,
+				PrevIndex: types.InvalidPageNum,
+				Size:      0,
+				Capacity:  capacity,
+			},
+		},
 	}
 }
 
+// NewTreeNodeByData returns a tree node
+func NewTreeNodeByData(data []byte) (*TreeNode, error) {
+	currentNodePage := (*types.IMNodePage)(types.ByteSliceToPointer(data))
+	return &TreeNode{
+		IMNodePage: *currentNodePage,
+	}, nil
+}
+
+func InitTreeNode(index types.PageNum, node *TreeNode, isLeaf bool) {
+	node.IsLeaf = isLeaf
+	node.Size = 0
+	node.Capacity = types.NodeMaxItem
+
+	node.Index = index
+	node.NextIndex = types.InvalidPageNum
+	node.PrevIndex = types.InvalidPageNum
+}
+
+// Close should be called when node is deleted
 func (tn *TreeNode) Close() {
-	tn.index = nil
-	tn.nextIndex = nil
-	for i := 0; i < tn.size; i++ {
-		tn.keys[i] = nil
-		tn.indexes[i] = nil
-		tn.children[i] = nil
+	tn.Index = types.InvalidPageNum
+	tn.NextIndex = types.InvalidPageNum
+	tn.PrevIndex = types.InvalidPageNum
+	for i := 0; i < tn.Size; i++ {
+		tn.Keys[i] = types.RID{}
+		tn.Indexes[i] = types.RID{}
 	}
 }
 
-func (tn *TreeNode) updateKeyByChildren(index int) error {
-	if index < 0 || index >= tn.size {
+func (tn *TreeNode) getChild(pos int, oper Operator) (*TreeNode, error) {
+	if pos < 0 || pos >= tn.Size {
+		return nil, errorutil.ErrorBpTreeNodeOutOfBound
+	}
+	return oper.LoadNode(tn.Indexes[pos].Page)
+}
+
+func (tn *TreeNode) updateKey(pos int, node *TreeNode) error {
+	if pos < 0 || pos >= tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	if tn.children[index] == nil {
-		return errorutil.ErrorBpTreeNodeChildrenNotFound
-	}
-	tn.keys[index] = tn.children[index].keys[0]
+	tn.Keys[pos] = node.Keys[0]
 	return nil
 }
 
-func (tn *TreeNode) prepareNode(index int, oper *Operator) error {
-	if index < 0 || index >= tn.size {
+func (tn *TreeNode) insertData(pos int, key, index types.RID) error {
+	if pos < 0 || pos > tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	if tn.children[index] == nil {
-		var err error
-		tn.children[index], err = (*oper).LoadNode(*tn.indexes[index])
-		if err != nil {
-			return err
-		}
+	for i := tn.Size; i > pos; i-- {
+		tn.Keys[i] = tn.Keys[i-1]
+		tn.Indexes[i] = tn.Indexes[i-1]
 	}
-	return nil
-}
-
-func (tn *TreeNode) insertData(pos int, key, index *types.RID, child *TreeNode) error {
-	if pos < 0 || pos > tn.size {
-		return errorutil.ErrorBpTreeNodeOutOfBound
-	}
-	for i := tn.size; i > pos; i-- {
-		tn.keys[i] = tn.keys[i-1]
-		tn.indexes[i] = tn.indexes[i-1]
-		tn.children[i] = tn.children[i-1]
-	}
-	tn.keys[pos] = key
-	tn.indexes[pos] = index
-	tn.children[pos] = child
-	tn.size++
+	tn.Keys[pos] = key
+	tn.Indexes[pos] = index
+	tn.Size++
 	return nil
 }
 
 func (tn *TreeNode) eraseData(pos int) error {
-	if pos < 0 || pos >= tn.size {
+	if pos < 0 || pos >= tn.Size {
 		return errorutil.ErrorBpTreeNodeOutOfBound
 	}
-	for i := pos; i < tn.size; i++ {
-		tn.keys[i] = tn.keys[i+1]
-		tn.indexes[i] = tn.indexes[i+1]
-		tn.children[i] = tn.children[i+1]
+	for i := pos; i < tn.Size; i++ {
+		tn.Keys[i] = tn.Keys[i+1]
+		tn.Indexes[i] = tn.Indexes[i+1]
 	}
-	tn.size--
+	tn.Size--
 	return nil
 }

@@ -6,19 +6,17 @@ import (
 	"unsafe"
 )
 
-
 const offsetAttrName = 0
 const offsetRelName = offsetAttrName + types.MaxNameSize
 const offsetAttrSize = offsetRelName + types.MaxNameSize
 const offsetAttrOffset = offsetAttrSize + 8
 const offsetAttrType = offsetAttrOffset + 8
 const offsetIndexNo = offsetAttrType + 8
-const offsetConstraint = offsetIndexNo + 8	// size of above equals 96 (including constraint RID)
-const offsetNull = 96	// these 3 bit takes up 8 bytes, it seems it's 8 byte alignment
+const offsetConstraint = offsetIndexNo + 8 // size of above equals 96 (including constraint RID)
+const offsetNull = 96                      // these 3 bit takes up 8 bytes, it seems it's 8 byte alignment
 const offsetPrimary = 97
-const offsetAutoIncre = 98
+const offsetFK = 98 // foreign key
 const offsetDefault = 104
-
 
 // defined in parser/expr
 //type AttrInfo struct {
@@ -34,7 +32,7 @@ const offsetDefault = 104
 //	AutoIncrement 	bool		// used for auto increasing
 //	Default			Value
 //}
-var TableDescribeColumn = []string {
+var TableDescribeColumn = []string{
 	"Field",
 	"Type",
 	"Size",
@@ -42,7 +40,7 @@ var TableDescribeColumn = []string {
 	"IndexNo",
 	"Null",
 	"IsPrimary",
-	"AutoIncrement",
+	"HasForeignConstraint",
 	"Default",
 }
 
@@ -50,9 +48,20 @@ const AttrInfoSize = int(unsafe.Sizeof(parser.AttrInfo{}))
 const RelInfoSize = int(unsafe.Sizeof(RelInfo{}))
 
 type RelInfo struct {
-	relName    [types.MaxNameSize]byte
-	recordSize int
-	attrCount  int
-	idxCount   int // idx count ?
-	consCount  int // constraint count
+	relName      [types.MaxNameSize]byte
+	recordSize   int
+	attrCount    int
+	idxCount     int // index constraint count
+	primaryCount int // primary constraint count
+	foreignCount int // foreign constraint count
+}
+
+type TemporalTable = []TableColumn
+type TableColumn struct {
+	relName     string
+	attrName    string
+	attrSize    int
+	attrType    int
+	nullAllowed bool
+	valueList   []parser.Value
 }

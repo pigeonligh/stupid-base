@@ -14,6 +14,10 @@ func strTo24ByteArray(name string) [24]byte {
 	return ret
 }
 
+func ByteArray24tostr(array [24]byte) string {
+	return strings.TrimSpace(string(bytes.Trim(array[:], string(byte(0)))))
+}
+
 func data2StringByTypes(data []byte, valueType types.ValueType) string {
 	ret := ""
 	switch valueType {

@@ -7,17 +7,11 @@ import (
 )
 
 type AttrInfo struct {
-	AttrName      [types.MaxNameSize]byte
-	RelName       [types.MaxNameSize]byte //24 * 2
-	AttrSize      int                     // used by expr::NodeAttr
-	AttrOffset    int                     // used by expr::NodeAttr
-	AttrType      types.ValueType
-	IndexNo       int       // used by system manager
-	ConstraintRID types.RID // used by system manager
-	NullAllowed   bool      // used by system manager
-	IsPrimary     bool      // used by system manager
-	AutoIncrement bool      // used for auto increasing
-	Default       Value
+	types.AttrInfo
+
+	AttrName [types.MaxNameSize]byte
+	RelName  [types.MaxNameSize]byte // 24 * 2
+	Default  Value
 }
 
 type Expr struct {
@@ -131,18 +125,21 @@ func (expr *Expr) Calculate(data []byte) error {
 					log.V(log.ExprLevel).Warningf("Value comparison type not implemented %v\n", expr.OpType)
 					expr.Value.FromBool(false)
 				}
-				//log.V(log.ExprLevel).Infof("Compare: left %v, right %v, res: %v", expr.Left.Value.ToInt64(), expr.Right.Value.ToInt64(), expr.CompIsTrue())
-
+				// log.V(log.ExprLevel).Infof(
+				// "Compare: left %v, right %v, res: %v",
+				// expr.Left.Value.ToInt64(),
+				// expr.Right.Value.ToInt64(),
+				// expr.CompIsTrue())
 			}
 		}
 		return nil
 	case types.NodeAttr:
 		expr.IsCalculated = true
-		//if data[expr.AttrInfo.AttrOffset- 1] == 0 {
+		// if data[expr.AttrInfo.AttrOffset- 1] == 0 {
 		//	// TODO add null for attr
 		//	expr.IsNull = true
 		//	panic(0)
-		//}
+		// }
 		expr.IsNull = false
 		switch expr.Value.ValueType {
 		case types.INT:
@@ -161,11 +158,11 @@ func (expr *Expr) Calculate(data []byte) error {
 		default:
 			log.V(log.ExprLevel).Warningf("data is not implemented\n")
 		}
-		//log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, string(expr.AttrInfo.RelName[:]))
+		// log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, string(expr.AttrInfo.RelName[:]))
 		return nil
 	}
 	panic(0)
-	return errorutil.ErrorExprNodeNotImplemented
+	// return errorutil.ErrorExprNodeNotImplemented
 }
 
 func (expr *Expr) ResetCalculated() {

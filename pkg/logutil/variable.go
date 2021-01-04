@@ -24,5 +24,5 @@ const (
 	DbSysLevel
 
 	// IndexLevel
-	IndexLavel
+	IndexLevel
 )

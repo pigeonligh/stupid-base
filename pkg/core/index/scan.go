@@ -79,7 +79,7 @@ func NewScaner(handle *FileHandle, compOp types.OpType, attr []byte) (*Scaner, e
 }
 
 func (sc *Scaner) Close() {
-	// TODO
+	// TODO: nothing
 }
 
 func (sc *Scaner) GetNextEntry() (types.RID, error) {

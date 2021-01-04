@@ -24,8 +24,22 @@ func endIterator() *Iterator {
 }
 
 func newIterator(oper Operator, nodeIndex types.PageNum, nodePos int) *Iterator {
-	// TODO
-	return &Iterator{}
+	node, err := oper.LoadNode(nodeIndex)
+	if err != nil {
+		// TODO: Warning
+		return endIterator()
+	}
+	if nodePos >= node.Size {
+		// TODO: Warning
+		return endIterator()
+	}
+	return &Iterator{
+		operator:   oper,
+		nodeIndex:  nodeIndex,
+		nodePos:    nodePos,
+		valueIndex: node.Indexes[nodePos],
+		ended:      false,
+	}
 }
 
 func (iter *Iterator) getNode() (*TreeNode, error) {

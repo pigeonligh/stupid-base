@@ -1,10 +1,11 @@
 package record
 
 import (
+	"sync"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"sync"
 )
 
 type Manager struct {

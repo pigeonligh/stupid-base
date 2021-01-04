@@ -19,10 +19,10 @@ type Operator struct {
 	headerModified bool
 	initialized    bool
 
-	attr *AttrDefine
+	attr *types.AttrSet
 }
 
-func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (*Operator, error) {
+func NewOperator(filename string, record *record.FileHandle, attr *types.AttrSet) (*Operator, error) {
 	// Make sure the file is created, please
 	handle, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
@@ -30,15 +30,15 @@ func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (
 	}
 	headerPage, err := handle.GetPage(0)
 	if err != nil {
-		log.V(log.IndexLavel).Errorf("handle.GetPage(0) failed")
+		log.V(log.IndexLevel).Errorf("handle.GetPage(0) failed")
 		return nil, err
 	}
 	currentHeader := (*types.IndexHeaderPage)(types.ByteSliceToPointer(headerPage.Data))
 	currentHeader.FirstFree = 0
 	currentHeader.FirstFreeValue = types.RID{}
-	currentHeader.Pages = 0
+	currentHeader.Pages = 1
 	currentHeader.RootPage = 0
-	attr.writeAttrToHeader(currentHeader)
+	attr.WriteAttrToHeader(currentHeader)
 	if err := handle.MarkDirty(0); err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func NewOperator(filename string, record *record.FileHandle, attr *AttrDefine) (
 		headerPage:     *currentHeader,
 		headerModified: false,
 		initialized:    true,
-		attr:           loadAttrFromHeader(currentHeader),
+		attr:           types.LoadAttrFromHeader(currentHeader),
 	}, nil
 }
 
@@ -63,7 +63,7 @@ func LoadOperator(filename string, record *record.FileHandle) (*Operator, error)
 	}
 	headerPage, err := handle.GetPage(0)
 	if err != nil {
-		log.V(log.IndexLavel).Errorf("handle.GetPage(0) failed")
+		log.V(log.IndexLevel).Errorf("handle.GetPage(0) failed")
 		return nil, err
 	}
 	copiedHeader := *(*types.IndexHeaderPage)(types.ByteSliceToPointer(headerPage.Data))
@@ -77,7 +77,7 @@ func LoadOperator(filename string, record *record.FileHandle) (*Operator, error)
 		headerPage:     copiedHeader,
 		headerModified: false,
 		initialized:    true,
-		attr:           loadAttrFromHeader(&copiedHeader),
+		attr:           types.LoadAttrFromHeader(&copiedHeader),
 	}, nil
 }
 
@@ -126,7 +126,7 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	bptree.InitTreeNode(node, isLeaf)
+	bptree.InitTreeNode(page.Page, node, isLeaf)
 	if err = oper.iHandle.UnpinPage(page.Page); err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (oper *Operator) GetAttr(rid types.RID) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return oper.attr.dataToAttrs(rid, record.Data), nil
+	return oper.attr.DataToAttrs(rid, record.Data), nil
 }
 
 func (oper *Operator) createFreeValues() error {
@@ -247,7 +247,7 @@ func (oper *Operator) createFreeValues() error {
 		oper.headerPage.Pages++
 		oper.headerModified = true
 	}
-	oper.headerPage.FirstFreeValue = initValuePage(page.Data)
+	oper.headerPage.FirstFreeValue = initValuePage(page)
 	oper.headerModified = true
 
 	err = oper.iHandle.MarkDirty(page.Page)

@@ -31,12 +31,20 @@ func NewTreeNode(index types.PageNum, capacity int) *TreeNode {
 
 // NewTreeNodeByData returns a tree node
 func NewTreeNodeByData(data []byte) (*TreeNode, error) {
-	// TODO
-	return &TreeNode{}, nil
+	currentNodePage := (*types.IMNodePage)(types.ByteSliceToPointer(data))
+	return &TreeNode{
+		IMNodePage: *currentNodePage,
+	}, nil
 }
 
-func InitTreeNode(node *TreeNode, isLeaf bool) {
-	// TODO
+func InitTreeNode(index types.PageNum, node *TreeNode, isLeaf bool) {
+	node.IsLeaf = isLeaf
+	node.Size = 0
+	node.Capacity = types.NodeMaxItem
+
+	node.Index = index
+	node.NextIndex = types.InvalidPageNum
+	node.PrevIndex = types.InvalidPageNum
 }
 
 // Close should be called when node is deleted

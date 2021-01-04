@@ -33,22 +33,22 @@ func getIndexFileName(prefix string) string {
 
 func (m *Manager) CreateIndex(idxName string, relName string, attrList []string) error {
 	// todo check duplicated for primary key
-	if err := m.checkDbTableAndAttrExistence(relName, attrList); err != nil {
+	if err := m.checkDBTableAndAttrExistence(relName, attrList); err != nil {
 		return err
 	}
 	if len(idxName) > 24 {
-		return errorutil.ErrorDbSysInvalidIndexName
+		return errorutil.ErrorDBSysInvalidIndexName
 	}
 
 	idxInfoCollection := m.getIdxDetailedInfoCollection(relName)
 	if _, found := idxInfoCollection.name2cols[idxName]; found {
-		return errorutil.ErrorDbSysIndexNameAlreadyExisted
+		return errorutil.ErrorDBSysIndexNameAlreadyExisted
 	}
 
 	attrInfoCollection := m.getAttrInfoDetailedCollection(relName)
 	for _, attr := range attrList {
 		if attrInfoCollection.infoMap[attr].IndexNo <= 0 {
-			return errorutil.ErrorDbSysColIndexAlreadyExisted
+			return errorutil.ErrorDBSysColIndexAlreadyExisted
 		}
 	}
 
@@ -56,8 +56,13 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string)
 	dataFile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
 	defer m.relManager.CloseFile(getTableDataFileName(relName))
 
-	_ = m.idxManager.CreateIndex(getIndexFileName(idxName))
-	idxFile, _ := m.idxManager.OpenIndex(getIndexFileName(idxName))
+	idxAttrSet := types.AttrSet{}
+	for _, attr := range attrList {
+		idxAttrSet.AddSingleAttr(attrInfoCollection.infoMap[attr].AttrInfo)
+	}
+
+	_ = m.idxManager.CreateIndex(getIndexFileName(idxName), idxAttrSet)
+	idxFile, _ := m.idxManager.OpenIndex(getIndexFileName(idxName), dataFile)
 	defer m.idxManager.CloseIndex(getIndexFileName(idxName))
 
 	for _, rec := range dataFile.GetRecList() {
@@ -81,10 +86,10 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string)
 		}, true, nil)
 	}
 
-	relInfo.indexCount += 1
-	relInfo.nextIndexNo += 1
+	relInfo.indexCount++
+	relInfo.nextIndexNo++
 	m.updateRelInfo(relName, relInfoRid, relInfo, false)
-	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoCollection.infoMap)
+	m.getAttrInfoMapViaCacheOrReload(relName, attrInfoCollection.infoMap)
 	return nil
 }
 
@@ -92,15 +97,15 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 	// 1. update relation info idxcount
 	// 2. update each attr info
 	// 3. remove from index file
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
 	}
 
 	// 3
 	idxDetailedInfoCollection := m.getIdxDetailedInfoCollection(relName)
 	if rids, found := idxDetailedInfoCollection.name2rids[idxName]; !found {
 		// check existence
-		return errorutil.ErrorDbSysIndexNameNotExisted
+		return errorutil.ErrorDBSysIndexNameNotExisted
 	} else {
 		idxfh, err := m.relManager.OpenFile(getTableIdxFileName(relName))
 		if err != nil {
@@ -113,7 +118,7 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 	// 1
 	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
 	relInfo := relInfoMap[relName]
-	relInfo.indexCount -= 1
+	relInfo.indexCount--
 	m.updateRelInfo(relName, relInfoRidMap[relName], relInfo, false)
 
 	// 2
@@ -132,12 +137,12 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 	// 0. check primary exists
 	// 1. add primary count to dbmeta
 	// 2. update each attr info
-	if err := m.checkDbTableAndAttrExistence(relName, attrList); err != nil {
+	if err := m.checkDBTableAndAttrExistence(relName, attrList); err != nil {
 		return err
 	}
 	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
 	if relInfoMap[relName].primaryCount >= 1 {
-		return errorutil.ErrorDbSysPrimaryKeyCntExceed
+		return errorutil.ErrorDBSysPrimaryKeyCntExceed
 	}
 
 	// 1
@@ -162,22 +167,22 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 		attrInfo.IsPrimary = true
 		m.updateAttrInfo(relName, attrRid, attrInfo, false)
 	}
-	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoDetailedCollection.infoMap)
+	m.getAttrInfoMapViaCacheOrReload(relName, attrInfoDetailedCollection.infoMap)
 	return nil
 }
 
-func (m *Manager) DropPrimaryKey(relName string) error{
+func (m *Manager) DropPrimaryKey(relName string) error {
 	// 0. check primary exists
 	// 1. set primary count to 0
 	// 2. update each attr info
 
 	// 0
-	if err := m.checkDbTableAndAttrExistence(relName, nil); err != nil {
+	if err := m.checkDBTableAndAttrExistence(relName, nil); err != nil {
 		return err
 	}
 	relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
 	if relInfoMap[relName].primaryCount == 0 {
-		return errorutil.ErrorDbSysPrimaryKeyDoNotExist
+		return errorutil.ErrorDBSysPrimaryKeyDoNotExist
 	}
 
 	// 1
@@ -202,7 +207,7 @@ func (m *Manager) DropPrimaryKey(relName string) error{
 		attrInfo.IsPrimary = false
 		m.updateAttrInfo(relName, attrRid, attrInfo, false)
 	}
-	m.getAttrInfoMapViaCacheOrReload(relName, true, attrInfoDetailedCollection.infoMap)
+	m.getAttrInfoMapViaCacheOrReload(relName, attrInfoDetailedCollection.infoMap)
 
 	return nil
 }
@@ -213,12 +218,12 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	// 3. check is primary key
 	// 4. if it's a primary key already? can a primary key reference other foreign keys
 	if len(srcAttrList) != len(dstAttrList) {
-		return errorutil.ErrorDbSysForeignKeyLenNotMatch
+		return errorutil.ErrorDBSysForeignKeyLenNotMatch
 	}
-	if err := m.checkDbTableAndAttrExistence(srcRel, srcAttrList); err != nil {
+	if err := m.checkDBTableAndAttrExistence(srcRel, srcAttrList); err != nil {
 		return err
 	}
-	if err := m.checkDbTableAndAttrExistence(dstRel, dstAttrList); err != nil {
+	if err := m.checkDBTableAndAttrExistence(dstRel, dstAttrList); err != nil {
 		return err
 	}
 
@@ -229,14 +234,14 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	}
 
 	// check foreign key
-	filterCond := record.FilterCond{
+	filterCond := types.FilterCond{
 		AttrSize:   types.MaxNameSize,
 		AttrOffset: 0,
 		CompOp:     types.OpCompEQ,
-		Value: parser.NewValueFromStr(fkName),
+		Value:      types.NewValueFromStr(fkName),
 	}
-	if len(record.FilterOnRecList(fkFile.GetRecList(), []record.FilterCond{filterCond})) == 0 {
-		return errorutil.ErrorDbSysForeignKeyExists
+	if len(record.FilterOnRecList(fkFile.GetRecList(), []types.FilterCond{filterCond})) == 0 {
+		return errorutil.ErrorDBSysForeignKeyExists
 	}
 
 	// todo check value boundary, index query is a must
@@ -249,11 +254,11 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 			attrRid := attrInfoDetailedCollection.ridMap[attr]
 			attrInfo.HasForeignConstraint = true
 			if !attrInfo.IsPrimary {
-				return errorutil.ErrorDbSysFkNotRefPk
+				return errorutil.ErrorDBSysFkNotRefPk
 			}
 			m.updateAttrInfo(dstRel, attrRid, attrInfo, false)
 		}
-		m.getAttrInfoMapViaCacheOrReload(dstRel, true, attrInfoDetailedCollection.infoMap)
+		m.getAttrInfoMapViaCacheOrReload(dstRel, attrInfoDetailedCollection.infoMap)
 	}
 	{
 		attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(srcRel)
@@ -263,7 +268,7 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 			attrInfo.HasForeignConstraint = true
 			m.updateAttrInfo(srcRel, attrRid, attrInfo, false)
 		}
-		m.getAttrInfoMapViaCacheOrReload(srcRel, true, attrInfoDetailedCollection.infoMap)
+		m.getAttrInfoMapViaCacheOrReload(srcRel, attrInfoDetailedCollection.infoMap)
 	}
 
 	// write back

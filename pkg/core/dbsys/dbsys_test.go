@@ -4,14 +4,13 @@ import (
 	"testing"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
-	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 func TestDbSys(t *testing.T) {
 
-	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel | log.DbSysLevel)
+	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel | log.DBSysLevel)
 
 	manager := GetInstance()
 
@@ -19,20 +18,20 @@ func TestDbSys(t *testing.T) {
 	db2 := "testdb_2"
 	db3 := "testdb_3"
 
-	if err := manager.CreateDb(db1); err != nil {
+	if err := manager.CreateDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
-	//if err := manager.CreateDb(db2); err != nil {
+	//if err := manager.CreateDB(db2); err != nil {
 	//	t.Error(err)
 	//	return
 	//}
-	//if err := manager.CreateDb(db3); err != nil {
+	//if err := manager.CreateDB(db3); err != nil {
 	//	t.Error(err)
 	//	return
 	//}
 	manager.ShowDatabases()
-	if err := manager.OpenDb(db1); err != nil {
+	if err := manager.OpenDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
@@ -84,19 +83,19 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	tmpTable := manager.GetTemporalTableByAttrs(rel1, []string{"attr1", "attr2"}, []record.FilterCond{})
+	tmpTable := manager.GetTemporalTableByAttrs(rel1, []string{"attr1", "attr2"}, []types.FilterCond{})
 	manager.PrintTableByTmpColumns(tmpTable)
 
 	// delete
-	if err := manager.DropDb(db1); err != nil {
+	if err := manager.DropDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
-	if err := manager.DropDb(db2); err != nil {
+	if err := manager.DropDB(db2); err != nil {
 		t.Error(err)
 		return
 	}
-	if err := manager.DropDb(db3); err != nil {
+	if err := manager.DropDB(db3); err != nil {
 		t.Error(err)
 		return
 	}

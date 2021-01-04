@@ -13,7 +13,7 @@ import (
 
 func (m *Manager) ShowDatabases() {
 	rootdir := "./"
-	if m.DbSelected() {
+	if m.DBSelected() {
 		rootdir = "../"
 	}
 	files, _ := ioutil.ReadDir(rootdir)
@@ -38,7 +38,7 @@ func (m *Manager) ShowDatabases() {
 }
 
 func (m *Manager) ShowTables() {
-	if !m.DbSelected() {
+	if !m.DBSelected() {
 		PrintEmptySet()
 	} else {
 		maxLen := len(m.dbSelected)
@@ -64,17 +64,17 @@ func PrintEmptySet() {
 }
 
 func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TablePrintInfo, error) {
-	if !m.DbSelected() {
-		return nil, errorutil.ErrorDbSysDbNotSelected
+	if !m.DBSelected() {
+		return nil, errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return nil, errorutil.ErrorDbSysRelationNotExisted
+		return nil, errorutil.ErrorDBSysRelationNotExisted
 	}
 
 	// get attrName then header
 	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
 	if err != nil {
-		log.V(log.DbSysLevel).Error(err)
+		log.V(log.DBSysLevel).Error(err)
 		return nil, err
 	}
 	defer m.relManager.CloseFile(fileHandle.Filename)
@@ -99,7 +99,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 	} else {
 		tableHeaderList = TableDescribeColumn
 		offsetList = []int{offsetAttrName, offsetAttrType, offsetAttrSize, offsetAttrOffset, offsetIndexNo, offsetNull, offsetPrimary, offsetFK, offsetDefault}
-		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(parser.Value{}))}
+		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(types.Value{}))}
 		typeList = []int{types.STRING, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR} // since the default value type is different, just assigned a NO_ATTR
 		for _, rawAttr := range rawAttrList {
 			rawTypeData := *(*types.ValueType)(types.ByteSliceToPointer(rawAttr.Data[offsetAttrType : offsetAttrType+8]))
@@ -129,7 +129,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 		// changing showing list for table content itself, naming here might be confusing
 		fileHandle, err := m.relManager.OpenFile(relName)
 		if err != nil {
-			log.V(log.DbSysLevel).Error(err)
+			log.V(log.DBSysLevel).Error(err)
 			return nil, err
 		}
 		defer m.relManager.CloseFile(fileHandle.Filename)
@@ -144,7 +144,6 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 			}
 		}
 	}
-
 	return &TablePrintInfo{
 		TableHeaderList: tableHeaderList,
 		OffsetList:      offsetList,
@@ -254,7 +253,7 @@ func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
 		SizeList:        make([]int, 0),
 		TypeList:        make([]int, 0),
 		NullList:        make([]bool, 0),
-		ColWidMap:       make(map[string]int, 0),
+		ColWidMap:       make(map[string]int),
 		ShowingMeta:     false,
 	}
 	// construct a record list

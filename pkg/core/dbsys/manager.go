@@ -12,7 +12,7 @@ import (
 	"unsafe"
 )
 
-const DbMetaName = "db.meta"
+const DBMetaName = "db.meta"
 const PrimaryKeyIndexName = "PK_INDEX"
 
 func getTableMetaFileName(table string) string {
@@ -46,8 +46,8 @@ var once sync.Once
 
 func GetInstance() *Manager {
 	once.Do(func() {
-		log.V(log.DbSysLevel).Info("DbSys Manager starts to initialize.")
-		defer log.V(log.DbSysLevel).Info("DbSys Manager has been initialized.")
+		log.V(log.DBSysLevel).Info("DbSys Manager starts to initialize.")
+		defer log.V(log.DBSysLevel).Info("DbSys Manager has been initialized.")
 		instance = &Manager{
 			relManager: record.GetInstance(),
 			idxManager: index.GetInstance(),
@@ -58,7 +58,7 @@ func GetInstance() *Manager {
 	return instance
 }
 
-func (m *Manager) DbSelected() bool {
+func (m *Manager) DBSelected() bool {
 	if len(m.dbSelected) == 0 {
 		return false
 	} else {
@@ -66,24 +66,24 @@ func (m *Manager) DbSelected() bool {
 	}
 }
 
-func (m *Manager) CreateDb(dbName string) error {
+func (m *Manager) CreateDB(dbName string) error {
 	if err := os.Mkdir(dbName, os.ModePerm); err != nil {
-		log.V(log.DbSysLevel).Error(err)
-		return errorutil.ErrorDbSysCreateDbFails
+		log.V(log.DBSysLevel).Error(err)
+		return errorutil.ErrorDBSysCreateDBFails
 	}
 	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DbSysLevel).Error(err)
+		log.V(log.DBSysLevel).Error(err)
 		panic(0)
 	}
-	if err := m.relManager.CreateFile(DbMetaName, RelInfoSize); err != nil {
+	if err := m.relManager.CreateFile(DBMetaName, RelInfoSize); err != nil {
 		return err
 	}
 	_ = os.Chdir("..")
 	return nil
 }
 
-func (m *Manager) DropDb(dbName string) error {
-	if m.DbSelected() {
+func (m *Manager) DropDB(dbName string) error {
+	if m.DBSelected() {
 		_ = os.Chdir("..")
 		_ = m.relManager.CloseFile(m.dbMeta.Filename)
 		m.rels = nil
@@ -93,22 +93,22 @@ func (m *Manager) DropDb(dbName string) error {
 		m.dbSelected = ""
 	}
 	if err := os.RemoveAll(dbName); err != nil {
-		log.V(log.DbSysLevel).Error(err)
-		return errorutil.ErrorDbSysDropDbFails
+		log.V(log.DBSysLevel).Error(err)
+		return errorutil.ErrorDBSysDropDBFails
 	}
 	return nil
 }
 
-func (m *Manager) OpenDb(dbName string) error {
-	if m.DbSelected() {
+func (m *Manager) OpenDB(dbName string) error {
+	if m.DBSelected() {
 		_ = os.Chdir("..")
 	}
 	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DbSysLevel).Error(err)
-		return errorutil.ErrorDbSysOpenDbFails
+		log.V(log.DBSysLevel).Error(err)
+		return errorutil.ErrorDBSysOpenDBFails
 	}
 	m.dbSelected = dbName
-	m.dbMeta, _ = m.relManager.OpenFile(DbMetaName)
+	m.dbMeta, _ = m.relManager.OpenFile(DBMetaName)
 	m.rels = make(map[string]AttrInfoMap)
 	recList := m.dbMeta.GetRecList()
 	for i := 0; i < len(recList); i++ {
@@ -118,8 +118,8 @@ func (m *Manager) OpenDb(dbName string) error {
 	return nil
 }
 
-func (m *Manager) CloseDb(dbName string) error {
-	if m.DbSelected() {
+func (m *Manager) CloseDB(dbName string) error {
+	if m.DBSelected() {
 		_ = os.Chdir("..")
 		if err := m.relManager.CloseFile(m.dbMeta.Filename); err != nil {
 			return err
@@ -128,21 +128,21 @@ func (m *Manager) CloseDb(dbName string) error {
 		m.rels = nil
 	}
 	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DbSysLevel).Error(err)
-		return errorutil.ErrorDbSysOpenDbFails
+		log.V(log.DBSysLevel).Error(err)
+		return errorutil.ErrorDBSysOpenDBFails
 	}
 	return nil
 }
 
 func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constraintList []ConstraintInfo) error {
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; found {
-		return errorutil.ErrorDbSysTableExisted
+		return errorutil.ErrorDBSysTableExisted
 	}
 	if len(relName) >= types.MaxNameSize {
-		return errorutil.ErrorDbSysMaxNameExceeded
+		return errorutil.ErrorDBSysMaxNameExceeded
 	}
 
 	attrNameMap := make(map[string]bool)
@@ -152,16 +152,15 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		totalSize += attrList[i].AttrSize + 1
 		// check name duplicated by the way
 		if _, found := attrNameMap[ByteArray24tostr(attrList[i].AttrName)]; found {
-			return errorutil.ErrorDbSysCreateTableWithDupAttr
-		} else {
-			attrNameMap[ByteArray24tostr(attrList[i].AttrName)] = true
+			return errorutil.ErrorDBSysCreateTableWithDupAttr
 		}
+		attrNameMap[ByteArray24tostr(attrList[i].AttrName)] = true
 	}
 	if totalSize >= types.PageSize-int(unsafe.Sizeof(types.RecordHeaderPage{})) {
-		return errorutil.ErrorDbSysBigRecordNotSupported
+		return errorutil.ErrorDBSysBigRecordNotSupported
 	}
 	if len(attrList) >= types.MaxAttrNums {
-		return errorutil.ErrorDbSysMaxAttrExceeded
+		return errorutil.ErrorDBSysMaxAttrExceeded
 	}
 
 	// start to create file after all the checking above
@@ -173,7 +172,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 
 	defer func() {
 		if err1 := m.relManager.CloseFile(tableMetaFile.Filename); err1 != nil {
-			log.V(log.DbSysLevel).Error(err1)
+			log.V(log.DBSysLevel).Error(err1)
 			panic(0)
 		}
 		m.rels[relName] = nil
@@ -215,11 +214,11 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 }
 
 func (m *Manager) DropTable(relName string) error {
-	if !m.DbSelected() {
-		return errorutil.ErrorDbSysDbNotSelected
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDbSysRelationNotExisted
+		return errorutil.ErrorDBSysRelationNotExisted
 	}
 
 	_ = os.Remove(getTableMetaFileName(relName))
@@ -227,12 +226,12 @@ func (m *Manager) DropTable(relName string) error {
 	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 
-	recList, _ := m.dbMeta.GetFilteredRecList(record.FilterCond{
+	recList, _ := m.dbMeta.GetFilteredRecList([]types.FilterCond{{
 		AttrSize:   types.MaxNameSize,
 		AttrOffset: 0,
 		CompOp:     types.OpCompEQ,
-		Value:      parser.NewValueFromStr(relName),
-	})
+		Value:      types.NewValueFromStr(relName),
+	}})
 	// ToDo add constraint when deleting
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }

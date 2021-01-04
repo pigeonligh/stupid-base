@@ -1,7 +1,6 @@
 package dbsys
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"unsafe"
@@ -40,24 +39,24 @@ type ConstraintForeignInfo struct {
 //}
 
 // may be further implemented
-type ConstraintCheckInfo struct {
-	value  parser.Value
-	compOp types.OpType // must be a comparison op for check in constraint
-}
+//type ConstraintCheckInfo struct {
+//	value  types.Value
+//	compOp types.OpType // must be a comparison op for check in constraint
+//}
 
-func (m *Manager) checkDbTableAndAttrExistence(relName string, attrNameList []string) error {
+func (m *Manager) checkDBTableAndAttrExistence(relName string, attrNameList []string) error {
 	if len(m.dbSelected) == 0 {
-		return errorutil.ErrorDbSysDbNotSelected
+		return errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDbSysRelationNotExisted
+		return errorutil.ErrorDBSysRelationNotExisted
 	}
 
 	if attrNameList != nil {
-		attrInfoMap := m.getAttrInfoMapViaCacheOrReload(relName, false, nil)
+		attrInfoMap := m.getAttrInfoMapViaCacheOrReload(relName, nil)
 		for _, attr := range attrNameList {
 			if _, found := attrInfoMap[attr]; !found {
-				return errorutil.ErrorDbSysAttrNotExisted
+				return errorutil.ErrorDBSysAttrNotExisted
 			}
 		}
 	}

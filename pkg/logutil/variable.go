@@ -20,8 +20,8 @@ const (
 	// ExprLevel
 	ExprLevel
 
-	// DbSysLevel
-	DbSysLevel
+	// DBSysLevel
+	DBSysLevel
 
 	// IndexLevel
 	IndexLevel

@@ -6,32 +6,27 @@ import (
 	"unsafe"
 )
 
-const offsetAttrName = 0
+// currently AttrInfo has been split into expr.AttrInfo & types.AttrInfo
+//type AttrInfo struct {
+//	types.AttrInfo
+//	AttrName [types.MaxNameSize]byte
+//	RelName  [types.MaxNameSize]byte // 24 * 2
+//	Default  types.Value
+//}
+
+const offsetAttrName = int(unsafe.Sizeof(types.AttrInfo{}))
 const offsetRelName = offsetAttrName + types.MaxNameSize
-const offsetAttrSize = offsetRelName + types.MaxNameSize
+const offsetDefault = offsetRelName + types.MaxNameSize
+
+const offsetAttrSize = int(0)
 const offsetAttrOffset = offsetAttrSize + 8
 const offsetAttrType = offsetAttrOffset + 8
 const offsetIndexNo = offsetAttrType + 8
-const offsetConstraint = offsetIndexNo + 8 // size of above equals 96 (including constraint RID)
-const offsetNull = 96                      // these 3 bit takes up 8 bytes, it seems it's 8 byte alignment
-const offsetPrimary = 97
-const offsetFK = 98 // foreign key
-const offsetDefault = 104
+const offsetConstraint = offsetIndexNo + 8
+const offsetNull = offsetConstraint + int(unsafe.Sizeof(types.RID{}))
+const offsetPrimary = offsetNull + 1
+const offsetFK = offsetNull + 1
 
-// defined in parser/expr
-//type AttrInfo struct {
-//	AttrName             [types.MaxNameSize]byte
-//	RelName              [types.MaxNameSize]byte //24 * 2
-//	AttrSize             int                     // used by expr::NodeAttr
-//	AttrOffset           int                     // used by expr::NodeAttr
-//	AttrType             types.ValueType
-//	IndexNo              int       // used by system manager
-//	ConstraintRID        types.RID // used by system manager, deprecated
-//	NullAllowed          bool      // used by system manager
-//	IsPrimary            bool      // used by system manager
-//	HasForeignConstraint bool      // will be checked if necessary
-//	Default              Value
-//}
 var TableDescribeColumn = []string{
 	"Field",
 	"Type",
@@ -71,5 +66,5 @@ type TableColumn struct {
 	attrSize    int
 	attrType    int
 	nullAllowed bool
-	valueList   []parser.Value
+	valueList   []types.Value
 }

@@ -12,8 +12,8 @@ type RelInfoRidMap map[string]types.RID
 // getRelInfoMapWithRid used for create fast map to accelerate get relation
 func (m *Manager) getRelInfoMapWithRid() (RelInfoMap, RelInfoRidMap) {
 	// is checked opened before
-	relInfoMap := make(RelInfoMap, 0)
-	relInfoRidMap := make(RelInfoRidMap, 0)
+	relInfoMap := make(RelInfoMap)
+	relInfoRidMap := make(RelInfoRidMap)
 	var rawAttrList = m.dbMeta.GetRecList()
 	for _, rawAttr := range rawAttrList {
 		rel := (*RelInfo)(types.ByteSliceToPointer(rawAttr.Data))
@@ -35,9 +35,9 @@ type IdxInfoDetailedCollection struct {
 
 func (m *Manager) getIdxDetailedInfoCollection(relName string) IdxInfoDetailedCollection {
 	// is checked opened before
-	idxNo2ColsMap := make(IdxNo2ColsMap, 0)
-	idxName2ColsMap := make(IdxName2ColsMap, 0)
-	idxName2RidsMap := make(IdxName2RidsMap, 0)
+	idxNo2ColsMap := make(IdxNo2ColsMap)
+	idxName2ColsMap := make(IdxName2ColsMap)
+	idxName2RidsMap := make(IdxName2RidsMap)
 
 	fh, _ := m.relManager.OpenFile(getTableIdxFileName(relName))
 	var rawIdxList = fh.GetRecList()
@@ -71,31 +71,26 @@ type AttrInfoDetailedCollection struct {
 	ridMap         AttrInfoRidMap
 	pkMap          AttrInfoMap // primary key map
 	fkMap          AttrInfoMap // foreign key map
+	nkMap          AttrInfoMap // null key map
 	col2idxNameMap Col2IdxNoMap
 }
 
 // getAttrInfoMapViaCacheOrReload used for create fast map to accelerate get attribute
-// return nothing when *reload* parameter is specified
-// if attrInfoMap is provided as non-nil, then won't further call m.getAttrInfoDetailedCollection
+// return nothing when reloadInfoMap is specified
+// return the cached info when is nil
 // which is a heavy function
-func (m *Manager) getAttrInfoMapViaCacheOrReload(relName string, reload bool, attrInfoMap AttrInfoMap) AttrInfoMap {
-
+func (m *Manager) getAttrInfoMapViaCacheOrReload(relName string, reloadInfoMap AttrInfoMap) AttrInfoMap {
 	// m.rels must found, as it has been guaranteed in parent calls
-	// dose not consider update
-	if infoMap, _ := m.rels[relName]; infoMap != nil && !reload {
-		return infoMap
-	} else {
-		if reload {
-			if attrInfoMap != nil {
-				m.rels[relName] = attrInfoMap
-			} else {
-				m.rels[relName] = m.getAttrInfoDetailedCollection(relName).infoMap
-			}
-			return nil
-		} else {
-			return infoMap
-		}
+	if reloadInfoMap != nil {
+		m.rels[relName] = reloadInfoMap
+		return nil // reload using parameter map
 	}
+
+	if res := m.rels[relName]; res != nil {
+		return res
+	}
+	m.rels[relName] = m.getAttrInfoDetailedCollection(relName).infoMap
+	return m.rels[relName]
 }
 
 func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailedCollection {
@@ -105,11 +100,12 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 		// once build attrName info map is recalled, it must be existed
 		panic(0)
 	}
-	attrInfoMap := make(AttrInfoMap, 0)
-	pkMap := make(AttrInfoMap, 0)
-	fkMap := make(AttrInfoMap, 0)
-	attrInfoRidMap := make(AttrInfoRidMap, 0)
-	attrIndexMap := make(Col2IdxNoMap, 0)
+	attrInfoMap := make(AttrInfoMap)
+	pkMap := make(AttrInfoMap)
+	fkMap := make(AttrInfoMap)
+	nkMap := make(AttrInfoMap)
+	attrInfoRidMap := make(AttrInfoRidMap)
+	attrIndexMap := make(Col2IdxNoMap)
 
 	var rawAttrList = fileHandle.GetRecList()
 	for _, rawAttr := range rawAttrList {
@@ -122,6 +118,9 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 		}
 		if attr.HasForeignConstraint {
 			fkMap[attrName] = attr
+		}
+		if attr.NullAllowed {
+			nkMap[attrName] = attr
 		}
 		if attr.IndexNo != -1 {
 			attrIndexMap[attrName] = attr.IndexNo
@@ -151,7 +150,7 @@ func (m *Manager) insertOrRemoveIndexInfo(relName string, idxInfo *IndexInfo, in
 }
 
 func (m *Manager) updateRelInfo(relName string, relRID types.RID, relInfo *RelInfo, remove bool) {
-	if fileHandle, err := m.relManager.OpenFile(DbMetaName); err != nil {
+	if fileHandle, err := m.relManager.OpenFile(DBMetaName); err != nil {
 		panic(0)
 	} else {
 		defer m.relManager.CloseFile(fileHandle.Filename)

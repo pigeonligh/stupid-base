@@ -50,7 +50,10 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	}
 
 	_ = m.idxManager.CreateIndex(getTableIdxDataFileName(relName, idxName), idxAttrSet)
-	idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, idxName), dataFile)
+	idxFile, err := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, idxName), dataFile)
+	if err != nil {
+		panic(err)
+	}
 	insertRidList := make([]types.RID, 0)
 	for _, rec := range dataFile.GetRecList() {
 		_ = idxFile.InsertEntry(rec.Rid)

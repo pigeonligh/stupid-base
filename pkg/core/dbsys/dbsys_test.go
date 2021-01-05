@@ -80,7 +80,7 @@ func TestDbSys(t *testing.T) {
 	nameMap[6] = "Harry"
 
 	for i := 0; i < 64; i++ {
-		err := manager.InsertRow(rel1, []types.Value{types.NewValueFromInt64(i), types.NewValueFromFloat64(0.1 + float64(i)), types.NewValueFromStr(nameMap[i % len(nameMap)])})
+		err := manager.InsertRow(rel1, []types.Value{types.NewValueFromInt64(i), types.NewValueFromFloat64(0.1 + float64(i)), types.NewValueFromStr(nameMap[i%len(nameMap)])})
 		if err != nil {
 			t.Error(err)
 			return
@@ -90,7 +90,6 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
 
 	if err := manager.PrintTableMeta(rel1); err != nil {
 		t.Error(err)

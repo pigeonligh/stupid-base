@@ -231,7 +231,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 					} else {
 						str = data2StringByTypes(byteSlice, info.TypeList[j])
 					}
-				}else {
+				} else {
 					str = data2StringByTypes(byteSlice, info.TypeList[j])
 				}
 			}

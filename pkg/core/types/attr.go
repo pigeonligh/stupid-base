@@ -16,7 +16,7 @@ type AttrSet struct {
 	nullPos []int
 }
 
-func NewAttr() *AttrSet {
+func NewAttrSet() *AttrSet {
 	return &AttrSet{
 		attrs:   []AttrInfo{},
 		nullPos: []int{},

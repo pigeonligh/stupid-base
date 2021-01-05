@@ -22,14 +22,6 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	//if err := manager.CreateDB(db2); err != nil {
-	//	t.Error(err)
-	//	return
-	//}
-	//if err := manager.CreateDB(db3); err != nil {
-	//	t.Error(err)
-	//	return
-	//}
 	manager.ShowDatabases()
 	if err := manager.OpenDB(db1); err != nil {
 		t.Error(err)
@@ -38,8 +30,6 @@ func TestDbSys(t *testing.T) {
 	manager.ShowTables()
 
 	rel1 := "rel1"
-	//rel2 = "rel2"
-	//rel3 = "rel3"
 	attrInfoList := []parser.AttrInfo{
 		{
 			AttrName: strTo24ByteArray("attr1"),
@@ -70,7 +60,7 @@ func TestDbSys(t *testing.T) {
 			RelName:  strTo24ByteArray(rel1),
 			AttrInfo: types.AttrInfo{
 				AttrSize: 24,
-				AttrType: types.STRING,
+				AttrType: types.VARCHAR,
 				IndexNo:  0,
 			},
 		},
@@ -79,10 +69,64 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err := manager.DescribeTable(rel1); err != nil {
+	if err := manager.PrintTableMeta(rel1); err != nil {
 		t.Error(err)
 		return
 	}
+	if err := manager.PrintTableData(rel1); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := manager.PrintTableIndex(rel1); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := manager.ShowTablesWithDetails(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	rel2 := "rel2"
+	attrInfoList = []parser.AttrInfo{
+		{
+			AttrName: strTo24ByteArray("attr1"),
+			RelName:  strTo24ByteArray(rel2),
+			AttrInfo: types.AttrInfo{
+				AttrSize:             8,
+				AttrType:             types.INT,
+				IndexNo:              0,
+				NullAllowed:          false,
+				IsPrimary:            false,
+				HasForeignConstraint: false,
+			},
+		},
+		{
+			AttrName: strTo24ByteArray("attr2"),
+			RelName:  strTo24ByteArray(rel2),
+			AttrInfo: types.AttrInfo{
+				AttrSize:             8,
+				AttrType:             types.FLOAT,
+				IndexNo:              0,
+				NullAllowed:          true,
+				IsPrimary:            false,
+				HasForeignConstraint: false,
+			},
+		},
+		{
+			AttrName: strTo24ByteArray("attr3"),
+			RelName:  strTo24ByteArray(rel2),
+			AttrInfo: types.AttrInfo{
+				AttrSize: 24,
+				AttrType: types.VARCHAR,
+				IndexNo:  0,
+			},
+		},
+	}
+	if err := manager.CreateTable(rel1, attrInfoList, []ConstraintInfo{}); err != nil {
+		t.Error(err)
+		return
+	}
+
 	tmpTable := manager.GetTemporalTableByAttrs(rel1, []string{"attr1", "attr2"}, []types.FilterCond{})
 	manager.PrintTableByTmpColumns(tmpTable)
 

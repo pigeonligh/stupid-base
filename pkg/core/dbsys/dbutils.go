@@ -39,7 +39,8 @@ func (m *Manager) getIdxDetailedInfoCollection(relName string) IdxInfoDetailedCo
 	idxName2ColsMap := make(IdxName2ColsMap)
 	idxName2RidsMap := make(IdxName2RidsMap)
 
-	fh, _ := m.relManager.OpenFile(getTableIdxFileName(relName))
+	fh, _ := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
+	defer m.relManager.CloseFile(getTableIdxMetaFileName(relName))
 	var rawIdxList = fh.GetRecList()
 	for _, rawIdx := range rawIdxList {
 		idx := (*IndexInfo)(types.ByteSliceToPointer(rawIdx.Data))
@@ -62,11 +63,96 @@ func (m *Manager) getIdxDetailedInfoCollection(relName string) IdxInfoDetailedCo
 	}
 }
 
+type tmpForeignConstraint struct {
+	srcAttrs *types.AttrSet
+	dstAttrs *types.AttrSet
+}
+type ForeignConstraintMap map[string]tmpForeignConstraint
+type ForeignConstraintDetailedInfo struct {
+	srcFkMap  ForeignConstraintMap
+	dstFkMap  ForeignConstraintMap
+	fk2relSrc map[string]string
+	fk2relDst map[string]string // map from fk 2 fk dst
+}
+
+func (m *Manager) getForeignConstraintDetailedInfo(relName string) ForeignConstraintDetailedInfo {
+	// one for src and another is for dst
+	fkFile, err := m.relManager.OpenFile(GlbFkFileName)
+	if err != nil {
+		panic(0) // since open file has benn confirmed by callers
+	}
+	defer m.relManager.CloseFile(fkFile.Filename)
+	filterConds := []types.FilterCond{
+		{
+			AttrSize:   24,
+			AttrOffset: 24,
+			CompOp:     types.OpCompEQ,
+			Value:      types.NewValueFromStr(relName),
+		},
+		{
+			AttrSize:   24,
+			AttrOffset: 72,
+			CompOp:     types.OpCompEQ,
+			Value:      types.NewValueFromStr(relName),
+		},
+	} // src
+
+	recList, _ := fkFile.GetFilteredRecList(filterConds, types.OpLogicOR)
+	srcFkMap := make(ForeignConstraintMap)
+	dstFkMap := make(ForeignConstraintMap)
+	fk2relSrc := make(map[string]string)
+	fk2relDst := make(map[string]string)
+
+	for _, raw := range recList {
+		consRec := (*ConstraintForeignInfo)(types.ByteSliceToPointer(raw.Data))
+		fk := ByteArray24tostr(consRec.fkName)
+		relSrc := ByteArray24tostr(consRec.relSrc)
+		relDst := ByteArray24tostr(consRec.relDst)
+		attrSrc := ByteArray24tostr(consRec.attrSrc)
+		attrDst := ByteArray24tostr(consRec.attrDst)
+
+		relSrcMap := m.getAttrInfoMapViaCacheOrReload(relSrc, nil)
+		relDstMap := m.getAttrInfoMapViaCacheOrReload(relDst, nil)
+		if relSrc == relName {
+			// act as key referencing other primary keys
+			if _, found := srcFkMap[fk]; !found {
+				srcFkMap[fk] = tmpForeignConstraint{
+					srcAttrs: types.NewAttrSet(),
+					dstAttrs: types.NewAttrSet(),
+				}
+			}
+			srcFkMap[fk].srcAttrs.AddSingleAttr(relSrcMap[attrSrc].AttrInfo)
+			srcFkMap[fk].dstAttrs.AddSingleAttr(relDstMap[attrDst].AttrInfo)
+		}
+		if relDst == relName {
+			// act as a referenced primary key
+			if _, found := dstFkMap[fk]; !found {
+				dstFkMap[fk] = tmpForeignConstraint{
+					srcAttrs: types.NewAttrSet(),
+					dstAttrs: types.NewAttrSet(),
+				}
+			}
+			dstFkMap[fk].srcAttrs.AddSingleAttr(relSrcMap[attrSrc].AttrInfo)
+			dstFkMap[fk].dstAttrs.AddSingleAttr(relDstMap[attrDst].AttrInfo)
+		}
+		fk2relSrc[fk] = relSrc
+		fk2relDst[fk] = relDst
+	}
+	return ForeignConstraintDetailedInfo{
+		srcFkMap:  srcFkMap,
+		dstFkMap:  dstFkMap,
+		fk2relSrc: fk2relSrc,
+		fk2relDst: fk2relDst,
+	}
+}
+
 type AttrInfoMap map[string]*parser.AttrInfo
 type AttrInfoRidMap map[string]types.RID
+type AttrNameList []string
 
 type Col2IdxNoMap map[string]int
 type AttrInfoDetailedCollection struct {
+	nameList       AttrNameList
 	infoMap        AttrInfoMap
 	ridMap         AttrInfoRidMap
 	pkMap          AttrInfoMap // primary key map
@@ -100,6 +186,7 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 		// once build attrName info map is recalled, it must be existed
 		panic(0)
 	}
+	attrNameList := make([]string, 0)
 	attrInfoMap := make(AttrInfoMap)
 	pkMap := make(AttrInfoMap)
 	fkMap := make(AttrInfoMap)
@@ -111,6 +198,7 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 	for _, rawAttr := range rawAttrList {
 		attr := (*parser.AttrInfo)(types.ByteSliceToPointer(rawAttr.Data))
 		attrName := ByteArray24tostr(attr.AttrName)
+		attrNameList = append(attrNameList, attrName)
 		attrInfoMap[attrName] = attr
 		attrInfoRidMap[attrName] = rawAttr.Rid
 		if attr.IsPrimary {
@@ -127,6 +215,7 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 		}
 	}
 	return AttrInfoDetailedCollection{
+		nameList:       attrNameList,
 		infoMap:        attrInfoMap,
 		ridMap:         attrInfoRidMap,
 		pkMap:          pkMap,
@@ -137,7 +226,7 @@ func (m *Manager) getAttrInfoDetailedCollection(relName string) AttrInfoDetailed
 
 // insert or delete, no update
 func (m *Manager) insertOrRemoveIndexInfo(relName string, idxInfo *IndexInfo, insert bool, ridList []types.RID) {
-	fh, _ := m.relManager.OpenFile(getTableIdxFileName(relName))
+	fh, _ := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
 	defer m.relManager.CloseFile(fh.Filename)
 	if insert {
 		if _, err := fh.InsertRec(types.PointerToByteSlice(unsafe.Pointer(idxInfo), int(unsafe.Sizeof(idxInfo)))); err != nil {

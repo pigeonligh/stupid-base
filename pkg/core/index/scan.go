@@ -25,6 +25,14 @@ func NewScaner(handle *FileHandle, compOp types.OpType, attr []byte) (*Scaner, e
 	}
 	var err error
 	switch compOp {
+	case types.OpDefault:
+		// xy: implies a full scan
+		if scaner.now, err = handle.tree.Begin(); err != nil {
+			return nil, err
+		}
+		if scaner.end, err = handle.tree.End(); err != nil {
+			return nil, err
+		}
 	case types.OpCompEQ:
 		if scaner.now, err = handle.tree.LowerBound(attr); err != nil {
 			return nil, err
@@ -95,4 +103,16 @@ func (sc *Scaner) GetNextEntry() (types.RID, error) {
 		return rid, nil
 	}
 	return types.RID{}, nil
+}
+
+func (f *FileHandle) GetRidList(compOp types.OpType, attr []byte) []types.RID {
+	scanner, err := NewScaner(f, compOp, attr)
+	if err != nil {
+		panic(0)
+	}
+	filterList := make([]types.RID, 0)
+	for rec, err := scanner.GetNextEntry(); err == nil; {
+		filterList = append(filterList, rec)
+	}
+	return filterList
 }

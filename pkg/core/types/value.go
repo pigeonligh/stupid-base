@@ -23,6 +23,63 @@ type Value struct {
 	ValueType ValueType
 }
 
+//const (
+//	NO_ATTR ValueType = iota
+//	INT
+//	FLOAT
+//	DATE
+//	VARCHAR
+//	BOOL
+//)
+func CheckIfValueTypeCompatible(l, r ValueType) bool {
+	if l == INT {
+		return r == INT || r == FLOAT || r == DATE
+	}
+	if l == FLOAT {
+		return r == INT || r == FLOAT
+	}
+	if l == DATE {
+		return r == INT || r == DATE
+	}
+	return l == r
+}
+
+// AdaptToType set no attr means convert fails
+func (v *Value) AdaptToType(target ValueType) {
+	switch target {
+	case INT:
+		if v.ValueType == FLOAT {
+			v.FromInt64(int(v.ToFloat64()))
+			return
+		}
+		if v.ValueType == INT {
+			return
+		}
+	case FLOAT:
+		if v.ValueType == FLOAT {
+			return
+		}
+		if v.ValueType == INT {
+			v.FromFloat64(float64(v.ToInt64()))
+			return
+		}
+	case DATE:
+		if v.ValueType == INT || v.ValueType == DATE {
+			v.ValueType = DATE
+			return
+		}
+	case VARCHAR:
+		if v.ValueType == VARCHAR {
+			return
+		}
+	case BOOL:
+		if v.ValueType == BOOL {
+			return
+		}
+	}
+	v.ValueType = NO_ATTR
+}
+
 // similar to the functions in pkg/core/dbsys/datautils.go:21
 // data2StringByTypes
 func (v *Value) Format2String() string {
@@ -34,7 +91,7 @@ func (v *Value) Format2String() string {
 	case FLOAT:
 		val := *(*float64)(ByteSliceToPointer(v.Value[:]))
 		ret = strconv.FormatFloat(val, 'g', 10, 64) // TODO: more dynamic float converting
-	case STRING, VARCHAR:
+	case VARCHAR:
 		ret = string(v.Value[:])
 	case DATE:
 		val := *(*int)(ByteSliceToPointer(v.Value[:]))
@@ -59,8 +116,6 @@ func (v *Value) GE(c *Value) bool {
 		return v.ToInt64() >= c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() >= c.ToFloat64()
-	case STRING:
-		return v.ToStr() >= c.ToStr()
 	case DATE:
 		return v.ToInt64() >= c.ToInt64()
 	case VARCHAR:
@@ -81,8 +136,6 @@ func (v *Value) GT(c *Value) bool {
 		return v.ToInt64() > c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() > c.ToFloat64()
-	case STRING:
-		return v.ToStr() > c.ToStr()
 	case DATE:
 		return v.ToInt64() > c.ToInt64()
 	case VARCHAR:
@@ -103,8 +156,6 @@ func (v *Value) LE(c *Value) bool {
 		return v.ToInt64() <= c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() <= c.ToFloat64()
-	case STRING:
-		return v.ToStr() <= c.ToStr()
 	case DATE:
 		return v.ToInt64() <= c.ToInt64()
 	case VARCHAR:
@@ -125,8 +176,6 @@ func (v *Value) LT(c *Value) bool {
 		return v.ToInt64() < c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() < c.ToFloat64()
-	case STRING:
-		return v.ToStr() < c.ToStr()
 	case DATE:
 		return v.ToInt64() < c.ToInt64()
 	case VARCHAR:
@@ -147,8 +196,6 @@ func (v *Value) NE(c *Value) bool {
 		return v.ToInt64() != c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() != c.ToFloat64()
-	case STRING:
-		return v.ToStr() != c.ToStr()
 	case DATE:
 		return v.ToInt64() != c.ToInt64()
 	case VARCHAR:
@@ -171,8 +218,6 @@ func (v *Value) EQ(c *Value) bool {
 		return v.ToInt64() == c.ToInt64()
 	case FLOAT:
 		return v.ToFloat64() == c.ToFloat64()
-	case STRING:
-		return v.ToStr() == c.ToStr()
 	case DATE:
 		return v.ToInt64() == c.ToInt64()
 	case VARCHAR:
@@ -192,6 +237,7 @@ func (v *Value) ToInt64() int {
 func (v *Value) FromInt64(val int) {
 	ptr := (*int)(ByteSliceToPointer(v.Value[:]))
 	*ptr = val
+	v.ValueType = INT
 }
 
 func NewValueFromInt64(val int) Value {
@@ -207,6 +253,7 @@ func (v *Value) ToFloat64() float64 {
 func (v *Value) FromFloat64(val float64) {
 	ptr := (*float64)(ByteSliceToPointer(v.Value[:]))
 	*ptr = val
+	v.ValueType = FLOAT
 }
 
 func NewValueFromFloat64(val float64) Value {
@@ -222,6 +269,7 @@ func (v *Value) ToBool() bool {
 func (v *Value) FromBool(val bool) {
 	ptr := (*bool)(ByteSliceToPointer(v.Value[:]))
 	*ptr = val
+	v.ValueType = BOOL
 }
 
 func NewValueFromBool(val bool) Value {
@@ -241,10 +289,11 @@ func (v *Value) FromStr(s string) {
 		byteSlice = byteSlice[0:MaxStringSize]
 	}
 	copy(v.Value[:], byteSlice)
+	v.ValueType = VARCHAR
 }
 
 func NewValueFromStr(s string) Value {
-	ret := Value{ValueType: STRING}
+	ret := Value{ValueType: VARCHAR}
 	ret.FromStr(s)
 	return ret
 }

@@ -106,7 +106,7 @@ func TestRecord(t *testing.T) {
 	}
 
 	fscan2 := FileScan{}
-	if err = fscan2.OpenScan(f1, types.STRING, 20, 16, types.OpCompLE, types.NewValueFromStr("Carol")); err != nil {
+	if err = fscan2.OpenScan(f1, types.VARCHAR, 20, 16, types.OpCompLE, types.NewValueFromStr("Carol")); err != nil {
 		t.Error(err)
 		return
 	}

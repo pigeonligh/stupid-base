@@ -148,8 +148,6 @@ func (expr *Expr) Calculate(data []byte) error {
 			expr.Value.FromFloat64(*(*float64)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
 		case types.BOOL:
 			expr.Value.FromBool(*(*bool)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-		case types.STRING:
-			fallthrough
 		case types.VARCHAR:
 			expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize]))
 		case types.DATE:

@@ -18,7 +18,7 @@ type ConstraintInfo struct {
 }
 
 const ConstraintForeignInfoSize = int(unsafe.Sizeof(ConstraintForeignInfo{}))
-const FkFileName = "FOREIGN_KEY_FILE"
+const GlbFkFileName = "GLOBAL_FOREIGN_KEY_FILE"
 
 // ADD CONSTRAINT fkName FOREIGN KEY (columnList) REFERENCES tableName(columnList)
 type ConstraintForeignInfo struct {

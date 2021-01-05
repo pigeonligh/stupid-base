@@ -282,8 +282,23 @@ func FilterOnRecList(recList []*Record, condList []types.FilterCond) []*Record {
 	return filterList
 }
 
-func (f *FileHandle) GetFilteredRecList(condList []types.FilterCond) ([]*Record, error) {
-	recList := f.GetRecList()
-	recList = FilterOnRecList(recList, condList)
-	return recList, nil
+func (f *FileHandle) GetFilteredRecList(condList []types.FilterCond, logicOp types.OpType) ([]*Record, error) {
+	if !types.IsOpLogic(logicOp) {
+		return nil, errorutil.ErrorTypesIsNotOpLogic
+	}
+
+	switch logicOp {
+	case types.OpLogicAND, types.OpDefault:
+		recList := f.GetRecList()
+		recList = FilterOnRecList(recList, condList)
+		return recList, nil
+	case types.OpLogicOR:
+		recList := make([]*Record, 0)
+		for _, cond := range condList {
+			recList = append(recList, FilterOnRecList(f.GetRecList(), []types.FilterCond{cond})...)
+		}
+	default:
+		panic(0) // not implemented
+	}
+	return nil, nil
 }

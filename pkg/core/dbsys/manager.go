@@ -13,18 +13,24 @@ import (
 )
 
 const DBMetaName = "db.meta"
-const PrimaryKeyIndexName = "PK_INDEX"
 
 func getTableMetaFileName(table string) string {
 	return table + ".table-meta"
 }
 
-func getTableIdxFileName(table string) string {
-	return table + ".table-index"
-}
-
 func getTableDataFileName(table string) string {
 	return table + ".table-data"
+}
+
+const PrimaryKeyIdxName = "PRIMARY"
+
+// table-suffix.index
+func getTableIdxDataFileName(table, idxName string) string {
+	return table + "-" + idxName + ".index"
+}
+
+func getTableIdxMetaFileName(table string) string {
+	return table + ".table-index"
 }
 
 func getTableConstraintFileName(table string) string {
@@ -178,6 +184,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		m.rels[relName] = nil
 	}()
 
+	pkList := make([]string, 0)
 	// add record to tableMetaFile
 	for i := 0; i < len(attrList); i++ {
 		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
@@ -186,7 +193,20 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		if err != nil {
 			panic(0)
 		}
+		if attrList[i].IsPrimary {
+			pkList = append(pkList, ByteArray24tostr(attrList[i].AttrName))
+		}
 		curSize += attrList[i].AttrSize + 1 // additional null flag bit
+	}
+
+	// create table record file
+	if err := m.relManager.CreateFile(getTableDataFileName(relName), curSize); err != nil {
+		return err
+	}
+
+	// create table index file
+	if err := m.relManager.CreateFile(getTableIdxMetaFileName(relName), int(unsafe.Sizeof(IndexInfo{}))); err != nil {
+		return err
 	}
 
 	// insert relation to dbMetaFile
@@ -201,14 +221,8 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 			foreignCount: 0,
 		}), RelInfoSize))
 
-	// create table record file
-	if err := m.relManager.CreateFile(getTableDataFileName(relName), curSize); err != nil {
-		return err
-	}
-
-	// create table index file
-	if err := m.relManager.CreateFile(getTableIdxFileName(relName), int(unsafe.Sizeof(IndexInfo{}))); err != nil {
-		return err
+	if err := m.AddPrimaryKey(relName, pkList); err != nil {
+		panic(0)
 	}
 	return nil
 }
@@ -222,7 +236,7 @@ func (m *Manager) DropTable(relName string) error {
 	}
 
 	_ = os.Remove(getTableMetaFileName(relName))
-	_ = os.Remove(getTableIdxFileName(relName))
+	_ = os.Remove(getTableIdxMetaFileName(relName))
 	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 
@@ -231,7 +245,7 @@ func (m *Manager) DropTable(relName string) error {
 		AttrOffset: 0,
 		CompOp:     types.OpCompEQ,
 		Value:      types.NewValueFromStr(relName),
-	}})
+	}}, types.OpDefault)
 	// ToDo add constraint when deleting
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }

@@ -3,6 +3,7 @@ package errorutil
 import "errors"
 
 var (
+	// db operation
 	ErrorDBSysCreateDBFails = errors.New("create database fails")
 
 	ErrorDBSysDropDBFails = errors.New("drop database fails")
@@ -22,18 +23,24 @@ var (
 	// some rules
 	ErrorDBSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
 
-	ErrorDBSysMaxNameExceeded = errors.New("max rel name size 24 exceed")
+	ErrorDBSysMaxNameExceeded = errors.New("name length exceed size 24")
 
 	ErrorDBSysPrimaryKeyCntExceed = errors.New("primary key cnt exceed")
 
 	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
 	// foreign key
+	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
+
 	ErrorDBSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
 
 	ErrorDBSysForeignKeyExists = errors.New("foreign key exists")
 
+	ErrorDBSysForeignKeyNotExists = errors.New("foreign key not exists")
+
 	ErrorDBSysFkNotRefPk = errors.New("foreign key not reference primary key")
+
+	ErrorDBSysFkTypeNotMatchPk = errors.New("foreign key type not match primary key")
 
 	ErrorDBSysCreateTableWithDupAttr = errors.New("attr duplicated")
 
@@ -47,4 +54,12 @@ var (
 	ErrorDBSysIndexNameNotExisted = errors.New("index name not existed")
 
 	ErrorDBSysInvalidIndexName = errors.New("invalid idx name > 24")
+
+	// primary key
+	ErrorDBSysDuplicatedKeysFound = errors.New("duplicated keys found")
+
+	ErrorDBSysIsNotPrimaryKeys = errors.New("is not primary keys")
+
+	// insert rules
+	ErrorDBSysInsertValueTypeNotMatch = errors.New("insert value type not match")
 )

@@ -84,6 +84,9 @@ func (m *Manager) CreateDB(dbName string) error {
 	if err := m.relManager.CreateFile(DBMetaName, RelInfoSize); err != nil {
 		return err
 	}
+	if err := m.relManager.CreateFile(GlbFkFileName, ConstraintForeignInfoSize); err != nil {
+		return err
+	}
 	_ = os.Chdir("..")
 	return nil
 }
@@ -215,14 +218,17 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 			relName:      strTo24ByteArray(relName),
 			recordSize:   curSize,
 			attrCount:    len(attrList),
-			nextIndexNo:  -1,
+			nextIndexNo:  0,
 			indexCount:   0,
 			primaryCount: 0,
 			foreignCount: 0,
 		}), RelInfoSize))
 
-	if err := m.AddPrimaryKey(relName, pkList); err != nil {
-		panic(0)
+	if len(pkList) != 0 {
+		if err := m.AddPrimaryKey(relName, pkList); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			panic(0)
+		}
 	}
 	return nil
 }

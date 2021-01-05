@@ -35,7 +35,7 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 
 	attrInfoCollection := m.getAttrInfoDetailedCollection(relName)
 	for _, attr := range attrList {
-		if attrInfoCollection.infoMap[attr].IndexNo <= 0 {
+		if attrInfoCollection.infoMap[attr].IndexNo >= 0 {
 			return errorutil.ErrorDBSysColIndexAlreadyExisted
 		}
 	}

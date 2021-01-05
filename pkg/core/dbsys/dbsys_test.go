@@ -37,7 +37,7 @@ func TestDbSys(t *testing.T) {
 			AttrInfo: types.AttrInfo{
 				AttrSize:             8,
 				AttrType:             types.INT,
-				IndexNo:              0,
+				IndexNo:              -1,
 				NullAllowed:          false,
 				IsPrimary:            false,
 				HasForeignConstraint: false,
@@ -49,7 +49,7 @@ func TestDbSys(t *testing.T) {
 			AttrInfo: types.AttrInfo{
 				AttrSize:             8,
 				AttrType:             types.FLOAT,
-				IndexNo:              0,
+				IndexNo:              -1,
 				NullAllowed:          true,
 				IsPrimary:            false,
 				HasForeignConstraint: false,
@@ -69,6 +69,29 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	nameMap := make(map[int]string)
+	nameMap[0] = "Alice"
+	nameMap[1] = "Bob"
+	nameMap[2] = "Carol"
+	nameMap[3] = "Dog"
+	nameMap[4] = "Emily"
+	nameMap[5] = "Fred"
+	nameMap[6] = "Harry"
+
+	for i := 0; i < 64; i++ {
+		err := manager.InsertRow(rel1, []types.Value{types.NewValueFromInt64(i), types.NewValueFromFloat64(0.1 + float64(i)), types.NewValueFromStr(nameMap[i % len(nameMap)])})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+	if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
+		t.Error(err)
+		return
+	}
+
+
 	if err := manager.PrintTableMeta(rel1); err != nil {
 		t.Error(err)
 		return
@@ -122,12 +145,12 @@ func TestDbSys(t *testing.T) {
 			},
 		},
 	}
-	if err := manager.CreateTable(rel1, attrInfoList, []ConstraintInfo{}); err != nil {
+	if err := manager.CreateTable(rel2, attrInfoList, []ConstraintInfo{}); err != nil {
 		t.Error(err)
 		return
 	}
 
-	tmpTable := manager.GetTemporalTableByAttrs(rel1, []string{"attr1", "attr2"}, []types.FilterCond{})
+	tmpTable := manager.GetTemporalTableByAttrs(rel2, []string{"attr1", "attr2"}, []types.FilterCond{})
 	manager.PrintTableByTmpColumns(tmpTable)
 
 	// delete

@@ -231,6 +231,8 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 					} else {
 						str = data2StringByTypes(byteSlice, info.TypeList[j])
 					}
+				}else {
+					str = data2StringByTypes(byteSlice, info.TypeList[j])
 				}
 			}
 			print("| " + str + strings.Repeat(" ", info.ColWidMap[info.TableHeaderList[j]]-len(str)+1))
@@ -263,6 +265,7 @@ func (m *Manager) PrintTableMeta(relName string) error {
 
 func (m *Manager) PrintTableData(relName string) error {
 	tableShowingDescribedInfo, err := m.GetTableShowingInfo(relName, false)
+	log.V(log.DBSysLevel).Debug(tableShowingDescribedInfo)
 	if err != nil {
 		return err
 	}

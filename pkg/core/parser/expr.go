@@ -11,7 +11,7 @@ type AttrInfo struct {
 
 	AttrName [types.MaxNameSize]byte
 	RelName  [types.MaxNameSize]byte // 24 * 2
-	Default  Value
+	Default  types.Value
 }
 
 type Expr struct {
@@ -21,8 +21,8 @@ type Expr struct {
 	NodeType types.NodeType
 	OpType   types.OpType
 
-	Value    Value    // represent basic Value which can provide convert functions
-	AttrInfo AttrInfo // represent Value as attr in a db/table
+	Value    types.Value // represent basic Value which can provide convert functions
+	AttrInfo AttrInfo    // represent Value as attr in a db/table
 
 	//
 	IsNull       bool
@@ -33,11 +33,11 @@ func NewExprEmpty() *Expr {
 	return &Expr{
 		IsNull:       false,
 		IsCalculated: false,
-		Value:        Value{ValueType: types.NO_ATTR},
+		Value:        types.Value{ValueType: types.NO_ATTR},
 	}
 }
 
-func NewExprConst(value Value) *Expr {
+func NewExprConst(value types.Value) *Expr {
 	return &Expr{
 		NodeType:     types.NodeConst,
 		OpType:       types.OpDefault,
@@ -54,7 +54,7 @@ func NewExprComp(l *Expr, op types.OpType, r *Expr) *Expr {
 		Right:        r,
 		NodeType:     types.NodeComp,
 		OpType:       op,
-		Value:        Value{},
+		Value:        types.Value{},
 		IsNull:       false,
 		IsCalculated: false,
 	}
@@ -148,8 +148,6 @@ func (expr *Expr) Calculate(data []byte) error {
 			expr.Value.FromFloat64(*(*float64)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
 		case types.BOOL:
 			expr.Value.FromBool(*(*bool)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
-		case types.STRING:
-			fallthrough
 		case types.VARCHAR:
 			expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize]))
 		case types.DATE:

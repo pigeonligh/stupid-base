@@ -19,10 +19,10 @@ type FileScan struct {
 }
 
 func (f *FileScan) OpenFullScan(file *FileHandle) error {
-	return f.OpenScan(file, types.NO_ATTR, 0, 0, types.OpDefault, parser.Value{})
+	return f.OpenScan(file, types.NO_ATTR, 0, 0, types.OpDefault, types.Value{})
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, attrSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
+func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, attrSize int, attrOffset int, compOp types.OpType, value types.Value) error {
 	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}

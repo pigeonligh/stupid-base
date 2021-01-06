@@ -10,7 +10,6 @@ const (
 	NO_ATTR ValueType = iota
 	INT
 	FLOAT
-	STRING
 	DATE
 	VARCHAR
 	BOOL
@@ -20,7 +19,6 @@ var ValueTypeStringMap = map[ValueType]string{
 	NO_ATTR: "NO_ATTR",
 	INT:     "INT",
 	FLOAT:   "FLOAT",
-	STRING:  "STRING",
 	DATE:    "DATE",
 	VARCHAR: "VARCHAR",
 	BOOL:    "BOOL",
@@ -51,7 +49,7 @@ const (
 	OpLogicAND
 	OpLogicOR
 	OpLogicNOT
-	OpLogicNO
+	//OpLogicNO don't know what is it
 )
 
 func IsOpComp(op OpType) bool {
@@ -64,6 +62,10 @@ func IsOpComp(op OpType) bool {
 		op == OpCompNE ||
 		op == OpCompIS ||
 		op == OpCompISNOT
+}
+
+func IsOpLogic(op OpType) bool {
+	return op == OpDefault || op == OpLogicAND || op == OpLogicOR || op == OpLogicNOT
 }
 
 type NodeType = int

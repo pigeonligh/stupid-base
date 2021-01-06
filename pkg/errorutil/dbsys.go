@@ -3,30 +3,63 @@ package errorutil
 import "errors"
 
 var (
-	ErrorDbSysCreateDbFails = errors.New("create database fails")
+	// db operation
+	ErrorDBSysCreateDBFails = errors.New("create database fails")
 
-	ErrorDbSysDropDbFails = errors.New("drop database fails")
+	ErrorDBSysDropDBFails = errors.New("drop database fails")
 
-	ErrorDbSysOpenDbFails = errors.New("open database fails")
+	ErrorDBSysOpenDBFails = errors.New("open database fails")
 
-	ErrorDbSysCloseDbFails = errors.New("close database fails")
+	ErrorDBSysCloseDBFails = errors.New("close database fails")
 
-	ErrorDbSysDbNotSelected = errors.New("database not selected")
+	ErrorDBSysDBNotSelected = errors.New("database not selected")
 
-	ErrorDbSysTableExisted = errors.New("table existed")
+	ErrorDBSysTableExisted = errors.New("table existed")
 
-	ErrorDbSysTableNotExisted = errors.New("table not existed")
+	ErrorDBSysRelationNotExisted = errors.New("table not existed")
+
+	ErrorDBSysAttrNotExisted = errors.New("table attribute not existed")
 
 	// some rules
-	ErrorDbSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
+	ErrorDBSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
 
-	ErrorDbSysMaxNameExceeded = errors.New("max rel name size 24 exceed")
+	ErrorDBSysMaxNameExceeded = errors.New("name length exceed size 24")
 
-	ErrorDbSysPrimaryKeyCntExceed = errors.New("primary key cnt exceed")
+	ErrorDBSysPrimaryKeyCntExceed = errors.New("primary key cnt exceed")
 
-	ErrorDbSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
+	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
-	ErrorDbSysForeignKeyExists = errors.New("foreign key exists")
+	// foreign key
+	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
 
-	ErrorDbSysRelationOrAttrNotExists = errors.New("relation or attr not exists")
+	ErrorDBSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
+
+	ErrorDBSysForeignKeyExists = errors.New("foreign key exists")
+
+	ErrorDBSysForeignKeyNotExists = errors.New("foreign key not exists")
+
+	ErrorDBSysFkNotRefPk = errors.New("foreign key not reference primary key")
+
+	ErrorDBSysFkTypeNotMatchPk = errors.New("foreign key type not match primary key")
+
+	ErrorDBSysCreateTableWithDupAttr = errors.New("attr duplicated")
+
+	ErrorDBSysBigRecordNotSupported = errors.New("big record not supported")
+
+	// index related
+	ErrorDBSysColIndexAlreadyExisted = errors.New("column index already created")
+
+	ErrorDBSysIndexNameAlreadyExisted = errors.New("index name already created")
+
+	ErrorDBSysIndexNameNotExisted = errors.New("index name not existed")
+
+	ErrorDBSysInvalidIndexName = errors.New("invalid idx name > 24")
+
+	// primary key
+	ErrorDBSysDuplicatedKeysFound = errors.New("duplicated keys found")
+
+	ErrorDBSysIsNotPrimaryKeys = errors.New("is not primary keys")
+
+	// insert rules
+	ErrorDBSysInsertValueTypeNotMatch = errors.New("insert value type not match")
 )

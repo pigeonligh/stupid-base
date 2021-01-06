@@ -13,7 +13,7 @@ import (
 
 func (m *Manager) ShowDatabases() {
 	rootdir := "./"
-	if m.DbSelected() {
+	if m.DBSelected() {
 		rootdir = "../"
 	}
 	files, _ := ioutil.ReadDir(rootdir)
@@ -38,7 +38,7 @@ func (m *Manager) ShowDatabases() {
 }
 
 func (m *Manager) ShowTables() {
-	if !m.DbSelected() {
+	if !m.DBSelected() {
 		PrintEmptySet()
 	} else {
 		maxLen := len(m.dbSelected)
@@ -57,6 +57,19 @@ func (m *Manager) ShowTables() {
 	}
 }
 
+func (m *Manager) ShowTablesWithDetails() error {
+	if !m.DBSelected() {
+		PrintEmptySet()
+	} else {
+		tableShowingDescribedInfo, err := m.getRelMetaPrintInfo()
+		if err != nil {
+			return err
+		}
+		m.PrintTableByInfo(m.dbMeta.GetRecList(), tableShowingDescribedInfo)
+	}
+	return nil
+}
+
 func PrintEmptySet() {
 	println("+---------------+")
 	println("|     empty     |")
@@ -64,17 +77,17 @@ func PrintEmptySet() {
 }
 
 func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TablePrintInfo, error) {
-	if !m.DbSelected() {
-		return nil, errorutil.ErrorDbSysDbNotSelected
+	if !m.DBSelected() {
+		return nil, errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; !found {
-		return nil, errorutil.ErrorDbSysTableNotExisted
+		return nil, errorutil.ErrorDBSysRelationNotExisted
 	}
 
 	// get attrName then header
 	fileHandle, err := m.relManager.OpenFile(getTableMetaFileName(relName))
 	if err != nil {
-		log.V(log.DbSysLevel).Error(err)
+		log.V(log.DBSysLevel).Error(err)
 		return nil, err
 	}
 	defer m.relManager.CloseFile(fileHandle.Filename)
@@ -95,12 +108,13 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 			offsetList = append(offsetList, attr.AttrOffset)
 			sizeList = append(sizeList, attr.AttrSize)
 			typeList = append(typeList, attr.AttrType)
+			nullList = append(nullList, false)
 		}
 	} else {
 		tableHeaderList = TableDescribeColumn
 		offsetList = []int{offsetAttrName, offsetAttrType, offsetAttrSize, offsetAttrOffset, offsetIndexNo, offsetNull, offsetPrimary, offsetFK, offsetDefault}
-		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(parser.Value{}))}
-		typeList = []int{types.STRING, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR} // since the default value type is different, just assigned a NO_ATTR
+		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(types.Value{}))}
+		typeList = []int{types.VARCHAR, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR} // since the default value type is different, just assigned a NO_ATTR
 		for _, rawAttr := range rawAttrList {
 			rawTypeData := *(*types.ValueType)(types.ByteSliceToPointer(rawAttr.Data[offsetAttrType : offsetAttrType+8]))
 			variantTypeList = append(variantTypeList, rawTypeData)
@@ -127,9 +141,9 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 		}
 
 		// changing showing list for table content itself, naming here might be confusing
-		fileHandle, err := m.relManager.OpenFile(relName)
+		fileHandle, err := m.relManager.OpenFile(getTableDataFileName(relName))
 		if err != nil {
-			log.V(log.DbSysLevel).Error(err)
+			log.V(log.DBSysLevel).Error(err)
 			return nil, err
 		}
 		defer m.relManager.CloseFile(fileHandle.Filename)
@@ -144,7 +158,6 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 			}
 		}
 	}
-
 	return &TablePrintInfo{
 		TableHeaderList: tableHeaderList,
 		OffsetList:      offsetList,
@@ -163,7 +176,7 @@ type TablePrintInfo struct {
 	SizeList        []int
 	TypeList        []types.ValueType
 	NullList        []bool
-	ColWidMap       map[string]int    // column width is computed from every item in the table
+	ColWidMap       map[string]int    // col width is computed from every item in the table
 	VariantTypeList []types.ValueType // since table meta "Default" can be variant-type, so this field is needed
 	ShowingMeta     bool
 }
@@ -190,7 +203,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 	}
 	println("+")
 
-	// print content by iterating each row & column
+	// print content by iterating each row & col
 
 	for i, rec := range recordList {
 		str := ""
@@ -200,9 +213,10 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 				byteSlice := rec.Data[info.OffsetList[j] : info.OffsetList[j]+info.SizeList[j]]
 				switch {
 				case info.TypeList[j] == types.NO_ATTR:
-					// this is the Default column, which has no attribute
+					// this is the Default col, which has no attribute
 					str = data2StringByTypes(byteSlice, info.VariantTypeList[i])
 				case info.TableHeaderList[j] == "Type":
+					// handle special cases, convert from types.ValueType to string
 					str = types.ValueTypeStringMap[*(*int)(types.ByteSliceToPointer(byteSlice))]
 				default:
 					str = data2StringByTypes(byteSlice, info.TypeList[j])
@@ -212,11 +226,13 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 				byteSlice := rec.Data[info.OffsetList[j] : info.OffsetList[j]+info.SizeList[j]]
 				if info.NullList[j] {
 					if rec.Data[info.OffsetList[j]+info.SizeList[j]] == 1 {
-						// a single column always takes up (size + 1 bit)
+						// a single col always takes up (size + 1 bit)
 						str = "NULL"
 					} else {
 						str = data2StringByTypes(byteSlice, info.TypeList[j])
 					}
+				} else {
+					str = data2StringByTypes(byteSlice, info.TypeList[j])
 				}
 			}
 			print("| " + str + strings.Repeat(" ", info.ColWidMap[info.TableHeaderList[j]]-len(str)+1))
@@ -232,15 +248,29 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 	println("+\n")
 }
 
-// DescribeTable is implemented since GetRecordShould be wrapped up
+// PrintTableMeta is implemented since GetRecordShould be wrapped up
 // since GetTableShowingInfo & PrintTableByInfo provide a unified access for table printing
-func (m *Manager) DescribeTable(relName string) error {
+func (m *Manager) PrintTableMeta(relName string) error {
 	tableShowingDescribedInfo, err := m.GetTableShowingInfo(relName, true)
 	if err != nil {
 		return err
 	}
 	// these must not have error since file get opened before
 	fileHandle, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
+	defer m.relManager.CloseFile(fileHandle.Filename)
+	recList := fileHandle.GetRecList()
+	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
+	return nil
+}
+
+func (m *Manager) PrintTableData(relName string) error {
+	tableShowingDescribedInfo, err := m.GetTableShowingInfo(relName, false)
+	log.V(log.DBSysLevel).Debug(tableShowingDescribedInfo)
+	if err != nil {
+		return err
+	}
+	// these must not have error since file get opened before
+	fileHandle, _ := m.relManager.OpenFile(getTableDataFileName(relName))
 	defer m.relManager.CloseFile(fileHandle.Filename)
 	recList := fileHandle.GetRecList()
 	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
@@ -254,7 +284,7 @@ func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
 		SizeList:        make([]int, 0),
 		TypeList:        make([]int, 0),
 		NullList:        make([]bool, 0),
-		ColWidMap:       make(map[string]int, 0),
+		ColWidMap:       make(map[string]int),
 		ShowingMeta:     false,
 	}
 	// construct a record list
@@ -289,4 +319,108 @@ func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
 		recList = append(recList, &rec)
 	}
 	m.PrintTableByInfo(recList, printInfo)
+}
+
+func (m *Manager) PrintTableIndex(relName string) error {
+	tableShowingDescribedInfo, err := m.getIndexMetaPrintInfo(relName)
+	if err != nil {
+		return err
+	}
+	// these must not have error since file get opened before
+	fileHandle, _ := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
+	defer m.relManager.CloseFile(fileHandle.Filename)
+	recList := fileHandle.GetRecList()
+	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
+	return nil
+}
+
+// some other utils
+//type IndexInfo struct {
+//	idxNo   int
+//	idxName [types.MaxNameSize]byte
+//	col     [types.MaxNameSize]byte
+//}
+func (m *Manager) getIndexMetaPrintInfo(relName string) (*TablePrintInfo, error) {
+	if !m.DBSelected() {
+		return nil, errorutil.ErrorDBSysDBNotSelected
+	}
+	if _, found := m.rels[relName]; !found {
+		return nil, errorutil.ErrorDBSysRelationNotExisted
+	}
+	tableHeaderList := []string{"idxNo", "idxName", "column"}
+	offsetList := []int{0, 8, 32}
+	sizeList := []int{8, 24, 24}
+	typeList := []types.ValueType{types.INT, types.VARCHAR, types.VARCHAR}
+	colWidMap := map[string]int{"idxNo": 5, "idxName": 7, "column": 6}
+
+	// compute the appropriate length for each component after necessary scanning of each item
+	fh, err := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
+	if err != nil {
+		return nil, err
+	}
+	defer m.relManager.CloseFile(getTableIdxMetaFileName(relName))
+
+	recCnt := 0
+	for _, rec := range fh.GetRecList() {
+		recCnt += 1
+		for j := 0; j < len(tableHeaderList); j++ {
+			if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], typeList[j])); length > colWidMap[tableHeaderList[j]] {
+				colWidMap[tableHeaderList[j]] = length
+			}
+		}
+	}
+
+	return &TablePrintInfo{
+		TableHeaderList: tableHeaderList,
+		OffsetList:      offsetList,
+		SizeList:        sizeList,
+		TypeList:        typeList,
+		NullList:        nil,
+		ColWidMap:       colWidMap,
+		VariantTypeList: make([]types.ValueType, recCnt), // this field will be of no use when not print table meta default value for each record
+		ShowingMeta:     true,
+	}, nil
+}
+
+//type RelInfo struct {
+//	relName      [types.MaxNameSize]byte
+//	recordSize   int
+//	attrCount    int
+//	nextIndexNo  int
+//	indexCount   int // index constraint count
+//	primaryCount int // primary constraint count
+//	foreignCount int // foreign constraint count
+//}
+func (m *Manager) getRelMetaPrintInfo() (*TablePrintInfo, error) {
+	if !m.DBSelected() {
+		return nil, errorutil.ErrorDBSysDBNotSelected
+	}
+	tableHeaderList := []string{"relName", "recordSize", "attrCount", "nextIndexNo", "indexCount", "primaryCount", "foreignCount"}
+	offsetList := []int{0, 24, 32, 40, 48, 56, 64}
+	sizeList := []int{24, 8, 8, 8, 8, 8, 8}
+	typeList := []types.ValueType{types.VARCHAR, types.INT, types.INT, types.INT, types.INT, types.INT, types.INT}
+	colWidMap := make(map[string]int)
+	for _, name := range tableHeaderList {
+		colWidMap[name] = len(name)
+	}
+
+	recCnt := 0
+	for _, rec := range m.dbMeta.GetRecList() {
+		recCnt += 1
+		for j := 0; j < len(tableHeaderList); j++ {
+			if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], typeList[j])); length > colWidMap[tableHeaderList[j]] {
+				colWidMap[tableHeaderList[j]] = length
+			}
+		}
+	}
+	return &TablePrintInfo{
+		TableHeaderList: tableHeaderList,
+		OffsetList:      offsetList,
+		SizeList:        sizeList,
+		TypeList:        typeList,
+		NullList:        nil,
+		ColWidMap:       colWidMap,
+		VariantTypeList: make([]types.ValueType, recCnt), // this field will be of no use when not print table meta default value for each record
+		ShowingMeta:     true,
+	}, nil
 }

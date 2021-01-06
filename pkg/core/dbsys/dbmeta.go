@@ -2,6 +2,7 @@ package dbsys
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"unsafe"
 )
@@ -58,13 +59,12 @@ type IndexInfo struct {
 	col     [types.MaxNameSize]byte
 }
 
-// used for database query, since only some of the col are selected
-type TemporalTable = []TableColumn
-type TableColumn struct {
-	relName     string
-	attrName    string
-	attrSize    int
-	attrType    int
-	nullAllowed bool
-	valueList   []types.Value
+type TemporalTable struct {
+	rels  []string
+	attrs []string
+	lens  []int
+	offs  []int
+	types []types.ValueType
+	nils  []bool // nullAllowed
+	rows  []*record.Record
 }

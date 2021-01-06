@@ -43,6 +43,7 @@ func NewExprCompQuickAttrCompValue(size, off int, compOp types.OpType, value typ
 		AttrInfo: types.AttrInfo{
 			AttrSize:   size,
 			AttrOffset: off,
+			AttrType:   value.ValueType,
 		},
 	})
 	node1r := NewExprConst(value)
@@ -103,7 +104,7 @@ func (expr *Expr) GetBool() bool {
 }
 
 func (expr *Expr) isLogicComputable() bool {
-	return expr.OpType == types.NodeLogic || expr.OpType == types.NodeComp
+	return expr.NodeType == types.NodeLogic || expr.NodeType == types.NodeComp
 }
 
 func (expr *Expr) Calculate(data []byte) error {
@@ -157,10 +158,11 @@ func (expr *Expr) Calculate(data []byte) error {
 				return errorutil.ErrorExprIsNotLogicComputable
 			}
 			expr.Value.FromBool(!expr.Right.GetBool())
-			return nil
 		default:
 			return errorutil.ErrorExprNodeLogicWithNonLogicOp
 		}
+		return nil
+
 	case types.NodeConst:
 		expr.IsCalculated = true
 		return nil
@@ -230,7 +232,7 @@ func (expr *Expr) Calculate(data []byte) error {
 				return nil
 			}
 		}
-		switch expr.Value.ValueType {
+		switch expr.AttrInfo.AttrType {
 		case types.INT:
 			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
 		case types.FLOAT:

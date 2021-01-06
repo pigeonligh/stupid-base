@@ -19,17 +19,17 @@ type FileScan struct {
 }
 
 func (f *FileScan) OpenFullScan(file *FileHandle) error {
-	return f.OpenScan(file, parser.AttrInfo4Expr{}, types.OpDefault, types.NewValueFromEmpty())
+	return f.OpenScan(file, parser.AttrInfo{}, types.OpDefault, types.NewValueFromEmpty())
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, attr parser.AttrInfo4Expr, compOp types.OpType, value types.Value) error {
+func (f *FileScan) OpenScan(file *FileHandle, attr parser.AttrInfo, compOp types.OpType, value types.Value) error {
 	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}
 
 	var expr *parser.Expr = nil
-	if compOp != types.OpDefault && attr.Type != types.NO_ATTR {
-		if attr.Type != value.ValueType {
+	if compOp != types.OpDefault && attr.AttrType != types.NO_ATTR {
+		if attr.AttrType != value.ValueType {
 			return errorutil.ErrorRecordScanValueTypeNotMatch
 		}
 		left := parser.NewExprAttr(attr)

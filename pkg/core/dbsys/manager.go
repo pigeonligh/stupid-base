@@ -246,12 +246,8 @@ func (m *Manager) DropTable(relName string) error {
 	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 
-	recList, _ := m.dbMeta.GetFilteredRecList([]types.FilterCond{{
-		AttrSize:   types.MaxNameSize,
-		AttrOffset: 0,
-		CompOp:     types.OpCompEQ,
-		Value:      types.NewValueFromStr(relName),
-	}}, types.OpDefault)
+	recList, _ := m.dbMeta.GetFilteredRecList(parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(relName)))
+
 	// ToDo add constraint when deleting
 	return m.dbMeta.DeleteRec(recList[0].Rid)
 }

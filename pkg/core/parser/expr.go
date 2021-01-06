@@ -37,26 +37,24 @@ func NewExprEmpty() *Expr {
 	}
 }
 
-//
-type AttrInfo4Expr struct {
-	Off  int
-	Len  int
-	Nil  bool
-	Type types.ValueType
+// no type check will be conducted during construct
+func NewExprCompQuickAttrCompValue(size, off int, compOp types.OpType, value types.Value) *Expr {
+	node1l := NewExprAttr(AttrInfo{
+		AttrInfo: types.AttrInfo{
+			AttrSize:   size,
+			AttrOffset: off,
+		},
+	})
+	node1r := NewExprConst(value)
+	node1 := NewExprComp(node1l, compOp, node1r)
+	return node1
 }
 
 // attr will always be appears with
-func NewExprAttr(attr AttrInfo4Expr) *Expr {
+func NewExprAttr(attr AttrInfo) *Expr {
 	return &Expr{
-		NodeType: types.NodeAttr,
-		AttrInfo: AttrInfo{
-			AttrInfo: types.AttrInfo{
-				AttrSize:    attr.Len,
-				AttrOffset:  attr.Off,
-				AttrType:    attr.Type,
-				NullAllowed: attr.Nil,
-			},
-		},
+		NodeType:     types.NodeAttr,
+		AttrInfo:     attr,
 		IsNull:       false,
 		IsCalculated: false,
 	}

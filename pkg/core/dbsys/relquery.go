@@ -1,6 +1,7 @@
 package dbsys
 
 import (
+	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -8,7 +9,7 @@ import (
 )
 
 // maybe it can be used for select & join
-func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string, condList []types.FilterCond) TemporalTable {
+func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string, expr *parser.Expr) TemporalTable {
 	retTempTable := make(TemporalTable, 0)
 
 	attrInfoMap := m.getAttrInfoMapViaCacheOrReload(relName, nil)
@@ -20,7 +21,7 @@ func (m *Manager) GetTemporalTableByAttrs(relName string, attrNameList []string,
 	}
 	defer m.relManager.CloseFile(datafile.Filename)
 
-	recordList := record.FilterOnRecList(datafile.GetRecList(), condList)
+	recordList, _ := record.FilterOnRecList(datafile.GetRecList(), expr)
 	for _, attr := range attrNameList {
 		col := TableColumn{
 			relName:   relName,

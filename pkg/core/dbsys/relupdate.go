@@ -245,13 +245,9 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	if err != nil {
 		panic(0)
 	}
-	filterCond := types.FilterCond{
-		AttrSize:   types.MaxNameSize,
-		AttrOffset: 0,
-		CompOp:     types.OpCompEQ,
-		Value:      types.NewValueFromStr(fkName),
-	}
-	if len(record.FilterOnRecList(fkFile.GetRecList(), []types.FilterCond{filterCond})) != 0 {
+
+	tmpList, _ := record.FilterOnRecList(fkFile.GetRecList(), parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(fkName)))
+	if len(tmpList) != 0 {
 		return errorutil.ErrorDBSysForeignKeyExists
 	}
 
@@ -365,13 +361,8 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	if err != nil {
 		panic(0)
 	}
-	filterCond := types.FilterCond{
-		AttrSize:   types.MaxNameSize,
-		AttrOffset: 0,
-		CompOp:     types.OpCompEQ,
-		Value:      types.NewValueFromStr(fkName),
-	}
-	fkRecList := record.FilterOnRecList(fkFile.GetRecList(), []types.FilterCond{filterCond})
+
+	fkRecList, _ := record.FilterOnRecList(fkFile.GetRecList(), parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(fkName)))
 	if len(fkRecList) == 0 {
 		return errorutil.ErrorDBSysForeignKeyNotExists
 	}

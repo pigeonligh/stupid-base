@@ -37,15 +37,43 @@ func NewExprEmpty() *Expr {
 	}
 }
 
-func NewExprConst(value types.Value) *Expr {
+//
+type AttrInfo4Expr struct {
+	Off  int
+	Len  int
+	Nil  bool
+	Type types.ValueType
+}
+
+// attr will always be appears with
+func NewExprAttr(attr AttrInfo4Expr) *Expr {
 	return &Expr{
+		NodeType: types.NodeAttr,
+		AttrInfo: AttrInfo{
+			AttrInfo: types.AttrInfo{
+				AttrSize:    attr.Len,
+				AttrOffset:  attr.Off,
+				AttrType:    attr.Type,
+				NullAllowed: attr.Nil,
+			},
+		},
+		IsNull:       false,
+		IsCalculated: false,
+	}
+}
+
+func NewExprConst(value types.Value) *Expr {
+	expr := Expr{
 		NodeType:     types.NodeConst,
 		OpType:       types.OpDefault,
 		Value:        value,
-		AttrInfo:     AttrInfo{},
 		IsNull:       false,
 		IsCalculated: true,
 	}
+	if value.ValueType == types.NO_ATTR {
+		expr.IsNull = true
+	}
+	return &expr
 }
 
 func NewExprComp(l *Expr, op types.OpType, r *Expr) *Expr {
@@ -60,8 +88,24 @@ func NewExprComp(l *Expr, op types.OpType, r *Expr) *Expr {
 	}
 }
 
-func (expr *Expr) CompIsTrue() bool {
-	return expr.Value.ToBool() && types.IsOpComp(expr.OpType)
+func NewExprLogic(l *Expr, op types.OpType, r *Expr) *Expr {
+	return &Expr{
+		Left:         l,
+		Right:        r,
+		NodeType:     types.NodeLogic,
+		OpType:       op,
+		Value:        types.NewValueFromBool(false),
+		IsNull:       false,
+		IsCalculated: false,
+	}
+}
+
+func (expr *Expr) GetBool() bool {
+	return expr.Value.ToBool() && (types.IsOpComp(expr.OpType) || types.IsOpLogic(expr.OpType))
+}
+
+func (expr *Expr) isLogicComputable() bool {
+	return expr.OpType == types.NodeLogic || expr.OpType == types.NodeComp
 }
 
 func (expr *Expr) Calculate(data []byte) error {
@@ -72,14 +116,53 @@ func (expr *Expr) Calculate(data []byte) error {
 		if err := expr.Left.Calculate(data); err != nil {
 			return err
 		}
+		if !expr.Left.IsCalculated {
+			panic(0) // defense programming
+		}
 	}
 	if expr.Right != nil {
 		if err := expr.Right.Calculate(data); err != nil {
 			return err
 		}
+		if !expr.Right.IsCalculated {
+			panic(0) // defense programming
+		}
 	}
 
 	switch expr.NodeType {
+	case types.NodeLogic:
+		// And, or are binary operators, there must be left and right
+		expr.IsCalculated = true
+		switch expr.OpType {
+		// child type will be guarantee in constructor
+		case types.OpLogicAND, types.OpLogicOR:
+			if expr.Left == nil || expr.Right == nil {
+				return errorutil.ErrorExprBinaryOpWithNilChild
+			}
+			if !expr.Right.isLogicComputable() || !expr.Left.isLogicComputable() {
+				return errorutil.ErrorExprIsNotLogicComputable
+			}
+			if expr.OpType == types.OpLogicAND {
+				expr.Value.FromBool(expr.Left.GetBool() && expr.Right.GetBool())
+			} else {
+				expr.Value.FromBool(expr.Left.GetBool() || expr.Right.GetBool())
+			}
+		case types.OpLogicNOT:
+			// not can only have non-nil right child
+			if expr.Left != nil {
+				return errorutil.ErrorExprUnaryOpWithNonNilLeftChild
+			}
+			if expr.Right == nil {
+				return errorutil.ErrorExprUnaryOpWithNilRightChild
+			}
+			if !expr.Right.isLogicComputable() {
+				return errorutil.ErrorExprIsNotLogicComputable
+			}
+			expr.Value.FromBool(!expr.Right.GetBool())
+			return nil
+		default:
+			return errorutil.ErrorExprNodeLogicWithNonLogicOp
+		}
 	case types.NodeConst:
 		expr.IsCalculated = true
 		return nil
@@ -89,24 +172,32 @@ func (expr *Expr) Calculate(data []byte) error {
 		}
 
 		if (!expr.Left.IsNull && !expr.Left.IsCalculated) || (!expr.Right.IsNull && !expr.Right.IsCalculated) {
-			return errorutil.ErrorExprNonNullNotCalculated
+			panic(0)
 		}
 		expr.IsCalculated = true
 		if expr.OpType == types.OpCompIS || expr.OpType == types.OpCompISNOT {
+			// A IS NULL
+			// A IS NOT NULL
 			is := expr.OpType == types.OpCompIS
 			if expr.Left.IsNull && expr.Right.IsNull {
 				expr.Value.FromBool(is)
 			}
+			// below comparison is meaningless?
 			if (!expr.Left.IsNull && expr.Right.IsNull) || (expr.Left.IsNull && !expr.Right.IsNull) {
+				if !expr.Right.IsNull {
+					log.V(log.ExprLevel).Errorf("Right child is null, there must be violation on A IS NULL syntax")
+					return errorutil.ErrorExprNodeCompViolateIsNullSyntax
+				}
 				expr.Value.FromBool(!is)
 			}
 			if !expr.Left.IsNull && !expr.Right.IsNull {
-				log.Warningf("Comparison on non-null and non-null Value") // TODO
-				expr.Value.FromBool(is)
+				log.V(log.ExprLevel).Errorf("Right child is null, there must be violation on A IS NULL syntax")
+				return errorutil.ErrorExprNodeCompViolateIsNullSyntax
 			}
 		} else {
 			if expr.Left.IsNull || expr.Right.IsNull {
 				expr.IsNull = true
+				expr.Value.FromBool(false)
 			} else {
 				switch expr.OpType {
 				case types.OpCompEQ:
@@ -129,18 +220,18 @@ func (expr *Expr) Calculate(data []byte) error {
 				// "Compare: left %v, right %v, res: %v",
 				// expr.Left.Value.ToInt64(),
 				// expr.Right.Value.ToInt64(),
-				// expr.CompIsTrue())
+				// expr.GetBool())
 			}
 		}
 		return nil
 	case types.NodeAttr:
 		expr.IsCalculated = true
-		// if data[expr.AttrInfo.AttrOffset- 1] == 0 {
-		//	// TODO add null for attr
-		//	expr.IsNull = true
-		//	panic(0)
-		// }
-		expr.IsNull = false
+		if expr.AttrInfo.NullAllowed {
+			if data[expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize] == 1 {
+				expr.IsNull = true
+				return nil
+			}
+		}
 		switch expr.Value.ValueType {
 		case types.INT:
 			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
@@ -159,8 +250,7 @@ func (expr *Expr) Calculate(data []byte) error {
 		// log.V(log.ExprLevel).Warningf("relationName: %v, TableName: %v\n", relationName, string(expr.AttrInfo.RelName[:]))
 		return nil
 	}
-	panic(0)
-	// return errorutil.ErrorExprNodeNotImplemented
+	panic(0) // return errorutil.ErrorExprNodeNotImplemented
 }
 
 func (expr *Expr) ResetCalculated() {

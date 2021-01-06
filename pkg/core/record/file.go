@@ -273,7 +273,7 @@ func FilterOnRecList(recList []*Record, condList []types.FilterCond) []*Record {
 			if err != nil {
 				return make([]*Record, 0)
 			}
-			compRes = compRes && exprList[i].CompIsTrue()
+			compRes = compRes && exprList[i].GetBool()
 		}
 		if compRes {
 			filterList = append(filterList, rec)

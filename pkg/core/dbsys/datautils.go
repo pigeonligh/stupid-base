@@ -38,7 +38,6 @@ func data2StringByTypes(data []byte, valueType types.ValueType) string {
 		ret = strconv.FormatBool(val)
 	}
 	// NO ATTR return "" by default
-
 	return strings.TrimSpace(string(bytes.Trim([]byte(ret), string(byte(0)))))
 
 }

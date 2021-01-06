@@ -288,7 +288,7 @@ func (v *Value) FromStr(s string) {
 	if len(byteSlice) > MaxStringSize {
 		byteSlice = byteSlice[0:MaxStringSize]
 	}
-	copy(v.Value[:], byteSlice)
+	copy(v.Value[0:len(byteSlice)], byteSlice)
 	v.ValueType = VARCHAR
 }
 
@@ -309,4 +309,10 @@ func NewValueFromEmpty() Value {
 		Value:     [255]byte{},
 		ValueType: NO_ATTR,
 	}
+}
+
+func NewValueFromDate(time time.Time) Value {
+	Value := NewValueFromInt64(int(time.Unix()))
+	Value.ValueType = DATE
+	return Value
 }

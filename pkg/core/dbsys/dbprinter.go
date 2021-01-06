@@ -8,7 +8,6 @@ import (
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"io/ioutil"
 	"strings"
-	"unsafe"
 )
 
 func (m *Manager) ShowDatabases() {
@@ -109,7 +108,7 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 	} else {
 		tableHeaderList = TableDescribeColumn
 		offsetList = []int{offsetAttrName, offsetAttrType, offsetAttrSize, offsetAttrOffset, offsetIndexNo, offsetNull, offsetPrimary, offsetFK, offsetDefault}
-		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, int(unsafe.Sizeof(types.Value{}))}
+		sizeList = []int{types.MaxNameSize, 8, 8, 8, 8, 1, 1, 1, types.MaxStringSize}
 		typeList = []int{types.VARCHAR, types.INT, types.INT, types.INT, types.INT, types.BOOL, types.BOOL, types.BOOL, types.NO_ATTR} // since the default value type is different, just assigned a NO_ATTR
 		for _, rawAttr := range rawAttrList {
 			rawTypeData := *(*types.ValueType)(types.ByteSliceToPointer(rawAttr.Data[offsetAttrType : offsetAttrType+8]))
@@ -124,8 +123,15 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 	for _, head := range tableHeaderList {
 		colWidMap[head] = len(head)
 	}
+
 	if showingMeta {
-		colWidMap["Type"] = 7 // since here type always converted to string
+		// since here type always converted to string
+		for _, typ := range variantTypeList {
+			if typ == types.VARCHAR {
+				colWidMap["Type"] = 7
+				break
+			}
+		}
 	}
 
 	if !showingMeta {
@@ -147,10 +153,17 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 	}
 
 	// compute the appropriate length for each component after necessary scanning of each item
-	for _, rec := range rawAttrList {
+	for i, rec := range rawAttrList {
 		for j := 0; j < len(tableHeaderList); j++ {
 			if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], typeList[j])); length > colWidMap[tableHeaderList[j]] {
 				colWidMap[tableHeaderList[j]] = length
+			}
+			if showingMeta && typeList[j] == types.NO_ATTR {
+				// it must be the default col
+				// there is always some hard coding, since i equals nums of attr in showMeta, and index for variantTypeList is i
+				if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], variantTypeList[i])); length > colWidMap[tableHeaderList[j]] {
+					colWidMap[tableHeaderList[j]] = length
+				}
 			}
 		}
 	}

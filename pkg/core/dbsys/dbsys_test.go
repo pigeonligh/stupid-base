@@ -2,6 +2,7 @@ package dbsys
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -50,7 +51,7 @@ func TestDbSys(t *testing.T) {
 				AttrSize:             8,
 				AttrType:             types.FLOAT,
 				IndexNo:              -1,
-				NullAllowed:          true,
+				NullAllowed:          false,
 				IsPrimary:            false,
 				HasForeignConstraint: false,
 			},
@@ -61,7 +62,26 @@ func TestDbSys(t *testing.T) {
 			AttrInfo: types.AttrInfo{
 				AttrSize: 24,
 				AttrType: types.VARCHAR,
-				IndexNo:  0,
+				IndexNo:  -1,
+			},
+			Default: types.NewValueFromStr("THIS DEFAULT VALUE HHHHHHHHHHHHHHHHHHHHHH"),
+		},
+		{
+			AttrName: strTo24ByteArray("attr4"),
+			RelName:  strTo24ByteArray(rel1),
+			AttrInfo: types.AttrInfo{
+				AttrSize: 8,
+				AttrType: types.DATE,
+				IndexNo:  -1,
+			},
+		},
+		{
+			AttrName: strTo24ByteArray("attr5"),
+			RelName:  strTo24ByteArray(rel1),
+			AttrInfo: types.AttrInfo{
+				AttrSize: 1,
+				AttrType: types.BOOL,
+				IndexNo:  -1,
 			},
 		},
 	}
@@ -71,16 +91,23 @@ func TestDbSys(t *testing.T) {
 	}
 
 	nameMap := make(map[int]string)
-	nameMap[0] = "Alice"
-	nameMap[1] = "Bob"
-	nameMap[2] = "Carol"
-	nameMap[3] = "Dog"
-	nameMap[4] = "Emily"
-	nameMap[5] = "Fred"
-	nameMap[6] = "Harry"
+	nameMap[0] = "Alice fucks"
+	nameMap[1] = "Bob sucks"
+	nameMap[2] = "Carol shits"
+	nameMap[3] = "Dog barks"
+	nameMap[4] = "Emily sicks"
+	nameMap[5] = "Fred haha"
+	nameMap[6] = "Harry hey hey"
 
 	for i := 0; i < 64; i++ {
-		err := manager.InsertRow(rel1, []types.Value{types.NewValueFromInt64(i), types.NewValueFromFloat64(0.1 + float64(i)), types.NewValueFromStr(nameMap[i%len(nameMap)])})
+		time := time.Now().AddDate(i, 0, 0)
+		err := manager.InsertRow(rel1,
+			[]types.Value{types.NewValueFromInt64(i),
+				types.NewValueFromFloat64(0.1 + float64(i)),
+				types.NewValueFromStr(nameMap[i%len(nameMap)]),
+				types.NewValueFromDate(time),
+				types.NewValueFromBool(i%2 == 0),
+			})
 		if err != nil {
 			t.Error(err)
 			return

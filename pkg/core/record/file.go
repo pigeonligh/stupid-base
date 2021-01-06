@@ -247,58 +247,23 @@ func (f *FileHandle) GetRecList() []*Record {
 	return recCollection
 }
 
-func FilterOnRecList(recList []*Record, condList []types.FilterCond) []*Record {
-	exprList := make([]*parser.Expr, 0)
-
-	for _, cond := range condList {
-		left := parser.NewExprEmpty()
-		left.AttrInfo.AttrOffset = cond.AttrOffset
-		left.AttrInfo.AttrSize = cond.AttrSize
-		left.Value.ValueType = cond.Value.ValueType
-		left.NodeType = types.NodeAttr
-		left.IsNull = false // TODO
-		left.IsCalculated = false
-		right := parser.NewExprConst(cond.Value)
-		expr := parser.NewExprComp(left, cond.CompOp, right)
-		exprList = append(exprList, expr)
+func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
+	if expr == nil {
+		return recList, nil
 	}
-
 	filterList := make([]*Record, 0)
-
 	for _, rec := range recList {
-		compRes := true
-		for i := 0; i < len(exprList); i++ {
-			exprList[i].ResetCalculated()
-			err := exprList[i].Calculate(rec.Data)
-			if err != nil {
-				return make([]*Record, 0)
-			}
-			compRes = compRes && exprList[i].CompIsTrue()
+		expr.ResetCalculated()
+		if err := expr.Calculate(rec.Data); err != nil {
+			return nil, err
 		}
-		if compRes {
+		if expr.GetBool() {
 			filterList = append(filterList, rec)
 		}
 	}
-	return filterList
+	return filterList, nil
 }
 
-func (f *FileHandle) GetFilteredRecList(condList []types.FilterCond, logicOp types.OpType) ([]*Record, error) {
-	if !types.IsOpLogic(logicOp) {
-		return nil, errorutil.ErrorTypesIsNotOpLogic
-	}
-
-	switch logicOp {
-	case types.OpLogicAND, types.OpDefault:
-		recList := f.GetRecList()
-		recList = FilterOnRecList(recList, condList)
-		return recList, nil
-	case types.OpLogicOR:
-		recList := make([]*Record, 0)
-		for _, cond := range condList {
-			recList = append(recList, FilterOnRecList(f.GetRecList(), []types.FilterCond{cond})...)
-		}
-	default:
-		panic(0) // not implemented
-	}
-	return nil, nil
+func (f *FileHandle) GetFilteredRecList(expr *parser.Expr) ([]*Record, error) {
+	return FilterOnRecList(f.GetRecList(), expr)
 }

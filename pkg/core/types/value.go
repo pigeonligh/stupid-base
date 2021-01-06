@@ -303,3 +303,10 @@ func NewValueFromByteSlice(byteSlice []byte, valueType ValueType) Value {
 	copy(ret.Value[:], byteSlice)
 	return ret
 }
+
+func NewValueFromEmpty() Value {
+	return Value{
+		Value:     [255]byte{},
+		ValueType: NO_ATTR,
+	}
+}

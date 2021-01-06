@@ -82,22 +82,12 @@ func (m *Manager) getForeignConstraintDetailedInfo(relName string) ForeignConstr
 		panic(0) // since open file has benn confirmed by callers
 	}
 	defer m.relManager.CloseFile(fkFile.Filename)
-	filterConds := []types.FilterCond{
-		{
-			AttrSize:   24,
-			AttrOffset: 24,
-			CompOp:     types.OpCompEQ,
-			Value:      types.NewValueFromStr(relName),
-		},
-		{
-			AttrSize:   24,
-			AttrOffset: 72,
-			CompOp:     types.OpCompEQ,
-			Value:      types.NewValueFromStr(relName),
-		},
-	} // src
 
-	recList, _ := fkFile.GetFilteredRecList(filterConds, types.OpLogicOR)
+	nodel := parser.NewExprCompQuickAttrCompValue(24, 24, types.OpCompEQ, types.NewValueFromStr(relName))
+	noder := parser.NewExprCompQuickAttrCompValue(24, 72, types.OpCompEQ, types.NewValueFromStr(relName))
+	node := parser.NewExprLogic(nodel, types.OpLogicOR, noder)
+
+	recList, _ := fkFile.GetFilteredRecList(node)
 	srcFkMap := make(ForeignConstraintMap)
 	dstFkMap := make(ForeignConstraintMap)
 	fk2relSrc := make(map[string]string)

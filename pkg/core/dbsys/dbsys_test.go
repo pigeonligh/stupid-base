@@ -10,7 +10,7 @@ import (
 
 func TestDbSys(t *testing.T) {
 
-	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel | log.DBSysLevel)
+	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel | log.DBSysLevel | log.IndexLevel)
 
 	manager := GetInstance()
 

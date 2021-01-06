@@ -2,15 +2,6 @@ package types
 
 type SlotNum = int
 
-// filter condition， can be used for record and index
-// used for filtering records
-type FilterCond struct {
-	AttrSize   int
-	AttrOffset int
-	CompOp     OpType
-	Value      Value
-}
-
 type RID struct {
 	Page PageNum
 	Slot SlotNum

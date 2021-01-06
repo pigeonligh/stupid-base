@@ -57,17 +57,13 @@ func (m *Manager) ShowTables() {
 	}
 }
 
-func (m *Manager) ShowTablesWithDetails() error {
+func (m *Manager) ShowTablesWithDetails() {
 	if !m.DBSelected() {
 		PrintEmptySet()
 	} else {
-		tableShowingDescribedInfo, err := m.getRelMetaPrintInfo()
-		if err != nil {
-			return err
-		}
+		tableShowingDescribedInfo, _ := m.getRelMetaPrintInfo()
 		m.PrintTableByInfo(m.dbMeta.GetRecList(), tableShowingDescribedInfo)
 	}
-	return nil
 }
 
 func PrintEmptySet() {
@@ -170,6 +166,41 @@ func (m *Manager) GetTableShowingInfo(relName string, showingMeta bool) (*TableP
 	}, nil
 }
 
+func (m *Manager) PrintTemporalTable(table *TemporalTable) {
+	printInfo := m.GetTemporalTableShowingInfo(table)
+	m.PrintTableByInfo(table.rows, printInfo)
+}
+
+func (m *Manager) GetTemporalTableShowingInfo(table *TemporalTable) *TablePrintInfo {
+	// calculate widths
+	colWidMap := make(map[string]int)
+	for i, attr := range table.attrs {
+		colWidMap[attr] = len(attr)
+		if table.nils[i] && colWidMap[attr] < 4 {
+			colWidMap[attr] = 4
+		}
+	}
+	for _, rec := range table.rows {
+		for i := 0; i < len(table.attrs); i++ {
+			off := table.offs[i]
+			size := table.lens[i]
+			if length := len(data2StringByTypes(rec.Data[off:off+size], table.types[i])); length > colWidMap[table.attrs[i]] {
+				colWidMap[table.attrs[i]] = length
+			}
+		}
+	}
+	return &TablePrintInfo{
+		TableHeaderList: table.attrs,
+		OffsetList:      table.offs,
+		SizeList:        table.lens,
+		TypeList:        table.types,
+		NullList:        table.nils,
+		ColWidMap:       colWidMap,
+		VariantTypeList: nil,
+		ShowingMeta:     false,
+	}
+}
+
 type TablePrintInfo struct {
 	TableHeaderList []string
 	OffsetList      []int
@@ -177,7 +208,7 @@ type TablePrintInfo struct {
 	TypeList        []types.ValueType
 	NullList        []bool
 	ColWidMap       map[string]int    // col width is computed from every item in the table
-	VariantTypeList []types.ValueType // since table meta "Default" can be variant-type, so this field is needed
+	VariantTypeList []types.ValueType // since table meta "Default" can be variant-type, so this field is needed (for display meta only)
 	ShowingMeta     bool
 }
 
@@ -275,50 +306,6 @@ func (m *Manager) PrintTableData(relName string) error {
 	recList := fileHandle.GetRecList()
 	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
 	return nil
-}
-
-func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
-	printInfo := &TablePrintInfo{
-		TableHeaderList: make([]string, 0),
-		OffsetList:      make([]int, 0),
-		SizeList:        make([]int, 0),
-		TypeList:        make([]int, 0),
-		NullList:        make([]bool, 0),
-		ColWidMap:       make(map[string]int),
-		ShowingMeta:     false,
-	}
-	// construct a record list
-	recordNums := len(table[0].valueList)
-	recordSize := 0
-	for _, col := range table {
-		if len(col.valueList) != recordNums {
-			panic(0)
-		}
-		printInfo.ColWidMap[col.attrName] = len(col.attrName)
-		printInfo.TableHeaderList = append(printInfo.TableHeaderList, col.attrName)
-		printInfo.OffsetList = append(printInfo.OffsetList, recordSize)
-		printInfo.SizeList = append(printInfo.SizeList, col.attrSize)
-		printInfo.TypeList = append(printInfo.TypeList, col.attrType)
-		printInfo.NullList = append(printInfo.NullList, col.nullAllowed)
-
-		recordSize += col.attrSize + 1
-	}
-	recList := make([]*record.Record, 0)
-
-	for i := 0; i < recordNums; i++ {
-		rec := record.Record{
-			Rid:  types.RID{},
-			Data: make([]byte, recordSize),
-		}
-		for j := 0; j < len(table); j++ {
-			copy(rec.Data[printInfo.OffsetList[j]:printInfo.OffsetList[j]+printInfo.SizeList[j]], table[i].valueList[i].Value[0:printInfo.SizeList[j]])
-			if len(table[i].valueList[i].Format2String()) > printInfo.ColWidMap[table[i].attrName] {
-				printInfo.ColWidMap[table[i].attrName] = len(table[i].valueList[i].Format2String())
-			}
-		}
-		recList = append(recList, &rec)
-	}
-	m.PrintTableByInfo(recList, printInfo)
 }
 
 func (m *Manager) PrintTableIndex(relName string) error {

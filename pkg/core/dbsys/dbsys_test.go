@@ -10,7 +10,7 @@ import (
 
 func TestDbSys(t *testing.T) {
 
-	log.SetLevel(log.RecordLevel | log.StorageLevel | log.ExprLevel | log.DBSysLevel | log.IndexLevel)
+	log.SetLevel(log.ExprLevel | log.DBSysLevel | log.IndexLevel)
 
 	manager := GetInstance()
 
@@ -86,16 +86,12 @@ func TestDbSys(t *testing.T) {
 			return
 		}
 	}
-	if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
-		t.Error(err)
-		return
-	}
+	//if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
+	//	t.Error(err)
+	//	return
+	//}
 
 	if err := manager.PrintTableMeta(rel1); err != nil {
-		t.Error(err)
-		return
-	}
-	if err := manager.PrintTableData(rel1); err != nil {
 		t.Error(err)
 		return
 	}
@@ -103,54 +99,70 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err := manager.ShowTablesWithDetails(); err != nil {
+
+	if err := manager.PrintTableData(rel1); err != nil {
 		t.Error(err)
 		return
 	}
 
-	rel2 := "rel2"
-	attrInfoList = []parser.AttrInfo{
-		{
-			AttrName: strTo24ByteArray("attr1"),
-			RelName:  strTo24ByteArray(rel2),
-			AttrInfo: types.AttrInfo{
-				AttrSize:             8,
-				AttrType:             types.INT,
-				IndexNo:              0,
-				NullAllowed:          false,
-				IsPrimary:            false,
-				HasForeignConstraint: false,
-			},
-		},
-		{
-			AttrName: strTo24ByteArray("attr2"),
-			RelName:  strTo24ByteArray(rel2),
-			AttrInfo: types.AttrInfo{
-				AttrSize:             8,
-				AttrType:             types.FLOAT,
-				IndexNo:              0,
-				NullAllowed:          true,
-				IsPrimary:            false,
-				HasForeignConstraint: false,
-			},
-		},
-		{
-			AttrName: strTo24ByteArray("attr3"),
-			RelName:  strTo24ByteArray(rel2),
-			AttrInfo: types.AttrInfo{
-				AttrSize: 24,
-				AttrType: types.VARCHAR,
-				IndexNo:  0,
-			},
-		},
-	}
-	if err := manager.CreateTable(rel2, attrInfoList, []ConstraintInfo{}); err != nil {
+	manager.ShowTablesWithDetails()
+
+	// bug: when value type is not compatible from attr type, behavior is undefined
+	//expr1 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))
+	expr2 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(40))
+	expr := parser.NewExprLogic(nil, types.OpLogicNOT, expr2)
+
+	tmpTable, err := manager.GetTemporalTable(rel1, []string{"attr1", "attr2"}, expr)
+	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	tmpTable := manager.GetTemporalTableByAttrs(rel2, []string{"attr1", "attr2"}, []types.FilterCond{})
-	manager.PrintTableByTmpColumns(tmpTable)
+	manager.PrintTemporalTable(tmpTable)
+
+	//rel2 := "rel2"
+	//attrInfoList = []parser.AttrInfo{
+	//	{
+	//		AttrName: strTo24ByteArray("attr1"),
+	//		RelName:  strTo24ByteArray(rel2),
+	//		AttrInfo: types.AttrInfo{
+	//			AttrSize:             8,
+	//			AttrType:             types.INT,
+	//			IndexNo:              0,
+	//			NullAllowed:          false,
+	//			IsPrimary:            false,
+	//			HasForeignConstraint: false,
+	//		},
+	//	},
+	//	{
+	//		AttrName: strTo24ByteArray("attr2"),
+	//		RelName:  strTo24ByteArray(rel2),
+	//		AttrInfo: types.AttrInfo{
+	//			AttrSize:             8,
+	//			AttrType:             types.FLOAT,
+	//			IndexNo:              0,
+	//			NullAllowed:          true,
+	//			IsPrimary:            false,
+	//			HasForeignConstraint: false,
+	//		},
+	//	},
+	//	{
+	//		AttrName: strTo24ByteArray("attr3"),
+	//		RelName:  strTo24ByteArray(rel2),
+	//		AttrInfo: types.AttrInfo{
+	//			AttrSize: 24,
+	//			AttrType: types.VARCHAR,
+	//			IndexNo:  0,
+	//		},
+	//	},
+	//}
+	//if err := manager.CreateTable(rel2, attrInfoList, []ConstraintInfo{}); err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+
+	//tmpTable := manager.GetTemporalTableByAttrs(rel2, []string{"attr1", "attr2"}, []types.FilterCond{})
+	//manager.PrintTableByTmpColumns(tmpTable)
 
 	// delete
 	if err := manager.DropDB(db1); err != nil {

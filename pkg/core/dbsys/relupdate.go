@@ -1,7 +1,6 @@
 package dbsys
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -442,84 +441,4 @@ func (m *Manager) RenameTable() {
 
 func (m *Manager) ChangeColumn() {
 	// TODO
-}
-
-func (m *Manager) InsertRow(relName string, valueList []types.Value) error {
-	if !m.DBSelected() {
-		return errorutil.ErrorDBSysDBNotSelected
-	}
-	if _, found := m.rels[relName]; !found {
-		return errorutil.ErrorDBSysRelationNotExisted
-	}
-
-	relInfoMap, _ := m.getRelInfoMapWithRid()
-	attrInfoDetailedCollection := m.getAttrInfoDetailedCollection(relName)
-	insData := make([]byte, relInfoMap[relName].recordSize)
-
-	// open file
-	fh, err := m.relManager.OpenFile(getTableDataFileName(relName))
-	defer m.relManager.CloseFile(fh.Filename)
-	if err != nil {
-		panic(0)
-	}
-
-	for i, attrName := range attrInfoDetailedCollection.nameList {
-		// check basic value type match
-		attrInfo := attrInfoDetailedCollection.infoMap[attrName]
-		valueList[i].AdaptToType(attrInfo.AttrType)
-		if valueList[i].ValueType == types.NO_ATTR {
-			return errorutil.ErrorDBSysInsertValueTypeNotMatch
-		}
-
-		// concat into a row
-		off := attrInfo.AttrOffset
-		size := attrInfo.AttrSize
-		copy(insData[off:off+size], valueList[i].Value[0:size])
-	}
-
-	{
-		// check foreign key constraint
-		// insert we only need to check when relName is fk's src (referencing other tables' primary key)
-		fkDetailedInfo := m.getForeignConstraintDetailedInfo(relName)
-		if len(fkDetailedInfo.srcFkMap) != 0 {
-			for fk, cons := range fkDetailedInfo.srcFkMap {
-				//relSrc := fkDetailedInfo.fk2relSrc[fk]
-				relDst := fkDetailedInfo.fk2relDst[fk]
-				compData := cons.srcAttrs.DataToAttrs(types.RID{}, insData)
-				if fk != PrimaryKeyIdxName {
-					panic(0)
-				}
-
-				dataFH, _ := m.relManager.OpenFile(getTableDataFileName(relDst))
-				idxFH, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relDst, fk), dataFH)
-				defer m.relManager.CloseFile(getTableDataFileName(relDst))
-				defer m.idxManager.CloseIndex(getTableIdxDataFileName(relDst, fk))
-
-				if len(idxFH.GetRidList(types.OpCompEQ, compData)) == 0 {
-					return errorutil.ErrorDBSysFkNotRefPk
-				}
-			}
-		}
-	}
-
-	var idxFile *index.FileHandle
-	if len(attrInfoDetailedCollection.pkMap) != 0 {
-		// has primary key constraint
-		attrSet := types.AttrSet{}
-		for _, value := range attrInfoDetailedCollection.pkMap {
-			attrSet.AddSingleAttr(value.AttrInfo)
-		}
-		idxFile, _ = m.idxManager.OpenIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName), fh)
-		defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName))
-		compData := attrSet.DataToAttrs(types.RID{}, insData)
-		length := len(idxFile.GetRidList(types.OpCompEQ, compData))
-		if length != 0 {
-			return errorutil.ErrorDBSysDuplicatedKeysFound
-		}
-	}
-
-	if _, err := fh.InsertRec(insData); err != nil {
-		panic(0)
-	}
-	return nil
 }

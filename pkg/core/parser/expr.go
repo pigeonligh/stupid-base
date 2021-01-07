@@ -8,10 +8,12 @@ import (
 
 type AttrInfo struct {
 	types.AttrInfo
-
-	AttrName [types.MaxNameSize]byte
-	RelName  [types.MaxNameSize]byte // 24 * 2
-	Default  types.Value
+	HasForeignConstraint bool // will be checked if necessary
+	IsPrimary            bool // used by system manager
+	IndexName            string
+	AttrName             string
+	RelName              string
+	Default              types.Value
 }
 
 type Expr struct {

@@ -137,10 +137,10 @@ type AttrInfoMap map[string]parser.AttrInfo
 type AttrInfoList []parser.AttrInfo
 type AttrInfoCollection struct {
 	NameList []string
-	FkList   []string
 	PkList   []string
 	NkList   []string
 	InfoMap  AttrInfoMap
+	FkMap    map[string][]string
 	IdxMap   map[string][]string
 }
 
@@ -213,8 +213,8 @@ func (m *Manager) GetAttrInfoCollection(relName string) AttrInfoCollection {
 	attrNameList := make([]string, 0)
 	attrInfoMap := make(AttrInfoMap)
 	pkList := make([]string, 0)
-	fkList := make([]string, 0)
 	nkList := make([]string, 0)
+	fkMap := make(map[string][]string)
 	idxMap := make(map[string][]string)
 
 	for _, attr := range attrInfoList {
@@ -223,11 +223,14 @@ func (m *Manager) GetAttrInfoCollection(relName string) AttrInfoCollection {
 		if attr.IsPrimary {
 			pkList = append(pkList, attr.AttrName)
 		}
-		if attr.HasForeignConstraint {
-			fkList = append(fkList, attr.AttrName)
-		}
 		if attr.NullAllowed {
 			nkList = append(nkList, attr.AttrName)
+		}
+		if len(attr.FkName) != 0 {
+			if _, found := fkMap[attr.FkName]; !found {
+				fkMap[attr.FkName] = make([]string, 0)
+			}
+			fkMap[attr.FkName] = append(fkMap[attr.FkName], attr.AttrName)
 		}
 		if len(attr.IndexName) != 0 {
 			if _, found := idxMap[attr.IndexName]; !found {
@@ -238,7 +241,7 @@ func (m *Manager) GetAttrInfoCollection(relName string) AttrInfoCollection {
 	}
 	return AttrInfoCollection{
 		NameList: attrNameList,
-		FkList:   fkList,
+		FkMap:    fkMap,
 		PkList:   pkList,
 		NkList:   nkList,
 		InfoMap:  attrInfoMap,

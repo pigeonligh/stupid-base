@@ -29,7 +29,7 @@ func (m *Manager) PrintDatabases() {
 
 	println("+" + strings.Repeat("-", maxLen+2) + "+")
 	println("| " + "Database" + strings.Repeat(" ", maxLen-len("Database")) + " |")
-	println("|" + strings.Repeat("-", maxLen+2) + "|")
+	println("+" + strings.Repeat("-", maxLen+2) + "+")
 	for _, f := range names {
 		println("| " + f + strings.Repeat(" ", maxLen-len(f)) + " |")
 	}
@@ -48,13 +48,126 @@ func (m *Manager) PrintTables() {
 		}
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
 		println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
-		println("|" + strings.Repeat("-", maxLen+2) + "|")
+		println("+" + strings.Repeat("-", maxLen+2) + "+")
 		for rel := range m.rels {
 			println("| " + rel + strings.Repeat(" ", maxLen-len(rel)) + " |")
 		}
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
 
 	}
+}
+
+func (m *Manager) PrintDBForeignInfos() {
+	fkInfoMap := m.GetFkInfoMap()
+	tableHeaders := []string{"FkName", "SrcRel", "DstRel"}
+	maxAttrCnt := 0
+
+	col2Wid := map[string]int{
+		"FkName": 6,
+		"SrcRel": 6,
+		"DstRel": 6,
+	}
+
+	for _, cons := range fkInfoMap {
+		if len(cons.SrcAttr) > maxAttrCnt {
+			maxAttrCnt = len(cons.SrcAttr)
+		}
+	}
+	for i := 0; i < maxAttrCnt; i++ {
+		header := "src" + strconv.Itoa(i)
+		tableHeaders = append(tableHeaders, header)
+		col2Wid[header] = len(header)
+	}
+	for i := 0; i < maxAttrCnt; i++ {
+		header := "dst" + strconv.Itoa(i)
+		tableHeaders = append(tableHeaders, header)
+		col2Wid[header] = len(header)
+	}
+
+	for _, cons := range fkInfoMap {
+		for i, attr := range cons.SrcAttr {
+			header := "src" + strconv.Itoa(i)
+			if len(attr) > col2Wid[header] {
+				col2Wid[header] = len(attr)
+			}
+		}
+		for i, attr := range cons.DstAttr {
+			header := "dst" + strconv.Itoa(i)
+			if len(attr) > col2Wid[header] {
+				col2Wid[header] = len(attr)
+			}
+		}
+	}
+
+	for _, header := range tableHeaders {
+		switch header {
+		case "FkName":
+			for _, cons := range fkInfoMap {
+				if len(cons.FkName) > col2Wid[header] {
+					col2Wid[header] = len(cons.FkName)
+				}
+			}
+		case "SrcRel":
+			for _, cons := range fkInfoMap {
+				if len(cons.SrcRel) > col2Wid[header] {
+					col2Wid[header] = len(cons.SrcRel)
+				}
+			}
+		case "DstRel":
+			for _, cons := range fkInfoMap {
+				if len(cons.DstRel) > col2Wid[header] {
+					col2Wid[header] = len(cons.DstRel)
+				}
+			}
+		}
+	}
+	maxLen := 0
+	for _, wid := range col2Wid {
+		maxLen += wid + 2
+	}
+	maxLen += maxAttrCnt*2 + 3 - 1
+
+	for _, header := range tableHeaders {
+		print("+" + strings.Repeat("-", len(header)+2))
+	}
+	println("+")
+
+	for _, header := range tableHeaders {
+		print("| " + header + " ")
+	}
+	println("|")
+
+	for _, header := range tableHeaders {
+		print("+" + strings.Repeat("-", len(header)+2))
+	}
+	println("+")
+	for fk, cons := range fkInfoMap {
+		print("| " + fk + strings.Repeat(" ", col2Wid["FkName"]-len(fk)+1))
+		print("| " + cons.SrcRel + strings.Repeat(" ", col2Wid["SrcRel"]-len(cons.SrcRel)+1))
+		print("| " + cons.DstRel + strings.Repeat(" ", col2Wid["DstRel"]-len(cons.DstRel)+1))
+		for i, attr := range cons.SrcAttr {
+			header := "src" + strconv.Itoa(i)
+			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
+		}
+		for i := maxAttrCnt - len(cons.SrcAttr); i < maxAttrCnt; i++ {
+			header := "src" + strconv.Itoa(i)
+			print("| " + strings.Repeat(" ", col2Wid[header]+1))
+		}
+		for i, attr := range cons.DstAttr {
+			header := "dst" + strconv.Itoa(i)
+			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
+		}
+		for i := maxAttrCnt - len(cons.DstAttr); i < maxAttrCnt; i++ {
+			header := "dst" + strconv.Itoa(i)
+			print("| " + strings.Repeat(" ", col2Wid[header]+1))
+		}
+	}
+	for _, header := range tableHeaders {
+		print("+" + strings.Repeat("-", len(header)+2))
+	}
+	println("+")
+	//maxLen += len(tableHeaders) - 1
+
 }
 
 func (m *Manager) PrintTablesWithDetails() {
@@ -73,15 +186,18 @@ func (m *Manager) PrintTablesWithDetails() {
 
 		//println("+" + strings.Repeat("-", maxLen+2) + "+")
 		//println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
-		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("+" + strings.Repeat("-", len(header)+2))
+		}
+		println("+")
 		for _, header := range tableHeaders {
 			print("| " + header + " ")
 		}
 		println("|")
 		for _, header := range tableHeaders {
-			print("|" + strings.Repeat("-", len(header)+2))
+			print("+" + strings.Repeat("-", len(header)+2))
 		}
-		println("|")
+		println("+")
 		for _, rel := range relInfoMap {
 			print("| " + rel.RelName + strings.Repeat(" ", col2Wid["RelationName"]-len(rel.RelName)+1))
 			print("| " + strconv.Itoa(rel.RecordSize) + strings.Repeat(" ", col2Wid["RecordSize"]-len(strconv.Itoa(rel.RecordSize))+1))
@@ -91,7 +207,10 @@ func (m *Manager) PrintTablesWithDetails() {
 			print("| " + strconv.Itoa(rel.ForeignCount) + strings.Repeat(" ", col2Wid["ForeignCnt"]-len(strconv.Itoa(rel.ForeignCount))+1))
 			println("|")
 		}
-		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("+" + strings.Repeat("-", len(header)+2))
+		}
+		println("+")
 	}
 }
 
@@ -102,7 +221,7 @@ func (m *Manager) PrintTableMeta(relName string) {
 	} else {
 		attrInfoList := m.GetAttrInfoList(relName)
 		tableHeaders := []string{
-			"Field", "Type", "Size", "Offset", "IndexName", "NullAllowed", "IsPrimary", "HasForeignConstraint", "Default",
+			"Field", "Type", "Size", "Offset", "IndexName", "NullAllowed", "IsPrimary", "FkName", "Default",
 		}
 		col2Wid := make(map[string]int)
 		maxLen := 0
@@ -127,19 +246,38 @@ func (m *Manager) PrintTableMeta(relName string) {
 						col2Wid[header] = len(types.ValueTypeStringMap[attr.AttrType])
 					}
 				}
-
+			case "IndexName":
+				for _, attr := range attrInfoList {
+					if len(attr.IndexName) > col2Wid[header] {
+						col2Wid[header] = len(attr.IndexName)
+					}
+				}
+			case "FkName":
+				for _, attr := range attrInfoList {
+					if len(attr.FkName) > col2Wid[header] {
+						col2Wid[header] = len(attr.FkName)
+					}
+				}
 			}
+
 			maxLen += col2Wid[header] + 2
 		}
 		maxLen += len(tableHeaders) - 1
 
-		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("+" + strings.Repeat("-", col2Wid[header]+2))
+		}
+		println("+")
+
 		for _, header := range tableHeaders {
 			print("| " + header + strings.Repeat(" ", col2Wid[header]-len(header)+1))
 		}
 		println("|")
 
-		println("|" + strings.Repeat("-", maxLen) + "|")
+		for _, header := range tableHeaders {
+			print("+" + strings.Repeat("-", col2Wid[header]+2))
+		}
+		println("+")
 
 		for _, attr := range attrInfoList {
 			print("| " + attr.AttrName + strings.Repeat(" ", col2Wid["Field"]-len(attr.AttrName)+1))
@@ -149,12 +287,14 @@ func (m *Manager) PrintTableMeta(relName string) {
 			print("| " + attr.IndexName + strings.Repeat(" ", col2Wid["IndexName"]-len(attr.IndexName)+1))
 			print("| " + strconv.FormatBool(attr.NullAllowed) + strings.Repeat(" ", col2Wid["NullAllowed"]-len(strconv.FormatBool(attr.NullAllowed))+1))
 			print("| " + strconv.FormatBool(attr.IsPrimary) + strings.Repeat(" ", col2Wid["IsPrimary"]-len(strconv.FormatBool(attr.IsPrimary))+1))
-			print("| " + strconv.FormatBool(attr.HasForeignConstraint) + strings.Repeat(" ", col2Wid["HasForeignConstraint"]-len(strconv.FormatBool(attr.HasForeignConstraint))+1))
+			print("| " + attr.FkName + strings.Repeat(" ", col2Wid["FkName"]-len(attr.FkName)+1))
 			print("| " + attr.Default.Format2String() + strings.Repeat(" ", col2Wid["Default"]-len(attr.Default.Format2String())+1))
-
 			println("|")
 		}
-		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("+" + strings.Repeat("-", col2Wid[header]+2))
+		}
+		println("+")
 
 	}
 

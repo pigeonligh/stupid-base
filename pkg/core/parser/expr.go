@@ -8,12 +8,12 @@ import (
 
 type AttrInfo struct {
 	types.AttrInfo
-	HasForeignConstraint bool // will be checked if necessary
-	IsPrimary            bool // used by system manager
-	IndexName            string
-	AttrName             string
-	RelName              string
-	Default              types.Value
+	IsPrimary bool // used by system manager
+	IndexName string
+	FkName    string
+	AttrName  string
+	RelName   string
+	Default   types.Value
 }
 
 type Expr struct {

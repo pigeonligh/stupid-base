@@ -32,10 +32,9 @@ func TestDbSys(t *testing.T) {
 	rel1 := "rel1"
 	attrInfoList := []parser.AttrInfo{
 		{
-			AttrName:             "attr1",
-			RelName:              rel1,
-			IsPrimary:            false,
-			HasForeignConstraint: false,
+			AttrName:  "attr1",
+			RelName:   rel1,
+			IsPrimary: false,
 			AttrInfo: types.AttrInfo{
 				AttrSize:    8,
 				AttrType:    types.INT,
@@ -43,10 +42,9 @@ func TestDbSys(t *testing.T) {
 			},
 		},
 		{
-			AttrName:             "attr2",
-			RelName:              rel1,
-			HasForeignConstraint: false,
-			IsPrimary:            false,
+			AttrName:  "attr2",
+			RelName:   rel1,
+			IsPrimary: false,
 			AttrInfo: types.AttrInfo{
 				AttrSize:    8,
 				AttrType:    types.FLOAT,
@@ -117,6 +115,7 @@ func TestDbSys(t *testing.T) {
 	manager.PrintDatabases()
 	manager.PrintTables()
 	manager.PrintTableMeta(rel1)
+	manager.PrintDBForeignInfos()
 	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
 	////	t.Error(err)
 	////	return

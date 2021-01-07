@@ -40,11 +40,10 @@ func getTableConstraintFileName(table string) string {
 type Manager struct {
 	relManager *record.Manager
 	idxManager *index.Manager
-	rels       map[string]AttrInfoMap
-	dbMeta     *record.FileHandle
+	rels       map[string]AttrInfoList
 	dbSelected string
-	dbFK       *record.FileHandle // maintain a database's overall foreign constraint
-	dbPK       *record.FileHandle // maintain a database's overall primary constraint
+	//dbMeta     RelInfoMap
+	//dbFK       *record.FileHandle // maintain a database's overall foreign constraint
 }
 
 var instance *Manager
@@ -81,12 +80,8 @@ func (m *Manager) CreateDB(dbName string) error {
 		log.V(log.DBSysLevel).Error(err)
 		panic(0)
 	}
-	if err := m.relManager.CreateFile(DBMetaName, RelInfoSize); err != nil {
-		return err
-	}
-	if err := m.relManager.CreateFile(GlbFkFileName, ConstraintForeignInfoSize); err != nil {
-		return err
-	}
+	m.SetDBRelInfoMap(RelInfoMap{})
+	m.SetFkInfoMap(FkConstraintMap{})
 	_ = os.Chdir("..")
 	return nil
 }
@@ -94,11 +89,7 @@ func (m *Manager) CreateDB(dbName string) error {
 func (m *Manager) DropDB(dbName string) error {
 	if m.DBSelected() {
 		_ = os.Chdir("..")
-		_ = m.relManager.CloseFile(m.dbMeta.Filename)
 		m.rels = nil
-		m.dbMeta = nil
-		m.dbFK = nil
-		m.dbPK = nil
 		m.dbSelected = ""
 	}
 	if err := os.RemoveAll(dbName); err != nil {
@@ -117,12 +108,10 @@ func (m *Manager) OpenDB(dbName string) error {
 		return errorutil.ErrorDBSysOpenDBFails
 	}
 	m.dbSelected = dbName
-	m.dbMeta, _ = m.relManager.OpenFile(DBMetaName)
-	m.rels = make(map[string]AttrInfoMap)
-	recList := m.dbMeta.GetRecList()
-	for i := 0; i < len(recList); i++ {
-		relname := record.RecordData2TrimmedStringWithOffset(recList[i].Data, 0, types.MaxNameSize)
-		m.rels[relname] = nil
+	m.rels = make(map[string]AttrInfoList)
+	relInfoMap := m.GetDBRelInfoMap()
+	for key := range relInfoMap {
+		m.rels[key] = nil
 	}
 	return nil
 }
@@ -130,11 +119,8 @@ func (m *Manager) OpenDB(dbName string) error {
 func (m *Manager) CloseDB(dbName string) error {
 	if m.DBSelected() {
 		_ = os.Chdir("..")
-		if err := m.relManager.CloseFile(m.dbMeta.Filename); err != nil {
-			return err
-		}
-		m.dbMeta = nil
 		m.rels = nil
+		m.dbSelected = ""
 	}
 	if err := os.Chdir(dbName); err != nil {
 		log.V(log.DBSysLevel).Error(err)
@@ -143,7 +129,7 @@ func (m *Manager) CloseDB(dbName string) error {
 	return nil
 }
 
-func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constraintList []ConstraintInfo) error {
+func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo) error {
 	if !m.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
 	}
@@ -154,16 +140,23 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return errorutil.ErrorDBSysMaxNameExceeded
 	}
 
-	attrNameMap := make(map[string]bool)
+	attrInfoList := make(AttrInfoList, 0)
+	attrInfoMap := make(AttrInfoMap)
+	pkList := make([]string, 0)
 	totalSize := 0
+	curSize := 0
 	for i := 0; i < len(attrList); i++ {
-		// check if it's too big a record
 		totalSize += attrList[i].AttrSize + 1
-		// check name duplicated by the way
-		if _, found := attrNameMap[ByteArray24tostr(attrList[i].AttrName)]; found {
+		attrList[i].AttrOffset += curSize   // used 4 bytes to mark if it's null
+		curSize += attrList[i].AttrSize + 1 // additional null flag bit
+		if _, found := attrInfoMap[attrList[i].AttrName]; found {
 			return errorutil.ErrorDBSysCreateTableWithDupAttr
 		}
-		attrNameMap[ByteArray24tostr(attrList[i].AttrName)] = true
+		if attrList[i].IsPrimary {
+			pkList = append(pkList, attrList[i].AttrName)
+		}
+		attrInfoMap[attrList[i].AttrName] = attrList[i]
+		attrInfoList = append(attrInfoList, attrList[i])
 	}
 	if totalSize >= types.PageSize-int(unsafe.Sizeof(types.RecordHeaderPage{})) {
 		return errorutil.ErrorDBSysBigRecordNotSupported
@@ -172,57 +165,20 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo, constr
 		return errorutil.ErrorDBSysMaxAttrExceeded
 	}
 
-	// start to create file after all the checking above
-	curSize := 0
-
-	_ = m.relManager.CreateFile(getTableMetaFileName(relName), AttrInfoSize)
-
-	tableMetaFile, _ := m.relManager.OpenFile(getTableMetaFileName(relName))
-
-	defer func() {
-		if err1 := m.relManager.CloseFile(tableMetaFile.Filename); err1 != nil {
-			log.V(log.DBSysLevel).Error(err1)
-			panic(0)
-		}
-		m.rels[relName] = nil
-	}()
-
-	pkList := make([]string, 0)
-	// add record to tableMetaFile
-	for i := 0; i < len(attrList); i++ {
-		attrList[i].AttrOffset += curSize // used 4 bytes to mark if it's null
-		_, err := tableMetaFile.InsertRec(types.PointerToByteSlice(unsafe.Pointer(&attrList[i]), AttrInfoSize))
-		log.Debugf("%v %v %v", record.RecordData2TrimmedStringWithOffset(attrList[i].AttrName[:], 0), attrList[i].AttrSize, attrList[i].AttrOffset)
-		if err != nil {
-			panic(0)
-		}
-		if attrList[i].IsPrimary {
-			pkList = append(pkList, ByteArray24tostr(attrList[i].AttrName))
-		}
-		curSize += attrList[i].AttrSize + 1 // additional null flag bit
-	}
-
 	// create table record file
-	if err := m.relManager.CreateFile(getTableDataFileName(relName), curSize); err != nil {
+	if err := m.relManager.CreateFile(getTableDataFileName(relName), totalSize); err != nil {
 		return err
 	}
+	m.SetAttrInfoList(relName, attrInfoList)
 
-	// create table index file
-	if err := m.relManager.CreateFile(getTableIdxMetaFileName(relName), int(unsafe.Sizeof(IndexInfo{}))); err != nil {
-		return err
-	}
-
-	// insert relation to dbMetaFile
-	_, _ = m.dbMeta.InsertRec(types.PointerToByteSlice(unsafe.Pointer(
-		&RelInfo{
-			relName:      strTo24ByteArray(relName),
-			recordSize:   curSize,
-			attrCount:    len(attrList),
-			nextIndexNo:  0,
-			indexCount:   0,
-			primaryCount: 0,
-			foreignCount: 0,
-		}), RelInfoSize))
+	m.SetRelInfo(RelInfo{
+		RelName:      relName,
+		RecordSize:   totalSize,
+		AttrCount:    len(attrList),
+		IndexCount:   0,
+		PrimaryCount: len(pkList),
+		ForeignCount: 0,
+	})
 
 	if len(pkList) != 0 {
 		if err := m.AddPrimaryKey(relName, pkList); err != nil {
@@ -241,13 +197,18 @@ func (m *Manager) DropTable(relName string) error {
 		return errorutil.ErrorDBSysRelationNotExisted
 	}
 
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+
+	for idxName := range attrInfoCollection.IdxMap {
+		_ = os.Remove(getTableIdxDataFileName(relName, idxName))
+	}
 	_ = os.Remove(getTableMetaFileName(relName))
-	_ = os.Remove(getTableIdxMetaFileName(relName))
+	//_ = os.Remove(getTableIdxMetaFileName(relName))
 	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 
-	recList, _ := m.dbMeta.GetFilteredRecList(parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(relName)))
+	relInfo := m.GetDBRelInfoMap()
+	delete(relInfo, relName)
 
-	// ToDo add constraint when deleting
-	return m.dbMeta.DeleteRec(recList[0].Rid)
+	return nil
 }

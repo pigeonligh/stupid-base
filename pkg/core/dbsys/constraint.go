@@ -53,7 +53,7 @@ func (m *Manager) checkDBTableAndAttrExistence(relName string, attrNameList []st
 	}
 
 	if attrNameList != nil {
-		attrInfoMap := m.getAttrInfoMapViaCacheOrReload(relName, nil)
+		attrInfoMap := m.GetAttrInfoCollection(relName).InfoMap
 		for _, attr := range attrNameList {
 			if _, found := attrInfoMap[attr]; !found {
 				return errorutil.ErrorDBSysAttrNotExisted

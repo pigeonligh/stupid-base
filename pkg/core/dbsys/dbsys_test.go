@@ -1,12 +1,11 @@
 package dbsys
 
 import (
-	"testing"
-	"time"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"testing"
+	"time"
 )
 
 func TestDbSys(t *testing.T) {
@@ -23,72 +22,70 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	manager.ShowDatabases()
+	//manager.PrintDatabases()
 	if err := manager.OpenDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
-	manager.ShowTables()
+	//manager.PrintTables()
 
 	rel1 := "rel1"
 	attrInfoList := []parser.AttrInfo{
 		{
-			AttrName: strTo24ByteArray("attr1"),
-			RelName:  strTo24ByteArray(rel1),
+			AttrName:  "attr1",
+			RelName:   rel1,
+			IsPrimary: false,
 			AttrInfo: types.AttrInfo{
-				AttrSize:             8,
-				AttrType:             types.INT,
-				IndexNo:              -1,
-				NullAllowed:          false,
-				IsPrimary:            false,
-				HasForeignConstraint: false,
+				AttrSize:    8,
+				AttrType:    types.INT,
+				NullAllowed: false,
 			},
 		},
 		{
-			AttrName: strTo24ByteArray("attr2"),
-			RelName:  strTo24ByteArray(rel1),
+			AttrName:  "attr2",
+			RelName:   rel1,
+			IsPrimary: false,
 			AttrInfo: types.AttrInfo{
-				AttrSize:             8,
-				AttrType:             types.FLOAT,
-				IndexNo:              -1,
-				NullAllowed:          false,
-				IsPrimary:            false,
-				HasForeignConstraint: false,
+				AttrSize:    8,
+				AttrType:    types.FLOAT,
+				NullAllowed: false,
 			},
 		},
 		{
-			AttrName: strTo24ByteArray("attr3"),
-			RelName:  strTo24ByteArray(rel1),
+			AttrName: "attr3",
+			RelName:  rel1,
 			AttrInfo: types.AttrInfo{
 				AttrSize: 24,
 				AttrType: types.VARCHAR,
-				IndexNo:  -1,
 			},
 			Default: types.NewValueFromStr("THIS DEFAULT VALUE HHHHHHHHHHHHHHHHHHHHHH"),
 		},
 		{
-			AttrName: strTo24ByteArray("attr4"),
-			RelName:  strTo24ByteArray(rel1),
+			AttrName: "attr4",
+			RelName:  rel1,
 			AttrInfo: types.AttrInfo{
 				AttrSize: 8,
 				AttrType: types.DATE,
-				IndexNo:  -1,
 			},
 		},
 		{
-			AttrName: strTo24ByteArray("attr5"),
-			RelName:  strTo24ByteArray(rel1),
+			AttrName: "attr5",
+			RelName:  rel1,
 			AttrInfo: types.AttrInfo{
 				AttrSize: 1,
 				AttrType: types.BOOL,
-				IndexNo:  -1,
 			},
 		},
 	}
-	if err := manager.CreateTable(rel1, attrInfoList, []ConstraintInfo{}); err != nil {
+	if err := manager.CreateTable(rel1, attrInfoList); err != nil {
 		t.Error(err)
 		return
 	}
+	manager.PrintTablesWithDetails()
+
+	t.Log(manager.GetDBRelInfoMap())
+	t.Log(manager.GetAttrInfoList(rel1))
+	t.Log(manager.GetFkInfoMap())
 
 	nameMap := make(map[int]string)
 	nameMap[0] = "Alice fucks"
@@ -99,10 +96,11 @@ func TestDbSys(t *testing.T) {
 	nameMap[5] = "Fred haha"
 	nameMap[6] = "Harry hey hey"
 
-	for i := 0; i < 64; i++ {
-		time := time.Now().AddDate(i, 0, 0)
+	for i := 0; i < 30; i++ {
+		time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
-			[]types.Value{types.NewValueFromInt64(i),
+			[]types.Value{
+				types.NewValueFromInt64(i),
 				types.NewValueFromFloat64(0.1 + float64(i)),
 				types.NewValueFromStr(nameMap[i%len(nameMap)]),
 				types.NewValueFromDate(time),
@@ -113,39 +111,44 @@ func TestDbSys(t *testing.T) {
 			return
 		}
 	}
-	//if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
+
+	manager.PrintDatabases()
+	manager.PrintTables()
+	manager.PrintTableMeta(rel1)
+	manager.PrintDBForeignInfos()
+	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
+	////	t.Error(err)
+	////	return
+	////}
+	//
+	//if err := manager.PrintTableMeta(rel1); err != nil {
 	//	t.Error(err)
 	//	return
 	//}
-
-	if err := manager.PrintTableMeta(rel1); err != nil {
-		t.Error(err)
-		return
-	}
-	if err := manager.PrintTableIndex(rel1); err != nil {
-		t.Error(err)
-		return
-	}
-
+	//if err := manager.PrintTableIndex(rel1); err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+	//
 	if err := manager.PrintTableData(rel1); err != nil {
 		t.Error(err)
 		return
 	}
-
-	manager.ShowTablesWithDetails()
-
-	// bug: when value type is not compatible from attr type, behavior is undefined
-	//expr1 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))
-	expr2 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(40))
-	expr := parser.NewExprLogic(nil, types.OpLogicNOT, expr2)
-
-	tmpTable, err := manager.GetTemporalTable(rel1, []string{"attr1", "attr2"}, expr)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	manager.PrintTemporalTable(tmpTable)
+	//
+	//manager.PrintTablesWithDetails()
+	//
+	//// bug: when value type is not compatible from attr type, behavior is undefined
+	////expr1 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))
+	//expr2 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(40))
+	//expr := parser.NewExprLogic(nil, types.OpLogicNOT, expr2)
+	//
+	//tmpTable, err := manager.GetTemporalTable(rel1, []string{"attr1", "attr2"}, expr)
+	//if err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+	//
+	//manager.PrintTemporalTable(tmpTable)
 
 	//rel2 := "rel2"
 	//attrInfoList = []parser.AttrInfo{

@@ -22,12 +22,12 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	//manager.ShowDatabases()
+	//manager.PrintDatabases()
 	if err := manager.OpenDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
-	//manager.ShowTables()
+	//manager.PrintTables()
 
 	rel1 := "rel1"
 	attrInfoList := []parser.AttrInfo{
@@ -83,6 +83,7 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	manager.PrintTablesWithDetails()
 
 	t.Log(manager.GetDBRelInfoMap())
 	t.Log(manager.GetAttrInfoList(rel1))
@@ -97,8 +98,8 @@ func TestDbSys(t *testing.T) {
 	nameMap[5] = "Fred haha"
 	nameMap[6] = "Harry hey hey"
 
-	for i := 0; i < 64; i++ {
-		time := time.Now().AddDate(i, 0, 0)
+	for i := 0; i < 30; i++ {
+		time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
 			[]types.Value{
 				types.NewValueFromInt64(i),
@@ -113,6 +114,9 @@ func TestDbSys(t *testing.T) {
 		}
 	}
 
+	manager.PrintDatabases()
+	manager.PrintTables()
+	manager.PrintTableMeta(rel1)
 	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
 	////	t.Error(err)
 	////	return
@@ -132,7 +136,7 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 	//
-	//manager.ShowTablesWithDetails()
+	//manager.PrintTablesWithDetails()
 	//
 	//// bug: when value type is not compatible from attr type, behavior is undefined
 	////expr1 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))

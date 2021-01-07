@@ -6,10 +6,11 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"io/ioutil"
+	"strconv"
 	"strings"
 )
 
-func (m *Manager) ShowDatabases() {
+func (m *Manager) PrintDatabases() {
 	rootdir := "./"
 	if m.DBSelected() {
 		rootdir = "../"
@@ -28,14 +29,14 @@ func (m *Manager) ShowDatabases() {
 
 	println("+" + strings.Repeat("-", maxLen+2) + "+")
 	println("| " + "Database" + strings.Repeat(" ", maxLen-len("Database")) + " |")
-	println("+" + strings.Repeat("-", maxLen+2) + "+")
+	println("|" + strings.Repeat("-", maxLen+2) + "|")
 	for _, f := range names {
 		println("| " + f + strings.Repeat(" ", maxLen-len(f)) + " |")
 	}
 	println("+" + strings.Repeat("-", maxLen+2) + "+")
 }
 
-func (m *Manager) ShowTables() {
+func (m *Manager) PrintTables() {
 	if !m.DBSelected() {
 		PrintEmptySet()
 	} else {
@@ -47,6 +48,7 @@ func (m *Manager) ShowTables() {
 		}
 		println("+" + strings.Repeat("-", maxLen+2) + "+")
 		println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
+		println("|" + strings.Repeat("-", maxLen+2) + "|")
 		for rel := range m.rels {
 			println("| " + rel + strings.Repeat(" ", maxLen-len(rel)) + " |")
 		}
@@ -55,7 +57,110 @@ func (m *Manager) ShowTables() {
 	}
 }
 
-//func (m *Manager) ShowTablesWithDetails() {
+func (m *Manager) PrintTablesWithDetails() {
+	if !m.DBSelected() {
+		PrintEmptySet()
+	} else {
+		relInfoMap := m.GetDBRelInfoMap()
+		tableHeaders := []string{"RelationName", "RecordSize", "AttrCnt", "IndexCnt", "PrimaryCnt", "ForeignCnt"}
+		col2Wid := make(map[string]int)
+		maxLen := 0
+		for _, header := range tableHeaders {
+			col2Wid[header] = len(header)
+			maxLen += len(header) + 2
+		}
+		maxLen += 5
+
+		//println("+" + strings.Repeat("-", maxLen+2) + "+")
+		//println("| " + m.dbSelected + strings.Repeat(" ", maxLen-len("Database")) + " |")
+		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("| " + header + " ")
+		}
+		println("|")
+		for _, header := range tableHeaders {
+			print("|" + strings.Repeat("-", len(header)+2))
+		}
+		println("|")
+		for _, rel := range relInfoMap {
+			print("| " + rel.RelName + strings.Repeat(" ", col2Wid["RelationName"]-len(rel.RelName)+1))
+			print("| " + strconv.Itoa(rel.RecordSize) + strings.Repeat(" ", col2Wid["RecordSize"]-len(strconv.Itoa(rel.RecordSize))+1))
+			print("| " + strconv.Itoa(rel.AttrCount) + strings.Repeat(" ", col2Wid["AttrCnt"]-len(strconv.Itoa(rel.AttrCount))+1))
+			print("| " + strconv.Itoa(rel.IndexCount) + strings.Repeat(" ", col2Wid["IndexCnt"]-len(strconv.Itoa(rel.IndexCount))+1))
+			print("| " + strconv.Itoa(rel.PrimaryCount) + strings.Repeat(" ", col2Wid["PrimaryCnt"]-len(strconv.Itoa(rel.PrimaryCount))+1))
+			print("| " + strconv.Itoa(rel.ForeignCount) + strings.Repeat(" ", col2Wid["ForeignCnt"]-len(strconv.Itoa(rel.ForeignCount))+1))
+			println("|")
+		}
+		println("+" + strings.Repeat("-", maxLen) + "+")
+	}
+}
+
+func (m *Manager) PrintTableMeta(relName string) {
+	relInfoMap := m.GetDBRelInfoMap()
+	if _, found := relInfoMap[relName]; !found {
+		PrintEmptySet()
+	} else {
+		attrInfoList := m.GetAttrInfoList(relName)
+		tableHeaders := []string{
+			"Field", "Type", "Size", "Offset", "IndexName", "NullAllowed", "IsPrimary", "HasForeignConstraint", "Default",
+		}
+		col2Wid := make(map[string]int)
+		maxLen := 0
+		for _, header := range tableHeaders {
+			col2Wid[header] = len(header)
+			switch header {
+			case "Default":
+				for _, attr := range attrInfoList {
+					if len(attr.Default.Format2String()) > col2Wid[header] {
+						col2Wid[header] = len(attr.Default.Format2String())
+					}
+				}
+			case "Field":
+				for _, attr := range attrInfoList {
+					if len(attr.AttrName) > col2Wid[header] {
+						col2Wid[header] = len(attr.AttrName)
+					}
+				}
+			case "Type":
+				for _, attr := range attrInfoList {
+					if len(types.ValueTypeStringMap[attr.AttrType]) > col2Wid[header] {
+						col2Wid[header] = len(types.ValueTypeStringMap[attr.AttrType])
+					}
+				}
+
+			}
+			maxLen += col2Wid[header] + 2
+		}
+		maxLen += len(tableHeaders) - 1
+
+		println("+" + strings.Repeat("-", maxLen) + "+")
+		for _, header := range tableHeaders {
+			print("| " + header + strings.Repeat(" ", col2Wid[header]-len(header)+1))
+		}
+		println("|")
+
+		println("|" + strings.Repeat("-", maxLen) + "|")
+
+		for _, attr := range attrInfoList {
+			print("| " + attr.AttrName + strings.Repeat(" ", col2Wid["Field"]-len(attr.AttrName)+1))
+			print("| " + types.ValueTypeStringMap[attr.AttrType] + strings.Repeat(" ", col2Wid["Type"]-len(types.ValueTypeStringMap[attr.AttrType])+1))
+			print("| " + strconv.Itoa(attr.AttrSize) + strings.Repeat(" ", col2Wid["Size"]-len(strconv.Itoa(attr.AttrSize))+1))
+			print("| " + strconv.Itoa(attr.AttrOffset) + strings.Repeat(" ", col2Wid["Offset"]-len(strconv.Itoa(attr.AttrOffset))+1))
+			print("| " + attr.IndexName + strings.Repeat(" ", col2Wid["IndexName"]-len(attr.IndexName)+1))
+			print("| " + strconv.FormatBool(attr.NullAllowed) + strings.Repeat(" ", col2Wid["NullAllowed"]-len(strconv.FormatBool(attr.NullAllowed))+1))
+			print("| " + strconv.FormatBool(attr.IsPrimary) + strings.Repeat(" ", col2Wid["IsPrimary"]-len(strconv.FormatBool(attr.IsPrimary))+1))
+			print("| " + strconv.FormatBool(attr.HasForeignConstraint) + strings.Repeat(" ", col2Wid["HasForeignConstraint"]-len(strconv.FormatBool(attr.HasForeignConstraint))+1))
+			print("| " + attr.Default.Format2String() + strings.Repeat(" ", col2Wid["Default"]-len(attr.Default.Format2String())+1))
+
+			println("|")
+		}
+		println("+" + strings.Repeat("-", maxLen) + "+")
+
+	}
+
+}
+
+//func (m *Manager) PrintTablesWithDetails() {
 //	if !m.DBSelected() {
 //		PrintEmptySet()
 //	} else {
@@ -251,18 +356,18 @@ func (m *Manager) PrintTableData(relName string) error {
 	return nil
 }
 
-func (m *Manager) PrintTableIndex(relName string) error {
-	tableShowingDescribedInfo, err := m.getIndexMetaPrintInfo(relName)
-	if err != nil {
-		return err
-	}
-	// these must not have error since file get opened before
-	fileHandle, _ := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
-	defer m.relManager.CloseFile(fileHandle.Filename)
-	recList := fileHandle.GetRecList()
-	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
-	return nil
-}
+//func (m *Manager) PrintTableIndex(relName string) error {
+//	tableShowingDescribedInfo, err := m.getIndexMetaPrintInfo(relName)
+//	if err != nil {
+//		return err
+//	}
+//	// these must not have error since file get opened before
+//	fileHandle, _ := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
+//	defer m.relManager.CloseFile(fileHandle.Filename)
+//	recList := fileHandle.GetRecList()
+//	m.PrintTableByInfo(recList, tableShowingDescribedInfo)
+//	return nil
+//}
 
 // some other utils
 //type IndexInfo struct {
@@ -270,45 +375,45 @@ func (m *Manager) PrintTableIndex(relName string) error {
 //	idxName [types.MaxNameSize]byte
 //	col     [types.MaxNameSize]byte
 //}
-func (m *Manager) getIndexMetaPrintInfo(relName string) (*TablePrintInfo, error) {
-	if !m.DBSelected() {
-		return nil, errorutil.ErrorDBSysDBNotSelected
-	}
-	if _, found := m.rels[relName]; !found {
-		return nil, errorutil.ErrorDBSysRelationNotExisted
-	}
-	tableHeaderList := []string{"idxNo", "idxName", "column"}
-	offsetList := []int{0, 8, 32}
-	sizeList := []int{8, 24, 24}
-	typeList := []types.ValueType{types.INT, types.VARCHAR, types.VARCHAR}
-	colWidMap := map[string]int{"idxNo": 5, "idxName": 7, "column": 6}
-
-	// compute the appropriate length for each component after necessary scanning of each item
-	fh, err := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
-	if err != nil {
-		return nil, err
-	}
-	defer m.relManager.CloseFile(getTableIdxMetaFileName(relName))
-
-	recCnt := 0
-	for _, rec := range fh.GetRecList() {
-		recCnt += 1
-		for j := 0; j < len(tableHeaderList); j++ {
-			if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], typeList[j])); length > colWidMap[tableHeaderList[j]] {
-				colWidMap[tableHeaderList[j]] = length
-			}
-		}
-	}
-
-	return &TablePrintInfo{
-		TableHeaderList: tableHeaderList,
-		OffsetList:      offsetList,
-		SizeList:        sizeList,
-		TypeList:        typeList,
-		NullList:        nil,
-		ColWidMap:       colWidMap,
-	}, nil
-}
+//func (m *Manager) getIndexMetaPrintInfo(relName string) (*TablePrintInfo, error) {
+//	if !m.DBSelected() {
+//		return nil, errorutil.ErrorDBSysDBNotSelected
+//	}
+//	if _, found := m.rels[relName]; !found {
+//		return nil, errorutil.ErrorDBSysRelationNotExisted
+//	}
+//	tableHeaderList := []string{"idxNo", "idxName", "column"}
+//	offsetList := []int{0, 8, 32}
+//	sizeList := []int{8, 24, 24}
+//	typeList := []types.ValueType{types.INT, types.VARCHAR, types.VARCHAR}
+//	colWidMap := map[string]int{"idxNo": 5, "idxName": 7, "column": 6}
+//
+//	// compute the appropriate length for each component after necessary scanning of each item
+//	fh, err := m.relManager.OpenFile(getTableIdxMetaFileName(relName))
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer m.relManager.CloseFile(getTableIdxMetaFileName(relName))
+//
+//	recCnt := 0
+//	for _, rec := range fh.GetRecList() {
+//		recCnt += 1
+//		for j := 0; j < len(tableHeaderList); j++ {
+//			if length := len(data2StringByTypes(rec.Data[offsetList[j]:offsetList[j]+sizeList[j]], typeList[j])); length > colWidMap[tableHeaderList[j]] {
+//				colWidMap[tableHeaderList[j]] = length
+//			}
+//		}
+//	}
+//
+//	return &TablePrintInfo{
+//		TableHeaderList: tableHeaderList,
+//		OffsetList:      offsetList,
+//		SizeList:        sizeList,
+//		TypeList:        typeList,
+//		NullList:        nil,
+//		ColWidMap:       colWidMap,
+//	}, nil
+//}
 
 //type RelInfo struct {
 //	RelName      [types.MaxNameSize]byte

@@ -26,12 +26,11 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 		return errorutil.ErrorDBSysInvalidIndexName
 	}
 
-	idxInfoCollection := m.GetIdxInfoCollection(relName)
-	if _, found := idxInfoCollection.Name2Cols[idxName]; found {
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+	if _, found := attrInfoCollection.IdxMap[idxName]; found {
 		return errorutil.ErrorDBSysIndexNameAlreadyExisted
 	}
 
-	attrInfoCollection := m.GetAttrInfoCollection(relName)
 	for _, attr := range attrList {
 		if len(attrInfoCollection.InfoMap[attr].IndexName) >= 0 {
 			return errorutil.ErrorDBSysColIndexAlreadyExisted
@@ -75,18 +74,18 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	// update each attr and index file
 	relInfo := m.GetDBRelInfoMap()[relName]
 	relInfo.IndexCount++
-	idxInfoCollection.Name2Cols[idxName] = attrList
+	//idxInfoCollection.Name2Cols[idxName] = attrList
 
 	for _, attr := range attrList {
 		attrInfo := attrInfoCollection.InfoMap[attr]
 		attrInfo.IndexName = idxName
 		attrInfoCollection.InfoMap[attr] = attrInfo
-		idxInfoCollection.Col2Name[attr] = idxName
+		//idxInfoCollection.Col2Name[attr] = idxName
 	}
 
 	m.SetAttrInfoListByCollection(relName, attrInfoCollection)
-	m.SetIdxInfoCollection(relName, idxInfoCollection)
 	m.SetRelInfo(relInfo)
+	//m.SetIdxInfoCollection(relName, idxInfoCollection)
 	return nil
 }
 
@@ -100,16 +99,10 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 	}
 
 	// 3
-	idxInfoCollection := m.GetIdxInfoCollection(relName)
-	if _, found := idxInfoCollection.Name2Cols[idxName]; !found {
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+	if _, found := attrInfoCollection.IdxMap[idxName]; !found {
 		// check existence
 		return errorutil.ErrorDBSysIndexNameNotExisted
-	} else {
-		for _, attr := range idxInfoCollection.Name2Cols[idxName] {
-			delete(idxInfoCollection.Col2Name, attr)
-		}
-		delete(idxInfoCollection.Name2Cols, idxName)
-
 	}
 
 	// 1
@@ -118,8 +111,8 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 	m.SetRelInfo(relInfo)
 
 	// 2
-	attrInfoCollection := m.GetAttrInfoCollection(relName)
-	for _, attr := range idxInfoCollection.Name2Cols[idxName] {
+
+	for _, attr := range attrInfoCollection.IdxMap[idxName] {
 		attrInfo := attrInfoCollection.InfoMap[attr]
 		attrInfo.IndexName = ""
 		attrInfoCollection.InfoMap[attr] = attrInfo

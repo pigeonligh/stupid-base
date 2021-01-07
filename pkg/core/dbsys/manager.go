@@ -197,12 +197,13 @@ func (m *Manager) DropTable(relName string) error {
 		return errorutil.ErrorDBSysRelationNotExisted
 	}
 
-	idxInfo := m.GetIdxInfoCollection(relName)
-	for idxName := range idxInfo.Name2Cols {
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+
+	for idxName := range attrInfoCollection.IdxMap {
 		_ = os.Remove(getTableIdxDataFileName(relName, idxName))
 	}
 	_ = os.Remove(getTableMetaFileName(relName))
-	_ = os.Remove(getTableIdxMetaFileName(relName))
+	//_ = os.Remove(getTableIdxMetaFileName(relName))
 	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 

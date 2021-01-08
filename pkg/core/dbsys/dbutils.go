@@ -2,9 +2,10 @@ package dbsys
 
 import (
 	"encoding/gob"
+	"os"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
-	"os"
 )
 
 type RelInfoMap map[string]RelInfo
@@ -146,7 +147,7 @@ type AttrInfoCollection struct {
 }
 
 func (m *Manager) GetAttrInfoList(relName string) AttrInfoList {
-	if res, _ := m.rels[relName]; res != nil {
+	if res := m.rels[relName]; res != nil {
 		return res
 	}
 	file, err := os.OpenFile(getTableMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)

@@ -1,15 +1,15 @@
 package dbsys
 
 import (
+	"testing"
+	"time"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"testing"
-	"time"
 )
 
 func TestDbSys(t *testing.T) {
-
 	log.SetLevel(log.ExprLevel | log.DBSysLevel | log.IndexLevel)
 
 	manager := GetInstance()

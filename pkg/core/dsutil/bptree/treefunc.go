@@ -6,9 +6,11 @@ package bptree
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 func (t *BpTree) updateRoot(root *TreeNode) error {
+	log.V(log.BptreeLevel).Debug("Update Root")
 	err := t.operator.UpdateRoot(root)
 	if err != nil {
 		return err
@@ -36,7 +38,7 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 		return newNode, nil
 	}
 	if node.IsLeaf {
-		insertPos := -1
+		insertPos := node.Size
 		for i := 0; i < node.Size; i++ {
 			cmpResult, err := t.operator.CompareRows(*row, node.Keys[i])
 			if err != nil {
@@ -48,6 +50,7 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 					return nil, err
 				}
 				node.Indexes[i] = rid
+				insertPos = -1
 				break
 			}
 			if cmpResult == 1 {
@@ -56,6 +59,7 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 			}
 		}
 		if insertPos != -1 {
+			log.V(log.BptreeLevel).Debugf("Insert data in leaf, pos: %d", insertPos)
 			newIndex, err := t.operator.NewValue(*row)
 			if err != nil {
 				return nil, err
@@ -63,6 +67,8 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 			if err = node.insertData(insertPos, *row, newIndex); err != nil {
 				return nil, err
 			}
+		} else {
+			log.V(log.BptreeLevel).Debugf("Add data in leaf")
 		}
 	} else {
 		var newNode *TreeNode
@@ -100,11 +106,18 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 			); err != nil {
 				return nil, err
 			}
+			log.V(log.BptreeLevel).Debugf("Insert data in internal, pos: %d %d", insertPos, node.Size)
+			for i := 0; i < node.Size; i++ {
+				log.V(log.BptreeLevel).Debugf("%v", node.Keys[i])
+			}
+		} else {
+			log.V(log.BptreeLevel).Debugf("Add data in internal, pos: %d", insertPos-1)
 		}
 	}
 
 	if node.Size == node.Capacity {
 		// Split
+		log.V(log.BptreeLevel).Debug("Split node")
 		newNode, err := t.operator.NewNode(node.IsLeaf)
 		if err != nil {
 			return nil, err
@@ -151,7 +164,9 @@ func (t *BpTree) insert(node *TreeNode, row *types.RID) (*TreeNode, error) {
 
 func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 	if node.IsLeaf {
+		// log.V(log.BptreeLevel).Debugf("to erase in leaf %d", node.Size)
 		for i := 0; i < node.Size; i++ {
+			// log.V(log.BptreeLevel).Debugf("compare %v with %v", *row, node.Keys[i])
 			cmpResult, err := t.operator.CompareRows(*row, node.Keys[i])
 			if err != nil {
 				return false, err
@@ -161,8 +176,9 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 				if err != nil {
 					return false, err
 				}
+				// log.V(log.BptreeLevel).Debugf("deleted %v and left %v", *row, rid)
 				node.Indexes[i] = rid
-				if rid.Page == types.InvalidPageNum {
+				if rid.Page <= 0 {
 					if err = node.eraseData(i); err != nil {
 						return false, err
 					}
@@ -178,6 +194,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		for i := 0; i < node.Size; i++ {
 			cmpResult := 1
 			if i+1 < node.Size {
+				// log.V(log.BptreeLevel).Debugf("compare %v with %v", *row, node.Keys[i+1])
 				cmpResult, err = t.operator.CompareRows(*row, node.Keys[i+1])
 				if err != nil {
 					return false, err
@@ -193,10 +210,11 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 					return false, err
 				}
 				err = node.updateKey(i, child)
+				log.V(log.BptreeLevel).Debugf("update Key: %v %v", i, node.Keys[i])
 				if err != nil {
 					return false, err
 				}
-				erasePos = i + 1
+				erasePos = i
 				break
 			}
 		}
@@ -225,6 +243,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		if err = t.operator.UpdateNode(prevNode); err != nil {
 			return false, err
 		}
+		log.V(log.BptreeLevel).Debugf("Node merged")
 	}
 	if node.Size == 0 {
 		nextNode, err := t.operator.LoadNode(node.NextIndex)
@@ -246,6 +265,7 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 		if err = t.operator.DeleteNode(node); err != nil {
 			return false, err
 		}
+		log.V(log.BptreeLevel).Debugf("Node deleted")
 		return true, nil
 	}
 	if err := t.operator.UpdateNode(node); err != nil {

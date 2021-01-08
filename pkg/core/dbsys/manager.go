@@ -1,15 +1,16 @@
 package dbsys
 
 import (
+	"os"
+	"sync"
+	"unsafe"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"os"
-	"sync"
-	"unsafe"
 )
 
 const DBMetaName = "db.meta"
@@ -64,11 +65,7 @@ func GetInstance() *Manager {
 }
 
 func (m *Manager) DBSelected() bool {
-	if len(m.dbSelected) == 0 {
-		return false
-	} else {
-		return true
-	}
+	return len(m.dbSelected) != 0
 }
 
 func (m *Manager) CreateDB(dbName string) error {

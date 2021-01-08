@@ -26,6 +26,9 @@ const (
 	// IndexLevel
 	IndexLevel
 
+	// BptreeLevel
+	BptreeLevel
+
 	// QueryLanguageLevel
 	QueryLanguageLevel
 )

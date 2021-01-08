@@ -17,6 +17,10 @@ type FileHandle struct {
 	storageFH      *storage.FileHandle
 }
 
+func (f *FileHandle) GetHeader() types.RecordHeaderPage {
+	return f.header
+}
+
 func NewFileHandle(filename string) (*FileHandle, error) {
 	storageFH, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {

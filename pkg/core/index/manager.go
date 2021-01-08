@@ -45,10 +45,12 @@ func (m *Manager) OpenIndex(filename string, record *record.FileHandle) (*FileHa
 		return file, nil
 	}
 	// IM_FileHandle
+	log.V(log.IndexLevel).Debug("Load Operator")
 	oper, err := LoadOperator(filename, record)
 	if err != nil {
 		return nil, err
 	}
+	log.V(log.IndexLevel).Debug("Create FileHandle")
 	handle, err := NewFileHandle(oper)
 	if err != nil {
 		return nil, err

@@ -16,6 +16,21 @@ type Scaner struct {
 	forceGet bool
 }
 
+func NewFullScaner(handle *FileHandle) (*Scaner, error) {
+	scaner := &Scaner{
+		handle:   handle,
+		forceGet: false,
+	}
+	var err error
+	if scaner.now, err = handle.tree.Begin(); err != nil {
+		return nil, err
+	}
+	if scaner.end, err = handle.tree.End(); err != nil {
+		return nil, err
+	}
+	return scaner, nil
+}
+
 func NewScaner(handle *FileHandle, compOp types.OpType, attr []byte) (*Scaner, error) {
 	scaner := &Scaner{
 		handle:   handle,

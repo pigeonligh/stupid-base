@@ -1,12 +1,13 @@
 package record
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/parser"
-	"github.com/pigeonligh/stupid-base/pkg/core/types"
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"math/rand"
 	"testing"
 	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/parser"
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 func TestRecord(t *testing.T) {

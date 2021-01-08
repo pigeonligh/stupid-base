@@ -2,11 +2,12 @@ package types
 
 import (
 	"bytes"
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 //type ConvertValue interface {

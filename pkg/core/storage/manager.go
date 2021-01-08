@@ -13,7 +13,7 @@ import (
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
-const bufferSize = 64
+const bufferSize = 65536
 
 // Manager provides a file management
 type Manager struct {

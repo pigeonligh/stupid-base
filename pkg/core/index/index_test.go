@@ -10,7 +10,7 @@ import (
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
-func testContext(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) {
+func prepareData(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) {
 	ridVec := make([]types.RID, 0, 200)
 
 	type EmployerRecord struct {
@@ -56,10 +56,9 @@ func testContext(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) 
 		}
 		_ = rHandle.DeleteRec(ridVec[i])
 	}
+}
 
-	t.Logf("%v\n", rHandle.GetHeader())
-
-	//
+func scanData(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) {
 	scaner, err := NewFullScaner(iHandle)
 	if err != nil {
 		t.Error(err)
@@ -133,7 +132,25 @@ func TestIndex(t *testing.T) {
 		return
 	}
 
-	testContext(rHandle, iHandle, t)
+	prepareData(rHandle, iHandle, t)
+
+	if err = iHandle.ForcePages(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = iManager.CloseIndex(indexFilename); err != nil {
+		t.Error(err)
+		return
+	}
+
+	iHandle, err = iManager.OpenIndex(indexFilename, rHandle)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	scanData(rHandle, iHandle, t)
 
 	if err = iHandle.ForcePages(); err != nil {
 		t.Error(err)

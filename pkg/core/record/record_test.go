@@ -83,7 +83,15 @@ func TestRecord(t *testing.T) {
 
 	//
 	fscan1 := FileScan{}
-	if err = fscan1.OpenScan(f1, types.INT, 8, 0, types.OpCompLE, parser.NewValueFromInt64(20)); err != nil {
+
+	if err = fscan1.OpenScan(f1, parser.AttrInfo{
+		AttrInfo: types.AttrInfo{
+			AttrSize:    8,
+			AttrOffset:  0,
+			AttrType:    types.INT,
+			NullAllowed: false,
+		},
+	}, types.OpCompLE, types.NewValueFromInt64(20)); err != nil {
 		t.Error(err)
 		return
 	}
@@ -107,7 +115,15 @@ func TestRecord(t *testing.T) {
 	}
 
 	fscan2 := FileScan{}
-	if err = fscan2.OpenScan(f1, types.STRING, 20, 16, types.OpCompLE, parser.NewValueFromStr("Carol")); err != nil {
+
+	if err = fscan2.OpenScan(f1, parser.AttrInfo{
+		AttrInfo: types.AttrInfo{
+			AttrSize:    20,
+			AttrOffset:  16,
+			AttrType:    types.VARCHAR,
+			NullAllowed: false,
+		},
+	}, types.OpCompLE, types.NewValueFromStr("Carol")); err != nil {
 		t.Error(err)
 		return
 	}

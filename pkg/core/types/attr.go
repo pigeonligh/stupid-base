@@ -1,14 +1,10 @@
 package types
 
 type AttrInfo struct {
-	AttrSize             int // used by expr::NodeAttr
-	AttrOffset           int // used by expr::NodeAttr
-	AttrType             ValueType
-	IndexNo              int  // used by system manager
-	ConstraintRID        RID  // used by system manager, deprecated
-	NullAllowed          bool // used by system manager
-	IsPrimary            bool // used by system manager
-	HasForeignConstraint bool // will be checked if necessary
+	AttrSize    int // used by expr::NodeAttr
+	AttrOffset  int // used by expr::NodeAttr
+	AttrType    ValueType
+	NullAllowed bool // used by system manager
 }
 
 type AttrSet struct {
@@ -16,7 +12,7 @@ type AttrSet struct {
 	nullPos []int
 }
 
-func NewAttr() *AttrSet {
+func NewAttrSet() *AttrSet {
 	return &AttrSet{
 		attrs:   []AttrInfo{},
 		nullPos: []int{},
@@ -65,6 +61,9 @@ func (attr *AttrSet) DataToAttrs(rid RID, data []byte) []byte {
 
 func (attr *AttrSet) AddSingleAttr(ai AttrInfo) {
 	attr.attrs = append(attr.attrs, ai)
+	if ai.NullAllowed {
+		attr.nullPos = append(attr.nullPos, ai.AttrOffset+ai.AttrSize)
+	}
 }
 
 func (attr *AttrSet) HasNull(attrData []byte) bool {

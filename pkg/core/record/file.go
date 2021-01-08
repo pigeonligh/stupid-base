@@ -219,6 +219,23 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 	return NewRecord(rid, slotByteSlice, f.header.RecordSize)
 }
 
+func (f *FileHandle) ForcePage(page types.PageNum) {
+	if err := f.storageFH.MarkDirty(page); err != nil {
+		panic(0)
+	}
+	if err := f.storageFH.ForcePage(page); err != nil {
+		panic(0)
+	}
+}
+
+func GetRidListFromRecList(recList []*Record) []types.RID {
+	ridCollection := make([]types.RID, len(recList))
+	for i, rec := range recList {
+		ridCollection[i] = rec.Rid
+	}
+	return ridCollection
+}
+
 func (f *FileHandle) GetRecList() []*Record {
 	relScan := FileScan{}
 	_ = relScan.OpenFullScan(f)
@@ -226,75 +243,27 @@ func (f *FileHandle) GetRecList() []*Record {
 
 	for rec, err := relScan.GetNextRecord(); rec != nil && err == nil; rec, _ = relScan.GetNextRecord() {
 		recCollection = append(recCollection, rec)
-
 	}
 	return recCollection
 }
 
-// filter condition
-type FilterCond struct {
-	AttrSize   int
-	AttrOffset int
-	CompOp     types.OpType
-	Value      parser.Value
-}
-
-func (f *FileHandle) GetFilteredRecList(cond FilterCond) ([]*Record, error) {
-	relScan := FileScan{}
-	if err := relScan.OpenScan(f, cond.Value.ValueType, cond.AttrSize, cond.AttrOffset, cond.CompOp, cond.Value); err != nil {
-		return nil, err
+func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
+	if expr == nil {
+		return recList, nil
 	}
-	recCollection := make([]*Record, 0)
-
-	for rec, err := relScan.GetNextRecord(); rec != nil; rec, _ = relScan.GetNextRecord() {
-		if err != nil {
+	filterList := make([]*Record, 0)
+	for _, rec := range recList {
+		expr.ResetCalculated()
+		if err := expr.Calculate(rec.Data); err != nil {
 			return nil, err
 		}
-		recCollection = append(recCollection, rec)
-	}
-	return recCollection, nil
-}
-
-func GetRidListFromRecList(recList []*Record) []types.RID {
-	ridCollection := make([]types.RID, len(recList), len(recList))
-	for i, rec := range recList {
-		ridCollection[i] = rec.Rid
-	}
-	return ridCollection
-}
-
-func FilterOnRecList(recList []*Record, condList []FilterCond) []*Record {
-
-	exprList := make([]*parser.Expr, 0)
-
-	for _, cond := range condList {
-		left := parser.NewExprEmpty()
-		left.AttrInfo.AttrOffset = cond.AttrOffset
-		left.AttrInfo.AttrSize = cond.AttrSize
-		left.Value.ValueType = cond.Value.ValueType
-		left.NodeType = types.NodeAttr
-		left.IsNull = false
-		left.IsCalculated = false
-		right := parser.NewExprConst(cond.Value)
-		expr := parser.NewExprComp(left, cond.CompOp, right)
-		exprList = append(exprList, expr)
-	}
-
-	filterList := make([]*Record, 0)
-
-	for _, rec := range recList {
-		compRes := true
-		for i := 0; i < len(exprList); i++ {
-			exprList[i].ResetCalculated()
-			err := exprList[i].Calculate(rec.Data)
-			if err != nil {
-				return make([]*Record, 0)
-			}
-			compRes = compRes && exprList[i].CompIsTrue()
-		}
-		if compRes {
+		if expr.GetBool() {
 			filterList = append(filterList, rec)
 		}
 	}
-	return filterList
+	return filterList, nil
+}
+
+func (f *FileHandle) GetFilteredRecList(expr *parser.Expr) ([]*Record, error) {
+	return FilterOnRecList(f.GetRecList(), expr)
 }

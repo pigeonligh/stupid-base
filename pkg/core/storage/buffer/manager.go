@@ -5,6 +5,7 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"os"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -93,7 +94,9 @@ func (mg *Manager) MarkDirty(id types.PageID) error {
 		return errorutil.ErrorPageNotInBuffer
 	}
 	if mg.buffers[slot].pinCount == 0 {
-		return errorutil.ErrorPageUnPinned
+		// in upper levels, we have pages that already unpinned but still alive for further uses
+		log.V(log.BufferLevel).Warning("error page unpinned")
+		//return errorutil.ErrorPageUnPinned
 	}
 	mg.buffers[slot].dirty = true
 	mg.linkUsed(slot)

@@ -19,27 +19,20 @@ type FileScan struct {
 }
 
 func (f *FileScan) OpenFullScan(file *FileHandle) error {
-	return f.OpenScan(file, types.NO_ATTR, 0, 0, types.OpDefault, parser.Value{})
+	return f.OpenScan(file, parser.AttrInfo{}, types.OpDefault, types.NewValueFromEmpty())
 }
 
-func (f *FileScan) OpenScan(file *FileHandle, valueType types.ValueType, attrSize int, attrOffset int, compOp types.OpType, value parser.Value) error {
+func (f *FileScan) OpenScan(file *FileHandle, attr parser.AttrInfo, compOp types.OpType, value types.Value) error {
 	if !types.IsOpComp(compOp) {
 		return errorutil.ErrorRecordScanWithNonCompOp
 	}
 
 	var expr *parser.Expr = nil
-	if compOp != types.OpDefault && value.ValueType != types.NO_ATTR {
-		if value.ValueType != valueType {
+	if compOp != types.OpDefault && attr.AttrType != types.NO_ATTR {
+		if attr.AttrType != value.ValueType {
 			return errorutil.ErrorRecordScanValueTypeNotMatch
 		}
-		left := parser.NewExprEmpty()
-		left.AttrInfo.AttrOffset = attrOffset
-		left.AttrInfo.AttrSize = attrSize
-		left.Value.ValueType = valueType
-		left.NodeType = types.NodeAttr
-		left.IsNull = false
-		left.IsCalculated = false
-
+		left := parser.NewExprAttr(attr)
 		right := parser.NewExprConst(value)
 		expr = parser.NewExprComp(left, compOp, right)
 	} else {
@@ -95,7 +88,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 				if err != nil {
 					return nil, err
 				}
-				if f.cond.CompIsTrue() {
+				if f.cond.GetBool() {
 					return record, nil
 				}
 			} else {

@@ -41,7 +41,7 @@ func (f *FileHandle) InsertEntry(rid types.RID) error {
 	return nil
 }
 
-func (f *FileHandle) DeletEntry(rid types.RID) error {
+func (f *FileHandle) DeleteEntry(rid types.RID) error {
 	if err := f.tree.Delete(&rid); err != nil {
 		return err
 	}
@@ -52,5 +52,14 @@ func (f *FileHandle) DeletEntry(rid types.RID) error {
 }
 
 func (f *FileHandle) ForcePages() error {
+	return nil
+}
+
+func (f *FileHandle) DeleteEntryByBatch(ridList []types.RID) error {
+	for _, rid := range ridList {
+		if err := f.DeleteEntry(rid); err != nil {
+			return err
+		}
+	}
 	return nil
 }

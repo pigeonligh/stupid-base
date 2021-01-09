@@ -182,6 +182,7 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 						return err
 					}
 				case sqlparser.NormalKeyType:
+					// TODO ?
 					fmt.Println("TODO: ?")
 				case sqlparser.PrimaryKeyType:
 					if err := db.sysManager.DropPrimaryKey(tableName); err != nil {

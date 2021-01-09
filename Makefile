@@ -9,7 +9,10 @@ LD_FLAGS=" \
     -X '${REPO_PATH}/pkg/version.Version=${RELEASE_VER}'"
 
 stupid-base: init
-	go build -ldflags ${LD_FLAGS} -o ${BIN_DIR}/stupid-base ./cmd/stupid-base
+	go build -v -ldflags ${LD_FLAGS} -o ${BIN_DIR}/stupid-base ./cmd/stupid-base
+
+run: stupid-base
+	${BIN_DIR}/stupid-base
 
 init:
 	mkdir -p ${BIN_DIR}

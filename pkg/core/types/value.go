@@ -69,6 +69,12 @@ func (v *Value) AdaptToType(target ValueType) {
 			v.ValueType = DATE
 			return
 		}
+		if v.ValueType == VARCHAR {
+			if t, err := time.Parse(v.ToStr(), "2013-Feb-03"); err == nil {
+				v.FromInt64(int(t.Unix()))
+				v.ValueType = DATE
+			}
+		}
 	case VARCHAR:
 		if v.ValueType == VARCHAR {
 			return

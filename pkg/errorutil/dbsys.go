@@ -20,6 +20,8 @@ var (
 
 	ErrorDBSysAttrNotExisted = errors.New("table attribute not existed")
 
+	ErrorDBSysDuplicatedAttrsFound = errors.New("duplicated attrs found")
+
 	// some rules
 	ErrorDBSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
 
@@ -30,6 +32,8 @@ var (
 	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
 	// foreign key
+	ErrorDBSysForeignKeyConstraintNotMatch = errors.New("foreign key constraint not match while deleting")
+
 	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
 
 	ErrorDBSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
@@ -62,4 +66,9 @@ var (
 
 	// insert rules
 	ErrorDBSysInsertValueTypeNotMatch = errors.New("insert value type not match")
+
+	// update rules
+	ErrorDBSysUpdateValueTypeNotMatch = errors.New("update value type not match")
+
+	ErrorDBSysNullConstraintViolated = errors.New("null constraint violated")
 )

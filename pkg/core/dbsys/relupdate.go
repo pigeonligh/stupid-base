@@ -342,6 +342,7 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	m.SetAttrInfoListByCollection(fkInfo.DstRel, dstAttrInfoCollection)
 
 	delete(fkMap, fkName)
+	m.SetFkInfoMap(fkMap)
 
 	return nil
 }
@@ -358,8 +359,8 @@ func (m *Manager) DropColumn(relName string, attrName string) {
 	// check foreign constraint, if has foreign constraint -> drop
 }
 
-func (m *Manager) RenameTable() {
-	// TODO
+func (m *Manager) RenameTable(srcName, dstName string) {
+	// TODO\
 }
 
 func (m *Manager) ChangeColumn() {

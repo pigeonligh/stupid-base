@@ -2,11 +2,56 @@ package dbsys
 
 import (
 	"encoding/gob"
-	"os"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	"os"
 )
+
+func compareBytes(attr1, attr2 []byte) int {
+	if len(attr1) > len(attr2) {
+		return -compareBytes(attr2, attr1)
+	}
+	compareLength := len(attr1)
+	for i := 0; i < compareLength; i++ {
+		if attr1[i] == attr2[i] {
+			continue
+		}
+		if attr1[i] < attr2[i] {
+			return 1
+		}
+		return -1
+	}
+	if len(attr1) < len(attr2) {
+		return 1
+	}
+	return 0
+}
+
+func uniqueStringList(list1 []string) []string {
+	tmpMap := make(map[string]int)
+	for _, attr := range list1 {
+		tmpMap[attr] = 10
+	}
+	retList := make([]string, 0)
+	for key := range tmpMap {
+		retList = append(retList, key)
+	}
+	return retList
+}
+
+func checkIfaLEb(a, b []string) bool {
+	tmpMap := make(map[string]int)
+	for _, attr := range b {
+		tmpMap[attr] = 10
+	}
+	for _, attr := range a {
+		if _, found := tmpMap[attr]; !found {
+			return false
+		}
+	}
+	return true
+}
 
 type RelInfoMap map[string]RelInfo
 
@@ -98,6 +143,9 @@ type FkConstraint struct {
 	SrcAttr []string
 	DstAttr []string
 }
+
+const GlbFkFileName = "db.fk-meta"
+
 type FkConstraintMap map[string]FkConstraint
 
 func (m *Manager) GetFkInfoMap() FkConstraintMap {
@@ -258,4 +306,26 @@ func (m *Manager) GetAttrSetFromAttrs(relName string, attrNames []string) types.
 		attrSet.AddSingleAttr(attrInfoMap[attr].AttrInfo)
 	}
 	return attrSet
+}
+
+func (m *Manager) checkDBTableAndAttrExistence(relName string, attrNameList []string) error {
+	if len(m.dbSelected) == 0 {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	if _, found := m.rels[relName]; !found {
+		return errorutil.ErrorDBSysRelationNotExisted
+	}
+	if len(uniqueStringList(attrNameList)) != len(attrNameList) {
+		return errorutil.ErrorDBSysDuplicatedAttrsFound
+	}
+
+	if attrNameList != nil {
+		attrInfoMap := m.GetAttrInfoCollection(relName).InfoMap
+		for _, attr := range attrNameList {
+			if _, found := attrInfoMap[attr]; !found {
+				return errorutil.ErrorDBSysAttrNotExisted
+			}
+		}
+	}
+	return nil
 }

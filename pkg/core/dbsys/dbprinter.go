@@ -162,7 +162,9 @@ func (m *Manager) PrintDBForeignInfos() {
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
 	}
-	println("|")
+	if len(fkInfoMap) != 0 {
+		println("|")
+	}
 	for _, header := range tableHeaders {
 		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}

@@ -183,6 +183,12 @@ func TestDbSys(t *testing.T) {
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
 	manager.PrintTableMeta(rel2)
+
+	manager.PrintDBForeignInfos()
+	if err := manager.DropForeignKey("fk1"); err != nil {
+		t.Error(err)
+		return
+	}
 	manager.PrintDBForeignInfos()
 
 	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
@@ -199,10 +205,15 @@ func TestDbSys(t *testing.T) {
 	//	return
 	//}
 	//
+	if err := manager.PrintTableData(rel2); err != nil {
+		t.Error(err)
+		return
+	}
 	if err := manager.PrintTableData(rel1); err != nil {
 		t.Error(err)
 		return
 	}
+
 	//
 	//manager.PrintTablesWithDetails()
 	//
@@ -211,7 +222,7 @@ func TestDbSys(t *testing.T) {
 	//expr2 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(40))
 	//expr := parser.NewExprLogic(nil, types.OpLogicNOT, expr2)
 	//
-	//tmpTable, err := manager.GetTemporalTable(rel1, []string{"attr1", "attr2"}, expr)
+	//tmpTable, err := manager.SelectSingleTableByExpr(rel1, []string{"attr1", "attr2"}, expr)
 	//if err != nil {
 	//	t.Error(err)
 	//	return

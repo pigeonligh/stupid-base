@@ -5,6 +5,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"os"
+	"unsafe"
 )
 
 type TableUpdateType int
@@ -167,7 +168,9 @@ func (m *Manager) DropPrimaryKey(relName string) error {
 	// 1. set primary count to 0
 	// 2. update each attr info
 	// 3. remove index file
-
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
 	// 0
 	if err := m.checkDBTableAndAttrExistence(relName, nil); err != nil {
 		return err
@@ -204,7 +207,9 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	// 6. update each attr
 	// 7. update relation
 	// 8. write back to origin fk file
-
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
 	//1.
 	if len(srcAttrList) != len(dstAttrList) {
 		return errorutil.ErrorDBSysForeignKeyLenNotMatch
@@ -310,7 +315,9 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	// 1. check fk exists
 	// 2. remove from attr info
 	// 3. remove from foreign key file
-
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
 	fkMap := m.GetFkInfoMap()
 	if _, found := fkMap[fkName]; !found {
 		return errorutil.ErrorDBSysForeignKeyNotExists
@@ -348,36 +355,121 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	return nil
 }
 
-func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInfo) error{
+func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInfo) error {
 	// todo
 	// 1. check name exists
 	// 2. check info valid
 	// 3. check attrInfo valid (foreign key, primary key)
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
 	if err := m.checkDBTableAndAttrExistence(relName, []string{attrName}); err == nil {
 		return errorutil.ErrorDBSysAttrExisted
 	}
 	relInfo := m.GetDBRelInfoMap()[relName]
-	if info.IsPrimary || len(info.IndexName) > 0 || len(info.FkName) > 0{
+	if info.IsPrimary || len(info.IndexName) > 0 || len(info.FkName) > 0 {
 		return errorutil.ErrorDBSysAddComplicateColumnNotSupported
 	}
-	if relInfo.AttrCount + 1 >= types.MaxAttrNums {
+	if relInfo.AttrCount+1 >= types.MaxAttrNums {
 		return errorutil.ErrorDBSysMaxAttrExceeded
 	}
+	if relInfo.RecordSize+info.AttrSize+1 >= types.PageSize-int(unsafe.Sizeof(types.RecordHeaderPage{})) {
+		return errorutil.ErrorDBSysBigRecordNotSupported
+	}
 
-
-
-
+	info.AttrOffset = relInfo.RecordSize
 	info.RelName = relName
+	relInfo.RecordSize = relInfo.RecordSize + info.AttrSize + 1
+	m.SetRelInfo(relInfo)
 
+	_ = m.relManager.CreateFile("tmp", relInfo.RecordSize)
+	tmpFH, _ := m.relManager.OpenFile("tmp")
+	srcFH, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+	for _, rec := range srcFH.GetRecList() {
+		tmpData := make([]byte, relInfo.RecordSize)
+		copy(tmpData, rec.Data)
+		copy(tmpData[info.AttrOffset:], info.Default.Value[0:info.AttrSize])
+		_, _ = tmpFH.InsertRec(tmpData)
+	}
+	_ = m.relManager.CloseFile(srcFH.Filename)
+	_ = m.relManager.CloseFile(tmpFH.Filename)
+	_ = m.relManager.DestroyFile(srcFH.Filename)
+	_ = os.Rename(tmpFH.Filename, srcFH.Filename)
+
+	attrInfoList := m.GetAttrInfoList(relName)
+	attrInfoList = append(attrInfoList, info)
+	m.SetAttrInfoList(relName, attrInfoList)
+
+	return nil
 }
 
-func (m *Manager) DropColumn(relName string, attrName string) {
+func (m *Manager) DropColumn(relName string, attrName string) error {
 	// TODO
 	// check foreign constraint, if has foreign constraint -> drop
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	if err := m.checkDBTableAndAttrExistence(relName, []string{attrName}); err != nil {
+		return err
+	}
+	relInfo := m.GetDBRelInfoMap()[relName]
+
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+
+	if relInfo.AttrCount == 1 {
+		return errorutil.ErrorDBSysCannotRemoveLastColumn
+	}
+	if attrInfoCollection.InfoMap[attrName].IsPrimary && relInfo.PrimaryCount == 1 {
+		if err := m.DropPrimaryKey(relName); err != nil {
+			return err
+		}
+	}
+	if len(attrInfoCollection.InfoMap[attrName].FkName) != 0 {
+		return errorutil.ErrorDBSysCannotRemoveForeignKeyCol
+	}
+
+	size := attrInfoCollection.InfoMap[attrName].AttrSize
+	off := attrInfoCollection.InfoMap[attrName].AttrOffset
+
+	_ = m.relManager.CreateFile("tmp", relInfo.RecordSize)
+	tmpFH, _ := m.relManager.OpenFile("tmp")
+	srcFH, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+	for _, rec := range srcFH.GetRecList() {
+		tmpData := make([]byte, relInfo.RecordSize-size-1)
+		copy(tmpData[0:off], rec.Data[0:off])
+		copy(tmpData[off:], rec.Data[off+size+1:])
+		_, _ = tmpFH.InsertRec(tmpData)
+	}
+	_ = m.relManager.CloseFile(srcFH.Filename)
+	_ = m.relManager.CloseFile(tmpFH.Filename)
+	_ = m.relManager.DestroyFile(srcFH.Filename)
+	_ = os.Rename(tmpFH.Filename, srcFH.Filename)
+
+	attrInfoList := m.GetAttrInfoList(relName)
+	i := 0
+	for {
+		if attrInfoList[i].AttrName == attrName {
+			break
+		}
+		i++
+	}
+
+	idxMap := m.GetAttrInfoCollection(relName).IdxMap
+	if item, found := idxMap[attrInfoList[i].IndexName]; found && len(item) == 0 {
+		_ = m.DropIndex(relName, attrName)
+	}
+
+	for j := i; j < len(attrInfoList); j++ {
+		attrInfoList[j].AttrOffset = attrInfoList[j].AttrOffset - (size + 1)
+	}
+	attrInfoList = append(attrInfoList[0:i], attrInfoList[i+1:]...)
+	m.SetAttrInfoList(relName, attrInfoList)
+	relInfo.RecordSize = relInfo.RecordSize - size - 1
+	m.SetRelInfo(relInfo)
+	return nil
 }
 
-func (m *Manager) RenameTable(srcName, dstName string) error{
-	// TODO
+func (m *Manager) RenameTable(srcName, dstName string) error {
 	if err := m.checkDBTableAndAttrExistence(srcName, nil); err != nil {
 		return err
 	}
@@ -387,7 +479,7 @@ func (m *Manager) RenameTable(srcName, dstName string) error{
 		attrInfo.RelName = dstName
 		attrInfoCollection.InfoMap[attr] = attrInfo
 	}
-	m.SetAttrInfoListByCollection(srcName,attrInfoCollection)
+	m.SetAttrInfoListByCollection(srcName, attrInfoCollection)
 
 	relInfoMap := m.GetDBRelInfoMap()
 	if item, found := relInfoMap[dstName]; found {
@@ -421,6 +513,70 @@ func (m *Manager) RenameTable(srcName, dstName string) error{
 	return nil
 }
 
-func (m *Manager) ChangeColumn() {
-	// TODO
+// ChangeColumn
+// support incremental update
+// change ValueType
+// Null
+// Default
+const (
+	ChangeValueType = 1 << iota
+	ChangeNull
+	ChangeDefault
+)
+
+func (m *Manager) ChangeColumn(relName, attrName string, info *parser.AttrInfo, changeField int) error {
+	// support incremental value
+	if !m.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	if err := m.checkDBTableAndAttrExistence(relName, []string{attrName}); err != nil {
+		return err
+	}
+
+	// check value type
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+	infoMap := attrInfoCollection.InfoMap
+	if infoMap[attrName].IsPrimary || len(infoMap[attrName].FkName) != 0 {
+		return errorutil.ErrorDBSysCannotChangePkFkColumn
+	}
+
+	if changeField&ChangeValueType != 0 {
+		val := types.NewValueFromEmpty()
+		val.ValueType = infoMap[attrName].AttrType
+		val.AdaptToType(info.AttrType)
+		if val.ValueType == types.NO_ATTR {
+			return errorutil.ErrorDBSysUpdateValueTypeNotMatch
+		}
+	}
+
+	off := infoMap[attrName].AttrOffset
+	size := infoMap[attrName].AttrSize
+	typ := infoMap[attrName].AttrType
+
+	fh, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+	lastPage := 0
+	for _, rec := range fh.GetRecList() {
+		if changeField&ChangeValueType != 0 {
+			val := types.NewValueFromByteSlice(rec.Data[off:off+size], typ)
+			val.AdaptToType(info.AttrType)
+			copy(rec.Data[off:off+size], val.Value[0:size])
+		}
+		if rec.Rid.Page != lastPage {
+			fh.ForcePage(lastPage)
+			lastPage = rec.Rid.Page
+		}
+	}
+	fh.ForcePage(lastPage)
+
+	attrInfo := infoMap[attrName]
+	if changeField&ChangeNull != 0 {
+		attrInfo.NullAllowed = info.NullAllowed
+	}
+	if changeField&ChangeDefault != 0 {
+		attrInfo.Default = info.Default
+	}
+	infoMap[attrName] = attrInfo
+	attrInfoCollection.InfoMap = infoMap
+	m.SetAttrInfoListByCollection(relName, attrInfoCollection)
+	return nil
 }

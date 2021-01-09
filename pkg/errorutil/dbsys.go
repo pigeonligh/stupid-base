@@ -76,4 +76,12 @@ var (
 
 	// add column
 	ErrorDBSysAddComplicateColumnNotSupported = errors.New("add complicate col not supported")
+
+	// remove column
+	ErrorDBSysCannotRemoveLastColumn = errors.New("cannot remove last column")
+
+	ErrorDBSysCannotRemoveForeignKeyCol = errors.New("cannot remove column which has fk")
+
+	// change
+	ErrorDBSysCannotChangePkFkColumn = errors.New("cannot change primary columnn")
 )

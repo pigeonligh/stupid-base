@@ -275,6 +275,7 @@ func TestDbSys(t *testing.T) {
 	//manager.PrintTableByTmpColumns(tmpTable)
 
 	// delete
+	return
 	if err := manager.DropDB(db1); err != nil {
 		t.Error(err)
 		return

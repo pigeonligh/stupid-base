@@ -21,3 +21,5 @@ testfiles_*
 testdb_*
 
 vitess/
+
+STUPID-BASE-DATA

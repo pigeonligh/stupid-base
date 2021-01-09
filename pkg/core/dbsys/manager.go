@@ -60,6 +60,10 @@ func GetInstance() *Manager {
 			rels:       nil,
 			dbSelected: "",
 		}
+		if err := os.Mkdir("STUPID-BASE-DATA", os.ModePerm); err != nil {
+			log.V(log.DBSysLevel).Info("base dir exists!")
+		}
+		_ = os.Chdir("STUPID-BASE-DATA")
 	})
 	return instance
 }
@@ -159,7 +163,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo) error 
 		return errorutil.ErrorDBSysBigRecordNotSupported
 	}
 	if len(attrList) >= types.MaxAttrNums {
-
+		return errorutil.ErrorDBSysMaxAttrExceeded
 	}
 
 	// create table record file

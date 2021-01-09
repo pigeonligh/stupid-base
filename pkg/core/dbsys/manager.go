@@ -30,13 +30,13 @@ func getTableIdxDataFileName(table, idxName string) string {
 	return table + "-" + idxName + ".index"
 }
 
-func getTableIdxMetaFileName(table string) string {
-	return table + ".table-index"
-}
+//func getTableIdxMetaFileName(table string) string {
+//	return table + ".table-index"
+//}
 
-func getTableConstraintFileName(table string) string {
-	return table + ".constraint-meta"
-}
+//func getTableConstraintFileName(table string) string {
+//	return table + ".constraint-meta"
+//}
 
 type Manager struct {
 	relManager *record.Manager
@@ -131,7 +131,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo) error 
 		return errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; found {
-		return errorutil.ErrorDBSysTableExisted
+		return errorutil.ErrorDBSysRelationExisted
 	}
 	if len(relName) >= types.MaxNameSize {
 		return errorutil.ErrorDBSysMaxNameExceeded
@@ -159,7 +159,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo) error 
 		return errorutil.ErrorDBSysBigRecordNotSupported
 	}
 	if len(attrList) >= types.MaxAttrNums {
-		return errorutil.ErrorDBSysMaxAttrExceeded
+
 	}
 
 	// create table record file
@@ -201,7 +201,6 @@ func (m *Manager) DropTable(relName string) error {
 	}
 	_ = os.Remove(getTableMetaFileName(relName))
 	//_ = os.Remove(getTableIdxMetaFileName(relName))
-	_ = os.Remove(getTableConstraintFileName(relName))
 	_ = os.Remove(getTableDataFileName(relName))
 
 	relInfo := m.GetDBRelInfoMap()

@@ -24,6 +24,24 @@ var ValueTypeStringMap = map[ValueType]string{
 	BOOL:    "BOOL",
 }
 
+var ValueTypeDefaultSize = map[ValueType]int{
+	NO_ATTR: 0,
+	INT:     8,
+	FLOAT:   8,
+	DATE:    8,
+	VARCHAR: 8,
+	BOOL:    1,
+}
+
+func GetValueType(s string) ValueType {
+	for k, v := range ValueTypeStringMap {
+		if v == s {
+			return k
+		}
+	}
+	return NO_ATTR
+}
+
 type OpType = int
 
 const (

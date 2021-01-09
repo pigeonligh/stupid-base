@@ -14,11 +14,13 @@ var (
 
 	ErrorDBSysDBNotSelected = errors.New("database not selected")
 
-	ErrorDBSysTableExisted = errors.New("table existed")
+	ErrorDBSysRelationExisted = errors.New("table existed")
 
 	ErrorDBSysRelationNotExisted = errors.New("table not existed")
 
 	ErrorDBSysAttrNotExisted = errors.New("table attribute not existed")
+
+	ErrorDBSysAttrExisted = errors.New("table attribute existed")
 
 	ErrorDBSysDuplicatedAttrsFound = errors.New("duplicated attrs found")
 
@@ -71,4 +73,7 @@ var (
 	ErrorDBSysUpdateValueTypeNotMatch = errors.New("update value type not match")
 
 	ErrorDBSysNullConstraintViolated = errors.New("null constraint violated")
+
+	// add column
+	ErrorDBSysAddComplicateColumnNotSupported = errors.New("add complicate col not supported")
 )

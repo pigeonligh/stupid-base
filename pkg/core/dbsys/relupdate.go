@@ -4,6 +4,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	"os"
 )
 
 type TableUpdateType int
@@ -347,11 +348,27 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	return nil
 }
 
-func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInfo) {
+func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInfo) error{
 	// todo
 	// 1. check name exists
 	// 2. check info valid
 	// 3. check attrInfo valid (foreign key, primary key)
+	if err := m.checkDBTableAndAttrExistence(relName, []string{attrName}); err == nil {
+		return errorutil.ErrorDBSysAttrExisted
+	}
+	relInfo := m.GetDBRelInfoMap()[relName]
+	if info.IsPrimary || len(info.IndexName) > 0 || len(info.FkName) > 0{
+		return errorutil.ErrorDBSysAddComplicateColumnNotSupported
+	}
+	if relInfo.AttrCount + 1 >= types.MaxAttrNums {
+		return errorutil.ErrorDBSysMaxAttrExceeded
+	}
+
+
+
+
+	info.RelName = relName
+
 }
 
 func (m *Manager) DropColumn(relName string, attrName string) {
@@ -359,8 +376,49 @@ func (m *Manager) DropColumn(relName string, attrName string) {
 	// check foreign constraint, if has foreign constraint -> drop
 }
 
-func (m *Manager) RenameTable(srcName, dstName string) {
-	// TODO\
+func (m *Manager) RenameTable(srcName, dstName string) error{
+	// TODO
+	if err := m.checkDBTableAndAttrExistence(srcName, nil); err != nil {
+		return err
+	}
+
+	attrInfoCollection := m.GetAttrInfoCollection(srcName)
+	for attr, attrInfo := range attrInfoCollection.InfoMap {
+		attrInfo.RelName = dstName
+		attrInfoCollection.InfoMap[attr] = attrInfo
+	}
+	m.SetAttrInfoListByCollection(srcName,attrInfoCollection)
+
+	relInfoMap := m.GetDBRelInfoMap()
+	if item, found := relInfoMap[dstName]; found {
+		return errorutil.ErrorDBSysRelationExisted
+	} else {
+		relInfoMap[dstName] = item
+		delete(relInfoMap, srcName)
+	}
+
+	// rename index file
+	for idx := range attrInfoCollection.IdxMap {
+		_ = os.Rename(getTableIdxDataFileName(srcName, idx), getTableIdxDataFileName(dstName, idx))
+	}
+
+	// rename data file
+	_ = os.Rename(getTableDataFileName(srcName), getTableDataFileName(dstName))
+	_ = os.Rename(getTableMetaFileName(srcName), getTableMetaFileName(dstName))
+
+	// rename fk related
+	fkMap := m.GetFkInfoMap()
+	for key, val := range fkMap {
+		if val.SrcRel == srcName {
+			val.SrcRel = dstName
+		}
+		if val.DstRel == srcName {
+			val.DstRel = dstName
+		}
+		fkMap[key] = val
+	}
+	m.SetFkInfoMap(fkMap)
+	return nil
 }
 
 func (m *Manager) ChangeColumn() {

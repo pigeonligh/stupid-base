@@ -1,4 +1,4 @@
-package core
+package database
 
 import "vitess.io/vitess/go/vt/sqlparser"
 

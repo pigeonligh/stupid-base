@@ -2,7 +2,7 @@
 Copyright (c) 2020, pigeonligh.
 */
 
-package core
+package database
 
 import (
 	"fmt"
@@ -20,13 +20,17 @@ import (
 type Database struct {
 	sysManager   *dbsys.Manager
 	queryManager *query.Manager
+
+	nowDatabase string
 }
 
-// NewDatabase returns a database context
-func NewDatabase() (*Database, error) {
+// New returns a database context
+func New() (*Database, error) {
 	return &Database{
 		sysManager:   dbsys.GetInstance(),
 		queryManager: query.GetInstance(),
+
+		nowDatabase: "",
 	}, nil
 }
 
@@ -54,6 +58,21 @@ func (db *Database) Run(sqls string) error {
 		var solveString string = ""
 
 		switch stmt.(type) {
+		case *sqlparser.CreateDatabase:
+			solveFunc = db.solveCreateDatabase
+
+		case *sqlparser.DropDatabase:
+			solveFunc = db.solveDropDatabase
+
+		case *sqlparser.CreateTable:
+			solveFunc = db.solveCreateTable
+
+		case *sqlparser.DropTable:
+			solveFunc = db.solveDropTable
+
+		case *sqlparser.AlterTable:
+			solveFunc = db.solveAlterTable
+
 		case *sqlparser.Select:
 			solveFunc = db.solveSelect
 
@@ -71,12 +90,6 @@ func (db *Database) Run(sqls string) error {
 
 		case *sqlparser.Show:
 			solveFunc = db.solveShow
-
-		case *sqlparser.DBDDL:
-			solveFunc = db.solveDBDDL
-
-		case *sqlparser.DDL:
-			solveFunc = db.solveDDL
 
 		case *sqlparser.OtherRead:
 			solveStringFunc = db.solveOtherRead

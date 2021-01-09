@@ -19,3 +19,5 @@ _output/
 .idea
 testfiles_*
 testdb_*
+
+vitess/

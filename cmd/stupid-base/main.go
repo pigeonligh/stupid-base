@@ -11,11 +11,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pigeonligh/stupid-base/pkg/core"
+	"github.com/pigeonligh/stupid-base/pkg/core/database"
 )
 
 func main() {
-	db, _ := core.NewDatabase()
+	db, _ := database.New()
 
 	r := bufio.NewReader(os.Stdin)
 

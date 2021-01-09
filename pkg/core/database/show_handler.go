@@ -1,8 +1,7 @@
-package core
+package database
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -14,15 +13,11 @@ func (db *Database) solveShow(obj sqlparser.Statement) error {
 		return errorutil.ErrorParseCommand
 	}
 
-	fmt.Println(stmt.Type)
-	switch strings.ToLower(stmt.Type) {
-	case sqlparser.KeywordString(sqlparser.DATABASES):
-		fmt.Println("TODO: show databses")
-	case sqlparser.KeywordString(sqlparser.TABLES):
-		fmt.Println("TODO: show tables")
-		fmt.Println(stmt)
-	default:
-		return errorutil.ErrorUnknownCommand
+	switch stmt.Internal.(type) {
+	case *sqlparser.ShowBasic: // show databases
+		db.sysManager.PrintDatabases()
+	case *sqlparser.ShowLegacy: // show tables
+		db.sysManager.PrintTablesWithDetails()
 	}
 	return nil
 }

@@ -32,7 +32,7 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	}
 
 	for _, attr := range attrList {
-		if len(attrInfoCollection.InfoMap[attr].IndexName) >= 0 {
+		if len(attrInfoCollection.InfoMap[attr].IndexName) > 0 {
 			return errorutil.ErrorDBSysColIndexAlreadyExisted
 		}
 	}
@@ -53,16 +53,20 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	}
 	insertRidList := make([]types.RID, 0)
 	for _, rec := range dataFile.GetRecList() {
-		_ = idxFile.InsertEntry(rec.Rid)
+		err := idxFile.InsertEntry(rec.Rid)
+		if err != nil {
+			panic(err)
+		}
 		insertRidList = append(insertRidList, rec.Rid)
 		if !duplicatedAllowed {
 			// it must have unique or primary constraint, check duplicate
 			primaryByte := idxAttrSet.DataToAttrs(rec.Rid, rec.Data)
 			if len(idxFile.GetRidList(types.OpCompEQ, primaryByte)) > 1 {
-				if err := idxFile.DeleteEntryByBatch(insertRidList); err != nil {
-					panic(err)
-					// rolling back
-				}
+				// just drop the index is ojbk
+				//if err := idxFile.DeleteEntryByBatch(insertRidList); err != nil {
+				//	panic(err)
+				//	// rolling back
+				//}
 				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
 				_ = m.idxManager.DestroyIndex(getTableIdxDataFileName(relName, idxName))
 				return errorutil.ErrorDBSysDuplicatedKeysFound
@@ -200,129 +204,104 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	// 7. update relation
 	// 8. write back to origin fk file
 
-	// 1.
-	//if len(srcAttrList) != len(dstAttrList) {
-	//	return errorutil.ErrorDBSysForeignKeyLenNotMatch
-	//}
-	//if srcRel == dstRel {
-	//	return errorutil.ErrorDBSysForeignKeyRefSelf
-	//}
-	//if err := m.checkDBTableAndAttrExistence(srcRel, srcAttrList); err != nil {
-	//	return err
-	//}
-	//if err := m.checkDBTableAndAttrExistence(dstRel, dstAttrList); err != nil {
-	//	return err
-	//}
-	//
-	//// 2.
-	//fkFile, err := m.relManager.OpenFile(GlbFkFileName)
-	//defer m.relManager.CloseFile(fkFile.Filename)
-	//if err != nil {
-	//	panic(0)
-	//}
-	//
-	//tmpList, _ := record.FilterOnRecList(fkFile.GetRecList(), parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(fkName)))
-	//if len(tmpList) != 0 {
-	//	return errorutil.ErrorDBSysForeignKeyExists
-	//}
-	//
-	//// 3. check is primary key
-	//dstAttrInfoDetailedCollection := m.getAttrInfoDetailedCollection(dstRel)
-	//srcAttrInfoDetailedCollection := m.getAttrInfoDetailedCollection(srcRel)
-	//if len(dstAttrList) != len(dstAttrInfoDetailedCollection.pkMap) {
-	//	return errorutil.ErrorDBSysIsNotPrimaryKeys
-	//}
-	//for _, attr := range dstAttrList {
-	//	if _, found := dstAttrInfoDetailedCollection.pkMap[attr]; !found {
-	//		return errorutil.ErrorDBSysIsNotPrimaryKeys
-	//	}
-	//}
-	//
-	//// 5. check if type is match
-	//for i := range srcAttrList {
-	//	if srcAttrInfoDetailedCollection.infoMap[srcAttrList[i]].AttrType != dstAttrInfoDetailedCollection.infoMap[dstAttrList[i]].AttrType {
-	//		return errorutil.ErrorDBSysFkTypeNotMatchPk
-	//	}
-	//}
-	//
-	//// 4. check value boundary
-	//srcFile, _ := m.relManager.OpenFile(getTableDataFileName(srcRel))
-	//dstFile, _ := m.relManager.OpenFile(getTableDataFileName(dstRel))
-	//dstIdxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName), dstFile)
-	//defer m.relManager.CloseFile(getTableDataFileName(srcRel))
-	//defer m.relManager.CloseFile(getTableDataFileName(dstRel))
-	//defer m.idxManager.CloseIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName))
-	//
-	//srcAttrSet := types.AttrSet{}
-	//for _, attr := range srcAttrList {
-	//	srcAttrSet.AddSingleAttr(srcAttrInfoDetailedCollection.infoMap[attr].AttrInfo)
-	//}
-	//
-	//for _, rec := range srcFile.GetRecList() {
-	//	compData := srcAttrSet.DataToAttrs(rec.Rid, rec.Data)
-	//	length := len(dstIdxFile.GetRidList(types.OpCompEQ, compData))
-	//	if length == 0 {
-	//		return errorutil.ErrorDBSysFkNotRefPk
-	//	}
-	//	if length > 1 {
-	//		panic(errorutil.ErrorDBSysDuplicatedKeysFound)
-	//	}
-	//}
-	//
-	//// update attr info & check primary constraint
-	//{
-	//	// dst update
-	//	for _, attr := range dstAttrList {
-	//		attrInfo := dstAttrInfoDetailedCollection.infoMap[attr]
-	//		attrRid := dstAttrInfoDetailedCollection.ridMap[attr]
-	//		attrInfo.HasForeignConstraint = true
-	//		if !attrInfo.IsPrimary {
-	//			return errorutil.ErrorDBSysFkNotRefPk
-	//		}
-	//		m.updateAttrInfo(dstRel, attrRid, attrInfo, false)
-	//	}
-	//	m.getAttrInfoMapViaCacheOrReload(dstRel, dstAttrInfoDetailedCollection.infoMap)
-	//}
-	//{
-	//	// src update
-	//	for _, attr := range srcAttrList {
-	//		attrInfo := srcAttrInfoDetailedCollection.infoMap[attr]
-	//		attrRid := srcAttrInfoDetailedCollection.ridMap[attr]
-	//		attrInfo.HasForeignConstraint = true
-	//		m.updateAttrInfo(srcRel, attrRid, attrInfo, false)
-	//	}
-	//	m.getAttrInfoMapViaCacheOrReload(srcRel, srcAttrInfoDetailedCollection.infoMap)
-	//}
-	//
-	//// update original relation
-	//relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
-	//{
-	//	// src relation
-	//	srcRelInfo := relInfoMap[srcRel]
-	//	srcRelInfoRid := relInfoRidMap[srcRel]
-	//	srcRelInfo.foreignCount++
-	//	m.updateRelInfo(srcRel, srcRelInfoRid, srcRelInfo, false)
-	//}
-	//{
-	//	// dst relation
-	//	dstRelInfo := relInfoMap[srcRel]
-	//	dstRelInfoRid := relInfoRidMap[srcRel]
-	//	dstRelInfo.foreignCount++
-	//	m.updateRelInfo(dstRel, dstRelInfoRid, dstRelInfo, false)
-	//}
-	//
-	//// write back to fkFile
-	//for i := 0; i < len(srcAttrList); i++ {
-	//	rec := make([]byte, ConstraintForeignInfoSize)
-	//	constraint := (*ConstraintForeignInfo)(types.ByteSliceToPointer(rec))
-	//	constraint.fkName = strTo24ByteArray(fkName)
-	//	constraint.attrDst = strTo24ByteArray(dstAttrList[i])
-	//	constraint.relDst = strTo24ByteArray(dstRel)
-	//	constraint.attrSrc = strTo24ByteArray(srcAttrList[i])
-	//	constraint.relSrc = strTo24ByteArray(srcRel)
-	//	_, _ = fkFile.InsertRec(rec)
-	//}
+	//1.
+	if len(srcAttrList) != len(dstAttrList) {
+		return errorutil.ErrorDBSysForeignKeyLenNotMatch
+	}
+	if srcRel == dstRel {
+		return errorutil.ErrorDBSysForeignKeyRefSelf
+	}
+	if err := m.checkDBTableAndAttrExistence(srcRel, srcAttrList); err != nil {
+		return err
+	}
+	if err := m.checkDBTableAndAttrExistence(dstRel, dstAttrList); err != nil {
+		return err
+	}
 
+	// 2.
+	fkMap := m.GetFkInfoMap()
+	if _, found := fkMap[fkName]; found {
+		return errorutil.ErrorDBSysForeignKeyExists
+	}
+
+	// 3. check is primary key
+	dstAttrInfoCollection := m.GetAttrInfoCollection(dstRel)
+	srcAttrInfoCollection := m.GetAttrInfoCollection(srcRel)
+
+	if len(dstAttrList) != len(dstAttrInfoCollection.PkList) {
+		return errorutil.ErrorDBSysIsNotPrimaryKeys
+	}
+	for _, attr := range dstAttrList {
+		if attrInfo := dstAttrInfoCollection.InfoMap[attr]; !attrInfo.IsPrimary {
+			return errorutil.ErrorDBSysIsNotPrimaryKeys
+		}
+	}
+
+	// 5. check if type is match
+	for i := range srcAttrList {
+		if srcAttrInfoCollection.InfoMap[srcAttrList[i]].AttrType != dstAttrInfoCollection.InfoMap[dstAttrList[i]].AttrType {
+			return errorutil.ErrorDBSysFkTypeNotMatchPk
+		}
+	}
+
+	// 4. check value boundary
+	srcFile, _ := m.relManager.OpenFile(getTableDataFileName(srcRel))
+	dstFile, _ := m.relManager.OpenFile(getTableDataFileName(dstRel))
+	dstIdxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName), dstFile)
+	defer m.relManager.CloseFile(getTableDataFileName(srcRel))
+	defer m.relManager.CloseFile(getTableDataFileName(dstRel))
+	defer m.idxManager.CloseIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName))
+
+	srcAttrSet := m.GetAttrSetFromAttrs(srcRel, srcAttrList)
+	for _, rec := range srcFile.GetRecList() {
+		compData := srcAttrSet.DataToAttrs(rec.Rid, rec.Data)
+		length := len(dstIdxFile.GetRidList(types.OpCompEQ, compData))
+		if length == 0 {
+			return errorutil.ErrorDBSysFkValueNotInPk
+		}
+		if length > 1 {
+			panic(errorutil.ErrorDBSysDuplicatedKeysFound)
+		}
+	}
+
+	// update attr info & check primary constraint
+	{
+		// dst update
+		for _, attr := range dstAttrList {
+			attrInfo := dstAttrInfoCollection.InfoMap[attr]
+			attrInfo.FkName = fkName
+			dstAttrInfoCollection.InfoMap[attr] = attrInfo
+		}
+		m.SetAttrInfoListByCollection(dstRel, dstAttrInfoCollection)
+	}
+	{
+		// src update
+		for _, attr := range srcAttrList {
+			attrInfo := srcAttrInfoCollection.InfoMap[attr]
+			attrInfo.FkName = fkName
+			srcAttrInfoCollection.InfoMap[attr] = attrInfo
+		}
+		m.SetAttrInfoListByCollection(srcRel, srcAttrInfoCollection)
+	}
+
+	// update original relation
+	relInfoMap := m.GetDBRelInfoMap()
+	srcRelInfo := relInfoMap[srcRel]
+	srcRelInfo.ForeignCount++
+	dstRelInfo := relInfoMap[dstRel]
+	dstRelInfo.ForeignCount++
+	m.SetRelInfo(srcRelInfo)
+	m.SetRelInfo(dstRelInfo)
+
+	// write back to fkFile
+	fkMap[fkName] = FkConstraint{
+		FkName:  fkName,
+		SrcRel:  srcRel,
+		DstRel:  dstRel,
+		SrcAttr: srcAttrList,
+		DstAttr: dstAttrList,
+	}
+	m.SetFkInfoMap(fkMap)
 	return nil
 }
 
@@ -331,72 +310,39 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	// 2. remove from attr info
 	// 3. remove from foreign key file
 
-	//fkFile, err := m.relManager.OpenFile(GlbFkFileName)
-	//defer m.relManager.CloseFile(fkFile.Filename)
-	//if err != nil {
-	//	panic(0)
-	//}
-	//
-	//fkRecList, _ := record.FilterOnRecList(fkFile.GetRecList(), parser.NewExprCompQuickAttrCompValue(types.MaxNameSize, 0, types.OpCompEQ, types.NewValueFromStr(fkName)))
-	//if len(fkRecList) == 0 {
-	//	return errorutil.ErrorDBSysForeignKeyNotExists
-	//}
-	//
-	//// 2. update attr info
-	//srcRel := ""
-	//dstRel := ""
-	//srcAttrList := make([]string, 0)
-	//dstAttrList := make([]string, 0)
-	//for _, fk := range fkRecList {
-	//	fk := (*ConstraintForeignInfo)(types.ByteSliceToPointer(fk.Data))
-	//	srcRel = ByteArray24tostr(fk.relSrc)
-	//	dstRel = ByteArray24tostr(fk.relDst)
-	//	srcAttrList = append(srcAttrList, ByteArray24tostr(fk.attrSrc))
-	//	dstAttrList = append(dstAttrList, ByteArray24tostr(fk.attrDst))
-	//}
-	//dstAttrInfoDetailedCollection := m.getAttrInfoDetailedCollection(dstRel)
-	//srcAttrInfoDetailedCollection := m.getAttrInfoDetailedCollection(srcRel)
-	//{
-	//	// dst update
-	//	for _, attr := range dstAttrList {
-	//		attrInfo := dstAttrInfoDetailedCollection.infoMap[attr]
-	//		attrRid := dstAttrInfoDetailedCollection.ridMap[attr]
-	//		attrInfo.HasForeignConstraint = false
-	//		m.updateAttrInfo(dstRel, attrRid, attrInfo, false)
-	//	}
-	//	m.getAttrInfoMapViaCacheOrReload(dstRel, dstAttrInfoDetailedCollection.infoMap)
-	//}
-	//{
-	//	// src update
-	//	for _, attr := range srcAttrList {
-	//		attrInfo := srcAttrInfoDetailedCollection.infoMap[attr]
-	//		attrRid := srcAttrInfoDetailedCollection.ridMap[attr]
-	//		attrInfo.HasForeignConstraint = false
-	//		m.updateAttrInfo(srcRel, attrRid, attrInfo, false)
-	//	}
-	//	m.getAttrInfoMapViaCacheOrReload(srcRel, srcAttrInfoDetailedCollection.infoMap)
-	//}
-	//
-	//// update original relation
-	//relInfoMap, relInfoRidMap := m.getRelInfoMapWithRid()
-	//{
-	//	// src relation
-	//	srcRelInfo := relInfoMap[srcRel]
-	//	srcRelInfoRid := relInfoRidMap[srcRel]
-	//	srcRelInfo.foreignCount--
-	//	m.updateRelInfo(srcRel, srcRelInfoRid, srcRelInfo, false)
-	//}
-	//{
-	//	// dst relation
-	//	dstRelInfo := relInfoMap[srcRel]
-	//	dstRelInfoRid := relInfoRidMap[srcRel]
-	//	dstRelInfo.foreignCount--
-	//	m.updateRelInfo(dstRel, dstRelInfoRid, dstRelInfo, false)
-	//}
-	//
-	//// 3.
-	//fkFile.DeleteRecByBatch(record.GetRidListFromRecList(fkRecList))
-	//return nil
+	fkMap := m.GetFkInfoMap()
+	if _, found := fkMap[fkName]; !found {
+		return errorutil.ErrorDBSysForeignKeyNotExists
+	}
+	fkInfo := fkMap[fkName]
+
+	// update relation info
+	relInfoMap := m.GetDBRelInfoMap()
+	srcRelInfo := relInfoMap[fkInfo.SrcRel]
+	srcRelInfo.ForeignCount--
+	dstRelInfo := relInfoMap[fkInfo.DstRel]
+	dstRelInfo.ForeignCount--
+	m.SetRelInfo(srcRelInfo)
+	m.SetRelInfo(dstRelInfo)
+
+	// remove from attr info
+	dstAttrInfoCollection := m.GetAttrInfoCollection(fkInfo.DstRel)
+	srcAttrInfoCollection := m.GetAttrInfoCollection(fkInfo.SrcRel)
+	for _, attr := range fkInfo.SrcAttr {
+		attrInfo := srcAttrInfoCollection.InfoMap[attr]
+		attrInfo.IndexName = ""
+		srcAttrInfoCollection.InfoMap[attr] = attrInfo
+	}
+	for _, attr := range fkInfo.DstAttr {
+		attrInfo := dstAttrInfoCollection.InfoMap[attr]
+		attrInfo.IndexName = ""
+		dstAttrInfoCollection.InfoMap[attr] = attrInfo
+	}
+	m.SetAttrInfoListByCollection(fkInfo.SrcRel, srcAttrInfoCollection)
+	m.SetAttrInfoListByCollection(fkInfo.DstRel, dstAttrInfoCollection)
+
+	delete(fkMap, fkName)
+
 	return nil
 }
 

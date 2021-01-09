@@ -38,7 +38,7 @@ var (
 
 	ErrorDBSysForeignKeyNotExists = errors.New("foreign key not exists")
 
-	ErrorDBSysFkNotRefPk = errors.New("foreign key not reference primary key")
+	ErrorDBSysFkValueNotInPk = errors.New("foreign key value not in pk")
 
 	ErrorDBSysFkTypeNotMatchPk = errors.New("foreign key type not match primary key")
 

@@ -128,17 +128,17 @@ func (m *Manager) PrintDBForeignInfos() {
 	maxLen += maxAttrCnt*2 + 3 - 1
 
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 
 	for _, header := range tableHeaders {
-		print("| " + header + " ")
+		print("| " + header + strings.Repeat(" ", col2Wid[header]-len(header)+1))
 	}
 	println("|")
 
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 	for fk, cons := range fkInfoMap {
@@ -149,7 +149,7 @@ func (m *Manager) PrintDBForeignInfos() {
 			header := "src" + strconv.Itoa(i)
 			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
 		}
-		for i := maxAttrCnt - len(cons.SrcAttr); i < maxAttrCnt; i++ {
+		for i := len(cons.SrcAttr); i < maxAttrCnt; i++ {
 			header := "src" + strconv.Itoa(i)
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
@@ -157,13 +157,14 @@ func (m *Manager) PrintDBForeignInfos() {
 			header := "dst" + strconv.Itoa(i)
 			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
 		}
-		for i := maxAttrCnt - len(cons.DstAttr); i < maxAttrCnt; i++ {
+		for i := len(cons.DstAttr); i < maxAttrCnt; i++ {
 			header := "dst" + strconv.Itoa(i)
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
 	}
+	println("|")
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 	//maxLen += len(tableHeaders) - 1

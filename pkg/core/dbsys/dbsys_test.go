@@ -112,10 +112,79 @@ func TestDbSys(t *testing.T) {
 		}
 	}
 
-	manager.PrintDatabases()
-	manager.PrintTables()
+	rel2 := "rel2"
+	attrInfoList2 := []parser.AttrInfo{
+		{
+			AttrName:  "attr1",
+			RelName:   rel1,
+			IsPrimary: false,
+			AttrInfo: types.AttrInfo{
+				AttrSize:    8,
+				AttrType:    types.INT,
+				NullAllowed: false,
+			},
+		},
+		{
+			AttrName:  "attr2",
+			RelName:   rel1,
+			IsPrimary: false,
+			AttrInfo: types.AttrInfo{
+				AttrSize:    8,
+				AttrType:    types.FLOAT,
+				NullAllowed: false,
+			},
+		},
+		{
+			AttrName: "attr3",
+			RelName:  rel1,
+			AttrInfo: types.AttrInfo{
+				AttrSize: 24,
+				AttrType: types.VARCHAR,
+			},
+			Default: types.NewValueFromStr("THIS DEFAULT VALUE HHHHHHHHHHHHHHHHHHHHHH"),
+		},
+	}
+
+	if err := manager.CreateTable(rel2, attrInfoList2); err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i := 0; i < 20; i++ {
+		//time := time.Now().AddDate(0, 0, i)
+		err := manager.InsertRow(rel2,
+			[]types.Value{
+				types.NewValueFromInt64(i),
+				types.NewValueFromFloat64(0.1 + float64(i)),
+				types.NewValueFromStr(nameMap[i%len(nameMap)]),
+			})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	if err := manager.AddPrimaryKey(rel1, []string{"attr1", "attr3"}); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := manager.AddPrimaryKey(rel2, []string{"attr1", "attr3"}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := manager.AddForeignKey("fk1", rel2, []string{"attr1", "attr3"}, rel1, []string{"attr1", "attr3"}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	//manager.PrintDatabases()
+	//manager.PrintTables()
+	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
+	manager.PrintTableMeta(rel2)
 	manager.PrintDBForeignInfos()
+
 	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
 	////	t.Error(err)
 	////	return

@@ -126,7 +126,10 @@ func (f *FileHandle) GetRidList(compOp types.OpType, attr []byte) []types.RID {
 		panic(0)
 	}
 	filterList := make([]types.RID, 0)
-	for rec, err := scanner.GetNextEntry(); err == nil; {
+	for rec, err := scanner.GetNextEntry(); rec.Page != 0; rec, err = scanner.GetNextEntry() {
+		if err != nil {
+			panic(0)
+		}
 		filterList = append(filterList, rec)
 	}
 	return filterList

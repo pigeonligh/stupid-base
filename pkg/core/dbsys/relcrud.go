@@ -129,7 +129,7 @@ func (m *Manager) InsertRow(relName string, valueList []types.Value) error {
 				defer m.idxManager.CloseIndex(getTableIdxDataFileName(cons.DstRel, fk))
 
 				if len(idxFH.GetRidList(types.OpCompEQ, compData)) == 0 {
-					return errorutil.ErrorDBSysFkNotRefPk
+					return errorutil.ErrorDBSysFkValueNotInPk
 				}
 			}
 		}

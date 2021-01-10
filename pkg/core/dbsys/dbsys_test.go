@@ -1,11 +1,12 @@
 package dbsys
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"strconv"
-	"testing"
 )
 
 func TestDbSys(t *testing.T) {
@@ -107,7 +108,7 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 
-	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(1000))); err != nil {
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(5000))); err != nil {
 		t.Error(err)
 		return
 	}

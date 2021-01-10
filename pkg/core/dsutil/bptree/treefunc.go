@@ -248,19 +248,19 @@ func (t *BpTree) erase(node *TreeNode, row *types.RID) (bool, error) {
 	if node.Size == 0 {
 		nextNode, err := t.operator.LoadNode(node.NextIndex)
 		if err != nil {
-			return false, nil
+			return false, err
 		}
 		if prevNode != nil {
 			prevNode.NextIndex = node.NextIndex
+			if err = t.operator.UpdateNode(prevNode); err != nil {
+				return false, err
+			}
 		}
 		if nextNode != nil {
 			nextNode.PrevIndex = node.PrevIndex
-		}
-		if err = t.operator.UpdateNode(prevNode); err != nil {
-			return false, err
-		}
-		if err = t.operator.UpdateNode(nextNode); err != nil {
-			return false, err
+			if err = t.operator.UpdateNode(nextNode); err != nil {
+				return false, err
+			}
 		}
 		if err = t.operator.DeleteNode(node); err != nil {
 			return false, err

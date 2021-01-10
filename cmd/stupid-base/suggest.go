@@ -200,6 +200,13 @@ func solveMultiStepSuggests(
 			}
 		}
 	}
+
+	// special
+	if now == "alter.table.add" {
+		if fields[len(fields)-1] != "add" {
+			return prompt.FilterHasPrefix(fieldSuggests, in.GetWordBeforeCursor(), true)
+		}
+	}
 	return prompt.FilterHasPrefix(suggests, in.GetWordBeforeCursor(), true)
 }
 

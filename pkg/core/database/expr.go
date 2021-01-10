@@ -39,9 +39,7 @@ func getAttrFromList(attrs dbsys.AttrInfoList, tableName, colName string) (*pars
 		}
 	}
 	if result == nil {
-		if tableName != "" {
-			return nil, errorutil.ErrorColNotFound
-		}
+		return nil, errorutil.ErrorColNotFound
 	}
 	return result, nil
 }
@@ -148,12 +146,13 @@ func splitExprForUnionQuery(
 		colName := col.Name.CompliantName()
 
 		attr, err := getAttrFromList(attrs, colTable, colName)
-		if err != nil {
-			return nil, false, err
+
+		if err == errorutil.ErrorColNotFound && tableName != "" {
+			return nil, true, nil
 		}
 
-		if attr == nil {
-			return nil, true, nil
+		if err != nil {
+			return nil, false, err
 		}
 
 		if tableName != "" && attr.RelName != tableName {

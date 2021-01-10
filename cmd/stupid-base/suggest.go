@@ -53,31 +53,18 @@ var startSuggests = []prompt.Suggest{
 	},
 }
 
-var showSuggests = []prompt.Suggest{
-	{
-		Text: "tables",
-	},
-	{
-		Text: "databases",
-	},
-}
-
-var createOrDropSuggests = []prompt.Suggest{
-	{
-		Text: "table",
-	},
-	{
-		Text: "database",
-	},
-	{
-		Text: "index",
-	},
-}
-
-var alterSuggests = []prompt.Suggest{
-	{
-		Text: "table",
-	},
+var fieldSuggests = []prompt.Suggest{
+	{Text: "int"},
+	{Text: "varchar"},
+	{Text: "date"},
+	{Text: "float"},
+	{Text: "not"},
+	{Text: "null"},
+	{Text: "default"},
+	{Text: "primary"},
+	{Text: "foreign"},
+	{Text: "key"},
+	{Text: "references"},
 }
 
 var multiStepSuggests = map[string][]prompt.Suggest{
@@ -164,6 +151,9 @@ var multiStepSuggests = map[string][]prompt.Suggest{
 	"alter.table.add.foreign": {
 		{Text: "key"},
 	},
+	"alter.table.add.foreign.key": {
+		{Text: "references"},
+	},
 	"alter.table.add.constraint": {
 		{Text: "primary"},
 		{Text: "foreign"},
@@ -174,6 +164,12 @@ var multiStepSuggests = map[string][]prompt.Suggest{
 	"alter.table.add.constraint.foreign": {
 		{Text: "key"},
 	},
+	"alter.table.add.constraint.foreign.key": {
+		{Text: "references"},
+	},
+
+	"create.table":       nil,
+	"alter.table.change": nil,
 }
 
 func solveMultiStepSuggests(
@@ -185,6 +181,9 @@ func solveMultiStepSuggests(
 	if !found {
 		prompt.FilterHasPrefix([]prompt.Suggest{}, in.GetWordBeforeCursor(), true)
 	}
+	if suggests == nil {
+		return prompt.FilterHasPrefix(fieldSuggests, in.GetWordBeforeCursor(), true)
+	}
 
 	for _, text := range fields {
 
@@ -194,6 +193,9 @@ func solveMultiStepSuggests(
 				suggests, found = multiStepSuggests[now]
 				if !found {
 					prompt.FilterHasPrefix([]prompt.Suggest{}, in.GetWordBeforeCursor(), true)
+				}
+				if suggests == nil {
+					return prompt.FilterHasPrefix(fieldSuggests, in.GetWordBeforeCursor(), true)
 				}
 			}
 		}

@@ -156,6 +156,7 @@ func (v *Value) Format2String() string {
 }
 
 func (v *Value) GE(c *Value) bool {
+	c.AdaptToType(v.ValueType)
 	if v.ValueType != c.ValueType {
 		log.V(log.ExprLevel).Warningf("op Value type not match\n")
 		return false
@@ -176,6 +177,7 @@ func (v *Value) GE(c *Value) bool {
 }
 
 func (v *Value) GT(c *Value) bool {
+	c.AdaptToType(v.ValueType)
 	if v.ValueType != c.ValueType {
 		log.V(log.ExprLevel).Warningf("op Value type not match\n")
 		return false
@@ -216,6 +218,7 @@ func (v *Value) LE(c *Value) bool {
 }
 
 func (v *Value) LT(c *Value) bool {
+	c.AdaptToType(v.ValueType)
 	if v.ValueType != c.ValueType {
 		log.V(log.ExprLevel).Warningf("op Value type not match\n")
 		return false
@@ -236,6 +239,7 @@ func (v *Value) LT(c *Value) bool {
 }
 
 func (v *Value) NE(c *Value) bool {
+	c.AdaptToType(v.ValueType)
 	if v.ValueType != c.ValueType {
 		log.V(log.ExprLevel).Warningf("op Value type not match\n")
 		return false
@@ -258,10 +262,12 @@ func (v *Value) NE(c *Value) bool {
 }
 
 func (v *Value) EQ(c *Value) bool {
+	c.AdaptToType(v.ValueType)
 	if v.ValueType != c.ValueType {
 		log.V(log.ExprLevel).Warningf("op Value type not match\n")
 		return false
 	}
+
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() == c.ToInt64()

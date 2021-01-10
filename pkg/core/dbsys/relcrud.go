@@ -7,6 +7,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 // SELECT <selector> FROM <tableList> WHERE <whereClause>
@@ -77,39 +78,53 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 }
 
 // default print
-func (m *Manager) SelectFromMultiple(tables []TemporalTable, rel2Attrs map[string]AttrInfoList, expr *parser.Expr) error {
+func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[string]AttrInfoList, expr *parser.Expr) error {
 	for i := range tables {
 		if len(tables[i].rows) == 0 {
 			m.PrintEmptySet()
 		}
 	}
+	if expr == nil {
+		expr = parser.NewExprConst(types.NewValueFromBool(true))
+	}
 	keepList := make([]int, 0)
 
-	iterList := make([]int, len(tables))
-	iterListCursor := 0
-	for iterListCursor < len(iterList) {
-		for iterList[iterListCursor] < len(tables[iterListCursor].rows) {
-			for i := range iterList {
-				if err := expr.Calculate(tables[i].rows[iterList[iterListCursor]].Data, tables[i].rels[0]); err != nil {
-					return err
-				}
+	stepList := make([]int, len(tables))
+	for {
+		for i := 0; i < len(stepList); i++ {
+			if err := expr.Calculate(tables[i].rows[stepList[i]].Data, tables[i].rels[0]); err != nil {
+				return err
 			}
 			if !expr.IsCalculated {
 				return errorutil.ErrorExprInvalidComparison
 			}
-			if expr.GetBool() {
-				// append this
-				keepList = append(keepList, iterList...)
-			}
-			expr.ResetCalculated()
-			iterList[iterListCursor]++
 		}
-		iterListCursor++
+		if expr.GetBool() {
+			// append this
+			keepList = append(keepList, stepList...)
+		}
+		expr.ResetCalculated()
+
+		// step list step forward
+		for i := 0; i < len(stepList)-1; i++ {
+			stepList[i]++
+			if stepList[i] < len(tables[i].rows) {
+				break
+			} else {
+				stepList[i] = 0
+				stepList[i+1]++
+			}
+		}
+		if stepList[len(stepList)-1] == len(tables[len(stepList)-1].rows) {
+			break
+		}
 	}
 
 	if len(keepList)%len(tables) != 0 {
 		panic(0)
 	}
+
+	log.Debug(keepList)
 
 	totalSize := 0
 	offs := make([]int, 0)
@@ -136,13 +151,16 @@ func (m *Manager) SelectFromMultiple(tables []TemporalTable, rel2Attrs map[strin
 	finalRows := make([]*record.Record, 0)
 	// i for row and j for column
 	for i := 0; i < len(keepList)/len(tables); i++ {
+
 		tmpRec := record.Record{
 			Rid:  types.RID{},
 			Data: make([]byte, totalSize),
 		}
 
 		curColCursor := 0
-		tmpList := keepList[i*len(tables) : i+len(tables)]
+		tmpList := keepList[i*len(tables) : (i+1)*len(tables)]
+		log.Debug(tmpList)
+		// idx from each temporal table
 		for j := 0; j < len(tables); j++ {
 			rel := tables[j].rels[0]
 			row := tables[j].rows[tmpList[j]]
@@ -456,6 +474,7 @@ func (m *Manager) InsertRow(relName string, rawList []string) error {
 
 		}
 	}
+	log.V(log.DBSysLevel).Infof("Insert value success %v", rawList)
 	return nil
 }
 

@@ -468,7 +468,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 	for i := 0; i < len(info.TableHeaderList); i++ {
 		print("+" + strings.Repeat("-", info.ColWidMap[info.TableHeaderList[i]]+2))
 	}
-	println("+\n")
+	println("+")
 }
 
 // PrintTableMeta is implemented since GetRecordShould be wrapped up

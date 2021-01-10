@@ -1,16 +1,19 @@
 package dbsys
 
 import (
+	"fmt"
 	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	"time"
 )
 
 // SELECT <selector> FROM <tableList> WHERE <whereClause>
 // current support simple select functions
-func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string, expr *parser.Expr) (*TemporalTable, error) {
+func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string, expr *parser.Expr, print bool) (*TemporalTable, error) {
+	start := time.Now()
 	if err := m.checkDBTableAndAttrExistence(relName, attrNameList); err != nil {
 		return nil, err
 	}
@@ -54,7 +57,8 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 		}
 		rows = append(rows, &tmpRec)
 	}
-	return &TemporalTable{
+
+	tmpTable := &TemporalTable{
 		rels:  rels,
 		attrs: attrs,
 		lens:  lens,
@@ -62,7 +66,15 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 		types: valTypes,
 		nils:  nils,
 		rows:  rows,
-	}, nil
+	}
+
+	if print {
+		m.PrintTemporalTable(tmpTable)
+		end := time.Now()
+		fmt.Printf("%v in set (%v s)\n", len(rows), float64(end.Nanosecond()-start.Nanosecond())/1e+6)
+	}
+
+	return tmpTable, nil
 }
 
 // DELETE FROM <tbName> WHERE <whereClause>
@@ -122,11 +134,12 @@ func (m *Manager) DeleteRows(relName string, expr *parser.Expr) error {
 		}
 	}
 	fh.DeleteRecByBatch(record.GetRidListFromRecList(delRecList))
+	fmt.Printf("Delete Ok, %v affected\n", len(delRecList))
 	return nil
 }
 
 // UPDATE <tbName> SET <setClause> WHERE <whereClause>
-func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []types.Value, expr *parser.Expr) error {
+func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []string, expr *parser.Expr) error {
 	// check if it's primary key and referenced by others
 	// check if it's referencing other primary keys
 	if !m.DBSelected() {
@@ -138,18 +151,17 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 	infoMap := attrInfoCollection.InfoMap
 	// check value compatible
-	for i := range attrNameList {
-		if valueList[i].ValueType == types.NO_ATTR && !infoMap[attrNameList[i]].NullAllowed {
-			return errorutil.ErrorDBSysNullConstraintViolated
-		}
-		valueList[i].AdaptToType(infoMap[attrNameList[i]].AttrType)
-		if valueList[i].ValueType == types.NO_ATTR {
-			return errorutil.ErrorDBSysUpdateValueTypeNotMatch
-		}
 
+	name2Val := make(map[string]types.Value)
+	for i, attr := range attrNameList {
+		val, err := types.String2Value(rawList[i], infoMap[attr].AttrSize, infoMap[attr].AttrType)
+		if err != nil {
+			return err
+		}
+		name2Val[attr] = val
 	}
 
-	tmpTable, err := m.SelectSingleTableByExpr(relName, attrInfoCollection.NameList, expr)
+	tmpTable, err := m.SelectSingleTableByExpr(relName, attrInfoCollection.NameList, expr, false)
 	if err != nil {
 		return err
 	}
@@ -158,11 +170,6 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []
 	}
 	fh, err := m.relManager.OpenFile(getTableDataFileName(relName))
 	defer m.relManager.CloseFile(fh.Filename)
-
-	name2Val := make(map[string]types.Value)
-	for i, attr := range attrNameList {
-		name2Val[attr] = valueList[i]
-	}
 
 	// check if primary keys are contained in attrName list
 	checkPrimary := false
@@ -270,11 +277,13 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []
 		}
 	}
 	fh.DeleteRecByBatch(delRids)
+	fmt.Printf("Update Ok, %v affected\n", len(delRids))
 	return nil
 }
 
 // INSERT INTO <tbName> VALUES <valueLists>
-func (m *Manager) InsertRow(relName string, valueList []types.Value) error {
+func (m *Manager) InsertRow(relName string, rawList []string) error {
+
 	if !m.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
 	}
@@ -296,15 +305,14 @@ func (m *Manager) InsertRow(relName string, valueList []types.Value) error {
 	for i, attrName := range attrInfoCollection.NameList {
 		// check basic value type match
 		attrInfo := attrInfoCollection.InfoMap[attrName]
-		valueList[i].AdaptToType(attrInfo.AttrType)
-		if valueList[i].ValueType == types.NO_ATTR {
-			return errorutil.ErrorDBSysInsertValueTypeNotMatch
+		val, err := types.String2Value(rawList[i], attrInfo.AttrSize, attrInfo.AttrType)
+		if err != nil {
+			return err
 		}
-
 		// concat into a row
 		off := attrInfo.AttrOffset
 		size := attrInfo.AttrSize
-		copy(insData[off:off+size], valueList[i].Value[0:size])
+		copy(insData[off:off+size], val.Value[0:size])
 	}
 
 	{

@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"strconv"
 	"strings"
 	"time"
@@ -45,6 +46,44 @@ func CheckIfValueTypeCompatible(l, r ValueType) bool {
 	return l == r
 }
 
+func String2Value(str string, size int, target ValueType) (Value, error) {
+	val := NewValueFromEmpty()
+	//if str == MagicNullStr {
+	//
+	//}
+	switch target {
+	case VARCHAR:
+		if len(str) > size {
+			return val, errorutil.ErrorDBSysStringExceedLength
+		}
+	case BOOL:
+		if b, err := strconv.ParseBool(str); err != nil {
+			return val, err
+		} else {
+			val.FromBool(b)
+		}
+	case DATE:
+		if t, err := time.Parse("2006-Jan-02", str); err != nil {
+			return val, err
+		} else {
+			val.FromInt64(int(t.Unix()))
+		}
+	case INT:
+		if i, err := strconv.ParseInt(str, 10, size); err != nil {
+			return val, err
+		} else {
+			val.FromInt64(int(i))
+		}
+	case FLOAT:
+		if f, err := strconv.ParseFloat(str, size); err != nil {
+			return val, err
+		} else {
+			val.FromFloat64(f)
+		}
+	}
+	return val, nil
+}
+
 // AdaptToType set no attr means convert fails
 func (v *Value) AdaptToType(target ValueType) {
 	switch target {
@@ -74,8 +113,6 @@ func (v *Value) AdaptToType(target ValueType) {
 				v.FromInt64(int(t.Unix()))
 				v.ValueType = DATE
 				return
-			} else {
-				panic(err)
 			}
 		}
 	case VARCHAR:

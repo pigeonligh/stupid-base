@@ -208,7 +208,7 @@ func TestDbSys(t *testing.T) {
 				types.NewValueFromInt64(i),
 				types.NewValueFromFloat64(0.1 + float64(i)),
 				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-				types.NewValueFromStr("2013-Jan-11"),
+				types.NewValueFromStr("2018-Feb-28"),
 				types.NewValueFromBool(i%2 == 0),
 			})
 		if err != nil {
@@ -292,6 +292,11 @@ func TestDbSys(t *testing.T) {
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
 	if err := manager.UpdateRows(rel1, []string{"attr1"}, []types.Value{types.NewValueFromInt64(1)}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if _, err := manager.SelectSingleTableByExpr(rel1, []string{"attr1"}, nil, true); err != nil {
 		t.Error(err)
 		return
 	}

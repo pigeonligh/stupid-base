@@ -67,7 +67,17 @@ var (
 	ErrorDBSysIsNotPrimaryKeys = errors.New("is not primary keys")
 
 	// insert rules
-	ErrorDBSysInsertValueTypeNotMatch = errors.New("insert value type not match")
+	ErrorDBSysInsertValueNotValid = errors.New("insert value not valid")
+
+	ErrorDBSysStringExceedLength = errors.New("insert string exceed length")
+
+	ErrorDBSysInsertIntFormatError = errors.New("insert int format fail")
+
+	ErrorDBSysInsertFloatFormatError = errors.New("insert float format fail")
+
+	ErrorDBSysInsertDateFormatError = errors.New("insert date format fail")
+
+	ErrorDBSysInsertBoolFormatError = errors.New("insert bool format fail")
 
 	// update rules
 	ErrorDBSysUpdateValueTypeNotMatch = errors.New("update value type not match")

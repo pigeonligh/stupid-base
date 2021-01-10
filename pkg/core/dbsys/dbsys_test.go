@@ -90,7 +90,7 @@ func TestDbSys(t *testing.T) {
 	nameMap[5] = "Fred haha"
 	nameMap[6] = "Harry hey hey"
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
 			[]string{
@@ -140,34 +140,130 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 8; i++ {
 		//time := time.Now().AddDate(0, 0, i)
-		err := manager.InsertRow(rel2,
-			[]string{
-				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
-				nameMap[i%len(nameMap)],
-			},
-		)
+		err := manager.InsertRow(rel2, []string{strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64), nameMap[i%len(nameMap)]})
 		if err != nil {
 			t.Error(err)
 			return
 		}
 	}
 
-	// test primary key
+	manager.PrintTablesWithDetails()
+	manager.PrintTableMeta(rel1)
+	manager.PrintTableMeta(rel2)
+	manager.SelectSingleTableByExpr(rel1, []string{}, nil, true)
+	manager.SelectSingleTableByExpr(rel2, []string{}, nil, true)
+
+	log.Debug("add multi-cols primary key test")
 	if err := manager.AddPrimaryKey(rel1, []string{"attr1", "attr3"}); err != nil {
 		t.Error(err)
 		return
 	}
-	if err := manager.AddPrimaryKey(rel2, []string{"attr1", "attr3"}); err != nil {
+	if _, err := manager.SelectSingleTableByExpr(rel1, []string{}, nil, true); err != nil {
+		t.Log(err)
+		return
+	}
+	manager.PrintTableMeta(rel1)
+	log.Debug("Insert invalid value for rel1")
+	if err := manager.InsertRow(rel1,
+		[]string{
+			strconv.Itoa(1), strconv.FormatFloat(0.1+float64(1), 'g', 10, 64),
+			nameMap[1%len(nameMap)], "2018-Feb-28", strconv.FormatBool(6%2 == 0),
+		}); err != nil {
+		t.Log(err)
+	}
+
+	log.Debug("Insert valid value for rel2")
+	if err := manager.InsertRow(rel1,
+		[]string{
+			strconv.Itoa(1), strconv.FormatFloat(0.1+float64(6), 'g', 10, 64),
+			nameMap[2%len(nameMap)], "2018-Feb-28", strconv.FormatBool(6%2 == 0),
+		}); err != nil {
 		t.Error(err)
 		return
 	}
+	_, _ = manager.SelectSingleTableByExpr(rel1, []string{}, nil, true)
+
+	log.Debug("add single primary key test")
+	if err := manager.AddPrimaryKey(rel2, []string{"attr3"}); err != nil {
+		t.Log(err)
+	}
+	manager.PrintTableMeta(rel2)
+	if err := manager.AddPrimaryKey(rel2, []string{"attr1"}); err != nil {
+		t.Error(err)
+		return
+	}
+	manager.PrintTableMeta(rel2)
+	log.Debug("remove primary key")
+	if err := manager.DropPrimaryKey(rel2); err != nil {
+		t.Log(err)
+	}
+	manager.PrintTableMeta(rel2)
+
+	log.Debug("add foreign key test")
 	if err := manager.AddForeignKey("fk1", rel2, []string{"attr1", "attr3"}, rel1, []string{"attr1", "attr3"}); err != nil {
 		t.Error(err)
 		return
 	}
+	manager.PrintDBForeignInfos()
+	manager.PrintTableMeta(rel2)
+	manager.PrintTableMeta(rel1)
+
+	log.Debug("delete invalid rows")
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))); err != nil {
+		log.Warning(err)
+	}
+	log.Debug("delete valid rows")
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(9))); err != nil {
+		log.Error(err)
+		return
+	}
+	log.Debug("insert invalid rows")
+	if err := manager.InsertRow(rel2, []string{strconv.Itoa(10), strconv.FormatFloat(0.1+float64(10), 'g', 10, 64), nameMap[10%len(nameMap)]}); err != nil {
+		log.Warning(err)
+	}
+	log.Debug("insert valid rows")
+	if err := manager.InsertRow(rel2, []string{strconv.Itoa(1), strconv.FormatFloat(0.1+float64(10), 'g', 10, 64), nameMap[1%len(nameMap)]}); err != nil {
+		log.Error(err)
+		return
+	}
+
+	tmp1, _ := manager.SelectSingleTableByExpr(rel1, []string{},
+		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(5)), true)
+
+	tmp2, _ := manager.SelectSingleTableByExpr(rel2, []string{},
+		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(4)), true)
+
+	attrInfoMap1 := manager.GetAttrInfoCollection(rel1).InfoMap
+	attrInfoMap2 := manager.GetAttrInfoCollection(rel2).InfoMap
+
+	tmpMap := map[string]AttrInfoList{
+		rel1: manager.GetAttrInfoList(rel1),
+		rel2: manager.GetAttrInfoList(rel2),
+	}
+
+	l := parser.NewExprAttr(attrInfoMap1["attr1"])
+	r := parser.NewExprAttr(attrInfoMap2["attr1"])
+	if err := manager.SelectFromMultiple([]*TemporalTable{tmp1, tmp2}, tmpMap, parser.NewExprComp(l, types.OpCompEQ, r)); err != nil {
+		t.Error(err)
+	}
+
+	// delete
+	if err := manager.DropDB(db1); err != nil {
+		t.Error(err)
+		return
+	}
+
+	return
+
+	// test primary key
+
+	if err := manager.AddPrimaryKey(rel2, []string{"attr1", "attr3"}); err != nil {
+		t.Error(err)
+		return
+	}
+
 	if err := manager.DropPrimaryKey(rel1); err != nil {
 		t.Log(err)
 	}
@@ -189,7 +285,7 @@ func TestDbSys(t *testing.T) {
 		)
 	}
 	// test foreign key
-	for i := 50; i < 70; i++ {
+	for i := 20; i < 30; i++ {
 		_ = manager.InsertRow(rel2,
 			[]string{
 				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
@@ -198,7 +294,7 @@ func TestDbSys(t *testing.T) {
 		)
 	}
 	// test foreign key
-	for i := 50; i < 120; i++ {
+	for i := 0; i < 10; i++ {
 		err := manager.InsertRow(rel1,
 			[]string{
 				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
@@ -219,6 +315,8 @@ func TestDbSys(t *testing.T) {
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
 	manager.PrintTableMeta(rel2)
+	manager.SelectSingleTableByExpr(rel1, []string{}, nil, true)
+	manager.SelectSingleTableByExpr(rel2, []string{}, nil, true)
 
 	manager.PrintDBForeignInfos()
 	if err := manager.DropForeignKey("fk1"); err != nil {

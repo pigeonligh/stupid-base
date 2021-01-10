@@ -1,8 +1,6 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -23,11 +21,11 @@ func exprToString(expr sqlparser.Expr) string {
 	return types.MagicNullString
 }
 
-func solveWhere(expr sqlparser.Expr, attrs dbsys.AttrInfoList, tableName string) (*parser.Expr, error) {
-	if expr == nil {
-		return nil, nil
+func solveWhere(where *sqlparser.Where, attrs dbsys.AttrInfoList, tableName string) (*parser.Expr, error) {
+	if where == nil {
+		return parser.NewExprConst(types.NewValueFromBool(true)), nil
 	}
-	result, ambiguity, err := splitExprForUnionQuery(expr, attrs, tableName)
+	result, ambiguity, err := splitExprForUnionQuery(where.Expr, attrs, tableName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +41,8 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		return errorutil.ErrorParseCommand
 	}
 
-	fmt.Println(sqlparser.String(stmt))
-
 	tableNames := []string{}
+	attrTables := []string{}
 	attrNames := []string{}
 
 	for _, expr := range stmt.From {
@@ -64,6 +61,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		case *sqlparser.AliasedExpr:
 			ae := expr.(*sqlparser.AliasedExpr)
 			if col, ok := ae.Expr.(*sqlparser.ColName); ok {
+				attrTables = append(attrTables, col.Qualifier.Name.CompliantName())
 				attrNames = append(attrNames, col.Name.CompliantName())
 			}
 		}
@@ -75,10 +73,8 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	selectedAttrs := map[string]dbsys.AttrInfoList{}
 
 	for _, tableName := range tableNames {
-		fmt.Println("table", tableName)
-		// attrs := db.sysManager.GetAttrInfoList(tableName)
-		attrs := dbsys.AttrInfoList{}
-		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		attrs := db.sysManager.GetAttrInfoList(tableName)
+		where, err := solveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}
@@ -92,31 +88,54 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		allAttrs = append(allAttrs, attrs...)
 	}
 
-	findFn := func(string) *parser.AttrInfo {
-		return nil
+	findFn := func(table, col string) (*parser.AttrInfo, error) {
+		var result *parser.AttrInfo = nil
+		for index, attr := range allAttrs {
+			if col == attr.AttrName && (table == "" || table == attr.RelName) {
+				if result != nil {
+					return nil, errorutil.ErrorColDuplicated
+				}
+				result = &allAttrs[index]
+			}
+		}
+		if result == nil {
+			return nil, errorutil.ErrorColNotFound
+		}
+		return result, nil
 	}
-	for _, attrName := range attrNames {
-		attr := findFn(attrName)
-		if attr != nil {
+
+	if attrNames == nil {
+		// select *
+		for _, attr := range allAttrs {
 			if _, ok := selectedAttrs[attr.RelName]; !ok {
 				selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
 			}
-			selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
+			selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], attr)
+		}
+	} else {
+		for index, attrName := range attrNames {
+			attr, err := findFn(attrTables[index], attrName)
+			if err != nil {
+				return err
+			}
+			if attr != nil {
+				if _, ok := selectedAttrs[attr.RelName]; !ok {
+					selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
+				}
+				selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
+			}
 		}
 	}
 
-	where, err := solveWhere(stmt.Where.Expr, allAttrs, "")
+	where, err := solveWhere(stmt.Where, allAttrs, "")
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(where)
-	/*
-		err := db.sysManager.UnionQuery(tables, selectedAttrs, where)
-		if err != nil {
-			return err
-		}
-	*/
+	err = db.sysManager.SelectFromMultiple(tables, selectedAttrs, where)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -170,7 +189,7 @@ func (db *Database) solveUpdate(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		where, err := solveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}
@@ -202,7 +221,7 @@ func (db *Database) solveDelete(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		where, err := solveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}

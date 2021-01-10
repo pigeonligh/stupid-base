@@ -55,7 +55,7 @@ const (
 	OpCompIS
 	OpCompISNOT
 	OpCompLIKE
-	OpCompNO
+	OpCompNOTLIKE
 
 	OpArithADD
 	OpArithSUB

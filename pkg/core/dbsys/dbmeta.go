@@ -31,3 +31,7 @@ type TemporalTable struct {
 	nils  []bool // nullAllowed
 	rows  []*record.Record
 }
+
+func (tt *TemporalTable) Count() int {
+	return len(tt.rows)
+}

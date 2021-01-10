@@ -2,6 +2,7 @@ package dbsys
 
 import (
 	"fmt"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
@@ -82,6 +83,7 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 	for i := range tables {
 		if len(tables[i].rows) == 0 {
 			m.PrintEmptySet()
+			return nil
 		}
 	}
 	if expr == nil {
@@ -106,8 +108,8 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 		expr.ResetCalculated()
 
 		// step list step forward
+		stepList[0]++
 		for i := 0; i < len(stepList)-1; i++ {
-			stepList[i]++
 			if stepList[i] < len(tables[i].rows) {
 				break
 			} else {

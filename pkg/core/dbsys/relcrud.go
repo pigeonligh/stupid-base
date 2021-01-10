@@ -124,7 +124,7 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 		panic(0)
 	}
 
-	log.Debug(keepList)
+	//log.Debug(keepList)
 
 	totalSize := 0
 	offs := make([]int, 0)
@@ -159,7 +159,7 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 
 		curColCursor := 0
 		tmpList := keepList[i*len(tables) : (i+1)*len(tables)]
-		log.Debug(tmpList)
+		//log.Debug(tmpList)
 		// idx from each temporal table
 		for j := 0; j < len(tables); j++ {
 			rel := tables[j].rels[0]

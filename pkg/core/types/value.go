@@ -263,7 +263,8 @@ func (v *Value) EQ(c *Value) bool {
 }
 
 func (v *Value) ToInt64() int {
-	return *(*int)(unsafe.Pointer(&v.Value))
+
+	return *(*int)(ByteSliceToPointer(v.Value[:]))
 }
 
 func (v *Value) FromInt64(val int) {

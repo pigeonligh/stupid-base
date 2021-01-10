@@ -149,6 +149,8 @@ func TestDbSys(t *testing.T) {
 		}
 	}
 
+	manager.SelectSingleTableByExpr(rel1, []string{}, parser.NewExprCompQuickAttrCompValue(0, 8, types.OpCompEQ, types.NewValueFromInt64(1)), true)
+	return
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
 	manager.PrintTableMeta(rel2)

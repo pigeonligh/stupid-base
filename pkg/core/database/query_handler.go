@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
@@ -24,16 +23,18 @@ func exprToString(expr sqlparser.Expr) string {
 	return types.MagicNullString
 }
 
-func (db *Database) solveWhere(expr sqlparser.Expr, attrs dbsys.AttrInfoList, tableName string) *parser.Expr {
+func solveWhere(expr sqlparser.Expr, attrs dbsys.AttrInfoList, tableName string) (*parser.Expr, error) {
 	if expr == nil {
-		return nil
+		return nil, nil
 	}
-	if expr, ok := expr.(*sqlparser.ComparisonExpr); ok {
-		fmt.Println(expr.Operator.ToString())
-		fmt.Println(reflect.TypeOf(expr.Left))
-		fmt.Println(reflect.TypeOf(expr.Right))
+	result, ambiguity, err := splitExprForUnionQuery(expr, attrs, tableName)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	if !ambiguity {
+		return result, nil
+	}
+	return parser.NewExprConst(types.NewValueFromBool(true)), nil
 }
 
 func (db *Database) solveSelect(obj sqlparser.Statement) error {
@@ -41,7 +42,6 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	if !ok {
 		return errorutil.ErrorParseCommand
 	}
-	fmt.Println("Select:", stmt)
 
 	tableNames := []string{}
 	attrNames := []string{}
@@ -70,9 +70,15 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	tables := []*dbsys.TemporalTable{}
 	allAttrs := dbsys.AttrInfoList{}
 
+	selectedAttrs := map[string]dbsys.AttrInfoList{}
+
 	for _, tableName := range tableNames {
-		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where := db.solveWhere(stmt.Where.Expr, attrs, tableName)
+		// attrs := db.sysManager.GetAttrInfoList(tableName)
+		attrs := dbsys.AttrInfoList{}
+		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		if err != nil {
+			return err
+		}
 
 		table, err := db.sysManager.SelectSingleTableByExpr(tableName, nil, where, false)
 		if err != nil {
@@ -83,10 +89,27 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		allAttrs = append(allAttrs, attrs...)
 	}
 
-	where := db.solveWhere(stmt.Where.Expr, allAttrs, "")
+	findFn := func(string) *parser.AttrInfo {
+		return nil
+	}
+	for _, attrName := range attrNames {
+		attr := findFn(attrName)
+		if attr != nil {
+			if _, ok := selectedAttrs[attr.RelName]; !ok {
+				selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
+			}
+			selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
+		}
+	}
+
+	where, err := solveWhere(stmt.Where.Expr, allAttrs, "")
+	if err != nil {
+		return err
+	}
+
 	fmt.Println(where)
 	/*
-		err := db.sysManager.UnionQuery(tables, attrNames, where)
+		err := db.sysManager.UnionQuery(tables, selectedAttrs, where)
 		if err != nil {
 			return err
 		}
@@ -144,9 +167,12 @@ func (db *Database) solveUpdate(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where := db.solveWhere(stmt.Where.Expr, attrs, tableName)
+		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		if err != nil {
+			return err
+		}
 
-		err := db.sysManager.UpdateRows(tableName, attrNames, attrValues, where)
+		err = db.sysManager.UpdateRows(tableName, attrNames, attrValues, where)
 		if err != nil {
 			return err
 		}
@@ -161,12 +187,24 @@ func (db *Database) solveDelete(obj sqlparser.Statement) error {
 		return errorutil.ErrorParseCommand
 	}
 
-	for _, target := range stmt.Targets {
-		tableName := target.Name.CompliantName()
-		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where := db.solveWhere(stmt.Where.Expr, attrs, tableName)
+	tableNames := []string{}
 
-		err := db.sysManager.DeleteRows(tableName, where)
+	for _, expr := range stmt.TableExprs {
+		if ate, ok := expr.(*sqlparser.AliasedTableExpr); ok {
+			table, _ := ate.TableName()
+			tableName := table.Name.CompliantName()
+			tableNames = append(tableNames, tableName)
+		}
+	}
+
+	for _, tableName := range tableNames {
+		attrs := db.sysManager.GetAttrInfoList(tableName)
+		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)
+		if err != nil {
+			return err
+		}
+
+		err = db.sysManager.DeleteRows(tableName, where)
 		if err != nil {
 			return err
 		}

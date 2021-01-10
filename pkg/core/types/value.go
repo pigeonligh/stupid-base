@@ -2,11 +2,12 @@ package types
 
 import (
 	"bytes"
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 //type ConvertValue interface {
@@ -63,7 +64,7 @@ func String2Value(str string, size int, target ValueType) (Value, error) {
 			val.FromBool(b)
 		}
 	case DATE:
-		if t, err := time.Parse("2006-Jan-02", str); err != nil {
+		if t, err := time.Parse("2006-1-2", str); err != nil {
 			return val, err
 		} else {
 			val.FromInt64(int(t.Unix()))

@@ -276,6 +276,7 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 			expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize]))
 		case types.DATE:
 			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+			expr.Value.ValueType = types.DATE
 		case types.NO_ATTR:
 		default:
 			log.V(log.ExprLevel).Warningf("data is not implemented\n")

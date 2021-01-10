@@ -50,9 +50,6 @@ func (db *Database) Run(sqls string) error {
 		}
 		endPosition := token.Position
 
-		// fmt.Println(sqls)
-		fmt.Println(sqlparser.String(stmt))
-
 		var solveFunc func(sqlparser.Statement) error = nil
 		var solveStringFunc func(string) error = nil
 		var solveString string = ""

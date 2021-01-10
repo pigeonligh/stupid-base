@@ -100,7 +100,7 @@ func (m *Manager) DropDB(dbName string) error {
 		m.rels = nil
 		m.dbSelected = ""
 	}
-	if err := os.RemoveAll(dbName); err != nil {
+	if err := os.RemoveAll(env.WorkDir + "/" + dbName); err != nil {
 		log.V(log.DBSysLevel).Error(err)
 		return errorutil.ErrorDBSysDropDBFails
 	}
@@ -215,11 +215,11 @@ func (m *Manager) DropTable(relName string) error {
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 
 	for idxName := range attrInfoCollection.IdxMap {
-		_ = os.Remove(getTableIdxDataFileName(relName, idxName))
+		_ = os.Remove(env.WorkDir + "/" + getTableIdxDataFileName(relName, idxName))
 	}
-	_ = os.Remove(getTableMetaFileName(relName))
-	//_ = os.Remove(getTableIdxMetaFileName(relName))
-	_ = os.Remove(getTableDataFileName(relName))
+	_ = os.Remove(env.WorkDir + "/" + getTableMetaFileName(relName))
+	//_ = os.Remove(env.WorkDir + "/" + getTableIdxMetaFileName(relName))
+	_ = os.Remove(env.WorkDir + "/" + getTableDataFileName(relName))
 
 	relInfo := m.GetDBRelInfoMap()
 	delete(relInfo, relName)

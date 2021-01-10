@@ -28,6 +28,8 @@ func main() {
 		}
 
 		for tableName, tableConfig := range configs {
+			fmt.Println("insert", tableName)
+
 			attrs := ""
 			for _, attr := range tableConfig {
 				if attrs != "" {

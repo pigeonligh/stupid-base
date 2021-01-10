@@ -92,7 +92,6 @@ func TestDbSys(t *testing.T) {
 	nameMap[6] = "Harry hey hey"
 
 	for i := 0; i < 10000; i++ {
-		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
 			[]string{
 				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
@@ -158,7 +157,6 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 	for i := 0; i < 8; i++ {
-		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel2, []string{strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64), nameMap[i%len(nameMap)]})
 		if err != nil {
 			t.Error(err)

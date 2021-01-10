@@ -2,10 +2,11 @@ package dbsys
 
 import (
 	"bytes"
-	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func strTo24ByteArray(name string) [24]byte {

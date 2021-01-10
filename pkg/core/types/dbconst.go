@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 const MaxNameSize = 24
 const MaxAttrNums = 40
 const MaxStringSize = 255
@@ -35,7 +37,7 @@ var ValueTypeDefaultSize = map[ValueType]int{
 
 func GetValueType(s string) ValueType {
 	for k, v := range ValueTypeStringMap {
-		if v == s {
+		if strings.ToLower(v) == strings.ToLower(s) {
 			return k
 		}
 	}

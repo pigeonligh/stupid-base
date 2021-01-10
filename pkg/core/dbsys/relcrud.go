@@ -7,7 +7,6 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
-	"time"
 )
 
 // SELECT <selector> FROM <tableList> WHERE <whereClause>
@@ -165,6 +164,7 @@ func (m *Manager) SelectFromMultiple(tables []TemporalTable, rel2Attrs map[strin
 		rows:  finalRows,
 	}
 	m.PrintTemporalTable(&tmpTable)
+	return nil
 }
 
 // DELETE FROM <tbName> WHERE <whereClause>

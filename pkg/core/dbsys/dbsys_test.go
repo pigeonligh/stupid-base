@@ -232,17 +232,22 @@ func TestDbSys(t *testing.T) {
 	tmp1, _ := manager.SelectSingleTableByExpr(rel1, []string{},
 		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(5)), true)
 
-	tmp2, _ := manager.SelectSingleTableByExpr(rel1, []string{},
+	tmp2, _ := manager.SelectSingleTableByExpr(rel2, []string{},
 		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(4)), true)
 
-	attrInfoList11 := manager.GetAttrInfoList(rel1)
-	attrInfoList22 := manager.GetAttrInfoList(rel1)
+	attrInfoMap1 := manager.GetAttrInfoCollection(rel1).InfoMap
+	attrInfoMap2 := manager.GetAttrInfoCollection(rel2).InfoMap
+
 	tmpMap := map[string]AttrInfoList{
-		rel1: attrInfoList11,
-		rel2: attrInfoList22,
+		rel1: manager.GetAttrInfoList(rel2),
+		rel2: manager.GetAttrInfoList(rel2),
 	}
 
-	manager.SelectFromMultiple([]*TemporalTable{tmp1, tmp2}, tmpMap, nil)
+	l := parser.NewExprAttr(attrInfoMap1["attr1"])
+	r := parser.NewExprAttr(attrInfoMap2["attr1"])
+	if err := manager.SelectFromMultiple([]*TemporalTable{tmp1, tmp2}, tmpMap, parser.NewExprComp(l, types.OpCompEQ, r)); err != nil {
+		t.Error(err)
+	}
 
 	// delete
 	if err := manager.DropDB(db1); err != nil {

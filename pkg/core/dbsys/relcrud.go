@@ -95,9 +95,9 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 			if err := expr.Calculate(tables[i].rows[stepList[i]].Data, tables[i].rels[0]); err != nil {
 				return err
 			}
-			if !expr.IsCalculated {
-				return errorutil.ErrorExprInvalidComparison
-			}
+		}
+		if !expr.IsCalculated {
+			return errorutil.ErrorExprInvalidComparison
 		}
 		if expr.GetBool() {
 			// append this

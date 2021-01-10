@@ -598,7 +598,11 @@ func (m *Manager) ChangeColumn(relName, attrName string, info *parser.AttrInfo, 
 		attrInfo.NullAllowed = info.NullAllowed
 	}
 	if changeField&ChangeDefault != 0 {
-		attrInfo.Default = info.Default
+		val, err := types.String2Value(info.Default.ToStr(), typ, size)
+		if err != nil {
+			return err
+		}
+		attrInfo.Default = val
 	}
 	infoMap[attrName] = attrInfo
 	attrInfoCollection.InfoMap = infoMap

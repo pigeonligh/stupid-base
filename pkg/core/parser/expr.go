@@ -215,15 +215,17 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 				expr.IsNull = true
 				expr.Value.FromBool(false)
 			} else {
-				switch expr.OpType {
-				case types.OpCompLIKE:
+				if expr.OpType == types.OpCompLIKE || expr.OpType == types.OpCompNotLIKE {
 					regex := sqlparser.LikeToRegexp(expr.Value.ToStr())
 					left := expr.Left.Value.ToStr()
-					if regex.Match([]byte(left)) {
+					if regex.Match([]byte(left)) && expr.OpType == types.OpCompLIKE {
 						expr.Value.FromBool(true)
 					} else {
 						expr.Value.FromBool(false)
 					}
+					return nil
+				}
+				switch expr.OpType {
 				case types.OpCompEQ:
 					expr.Value.FromBool(expr.Left.Value.EQ(&expr.Right.Value))
 				case types.OpCompLT:

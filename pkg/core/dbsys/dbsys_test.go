@@ -232,20 +232,21 @@ func TestDbSys(t *testing.T) {
 	tmp1, _ := manager.SelectSingleTableByExpr(rel1, []string{},
 		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(5)), true)
 
-	tmp2, _ := manager.SelectSingleTableByExpr(rel2, []string{},
-		parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(4)), true)
-
-	attrInfoMap1 := manager.GetAttrInfoCollection(rel1).InfoMap
-	attrInfoMap2 := manager.GetAttrInfoCollection(rel2).InfoMap
+	//tmp2, _ := manager.SelectSingleTableByExpr(rel2, []string{},
+	//	parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(4)), true)
+	//
+	//attrInfoMap1 := manager.GetAttrInfoCollection(rel1).InfoMap
+	//attrInfoMap2 := manager.GetAttrInfoCollection(rel2).InfoMap
 
 	tmpMap := map[string]AttrInfoList{
 		rel1: manager.GetAttrInfoList(rel1),
-		rel2: manager.GetAttrInfoList(rel2),
+		//rel2: manager.GetAttrInfoList(rel2),
 	}
 
-	l := parser.NewExprAttr(attrInfoMap1["attr1"])
-	r := parser.NewExprAttr(attrInfoMap2["attr1"])
-	if err := manager.SelectFromMultiple([]*TemporalTable{tmp1, tmp2}, tmpMap, parser.NewExprComp(l, types.OpCompEQ, r)); err != nil {
+	//l := parser.NewExprAttr(attrInfoMap1["attr1"])
+	//r := parser.NewExprAttr(attrInfoMap2["attr1"])
+	//parser.NewExprComp(l, types.OpCompEQ, r)
+	if err := manager.SelectFromMultiple([]*TemporalTable{tmp1}, tmpMap, nil); err != nil {
 		t.Error(err)
 	}
 

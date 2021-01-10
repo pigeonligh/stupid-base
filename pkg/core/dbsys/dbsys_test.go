@@ -4,8 +4,8 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"strconv"
 	"testing"
-	"time"
 )
 
 func TestDbSys(t *testing.T) {
@@ -91,14 +91,11 @@ func TestDbSys(t *testing.T) {
 	nameMap[6] = "Harry hey hey"
 
 	for i := 0; i < 30; i++ {
-		time := time.Now().AddDate(0, 0, i)
+		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
-			[]types.Value{
-				types.NewValueFromInt64(i),
-				types.NewValueFromFloat64(0.1 + float64(i)),
-				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-				types.NewValueFromDate(time),
-				types.NewValueFromBool(i%2 == 0),
+			[]string{
+				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
+				nameMap[i%len(nameMap)], "2018-Feb-28", strconv.FormatBool(i%2 == 0),
 			})
 		if err != nil {
 			t.Error(err)
@@ -147,11 +144,11 @@ func TestDbSys(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel2,
-			[]types.Value{
-				types.NewValueFromInt64(i),
-				types.NewValueFromFloat64(0.1 + float64(i)),
-				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-			})
+			[]string{
+				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
+				nameMap[i%len(nameMap)],
+			},
+		)
 		if err != nil {
 			t.Error(err)
 			return
@@ -186,31 +183,27 @@ func TestDbSys(t *testing.T) {
 	// test foreign key
 	for i := 0; i < 5; i++ {
 		_ = manager.InsertRow(rel2,
-			[]types.Value{
-				types.NewValueFromInt64(i),
-				types.NewValueFromFloat64(0.1 + float64(i)),
-				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-			})
+			[]string{
+				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
+				nameMap[i%len(nameMap)]},
+		)
 	}
 	// test foreign key
 	for i := 50; i < 70; i++ {
 		_ = manager.InsertRow(rel2,
-			[]types.Value{
-				types.NewValueFromInt64(i),
-				types.NewValueFromFloat64(0.1 + float64(i)),
-				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-			})
+			[]string{
+				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
+				nameMap[i%len(nameMap)],
+			},
+		)
 	}
 	// test foreign key
 	for i := 50; i < 120; i++ {
 		err := manager.InsertRow(rel1,
-			[]types.Value{
-				types.NewValueFromInt64(i),
-				types.NewValueFromFloat64(0.1 + float64(i)),
-				types.NewValueFromStr(nameMap[i%len(nameMap)]),
-				types.NewValueFromStr("2018-Feb-28"),
-				types.NewValueFromBool(i%2 == 0),
-			})
+			[]string{
+				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
+				nameMap[i%len(nameMap)], "2018-Feb-28", strconv.FormatBool(i%2 == 0)},
+		)
 		if err != nil {
 			t.Error(err)
 			return
@@ -291,7 +284,7 @@ func TestDbSys(t *testing.T) {
 	}
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
-	if err := manager.UpdateRows(rel1, []string{"attr1"}, []types.Value{types.NewValueFromInt64(1)}, nil); err != nil {
+	if err := manager.UpdateRows(rel1, []string{"attr1"}, []string{"1"}, nil); err != nil {
 		t.Error(err)
 		return
 	}

@@ -55,6 +55,8 @@ func String2Value(str string, size int, target ValueType) (Value, error) {
 	case VARCHAR:
 		if len(str) > size {
 			return val, errorutil.ErrorDBSysStringExceedLength
+		} else {
+			val.FromStr(str)
 		}
 	case BOOL:
 		if b, err := strconv.ParseBool(str); err != nil {

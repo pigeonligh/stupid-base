@@ -43,6 +43,8 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		return errorutil.ErrorParseCommand
 	}
 
+	fmt.Println(sqlparser.String(stmt))
+
 	tableNames := []string{}
 	attrNames := []string{}
 
@@ -73,6 +75,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	selectedAttrs := map[string]dbsys.AttrInfoList{}
 
 	for _, tableName := range tableNames {
+		fmt.Println("table", tableName)
 		// attrs := db.sysManager.GetAttrInfoList(tableName)
 		attrs := dbsys.AttrInfoList{}
 		where, err := solveWhere(stmt.Where.Expr, attrs, tableName)

@@ -35,6 +35,9 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	nils := make([]bool, 0)
 
 	totLen := 0
+	if attrNameList == nil || len(attrNameList) == 0 {
+		attrNameList = m.GetAttrInfoCollection(relName).NameList
+	}
 	for _, attr := range attrNameList {
 		rels = append(rels, relName)
 		attrs = append(attrs, attr)

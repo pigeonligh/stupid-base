@@ -289,12 +289,10 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 
-	if _, err := manager.SelectSingleTableByExpr(rel1, []string{"attr1"}, nil, true); err != nil {
+	if _, err := manager.SelectSingleTableByExpr(rel1, []string{}, nil, true); err != nil {
 		t.Error(err)
 		return
 	}
-
-	_ = manager.PrintTableData(rel1)
 
 	// delete
 	if err := manager.DropDB(db1); err != nil {

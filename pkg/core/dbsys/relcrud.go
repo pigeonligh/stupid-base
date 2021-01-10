@@ -46,7 +46,7 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	rows := make([]*record.Record, 0)
 	for _, rec := range recList {
 		tmpRec := record.Record{
-			Rid:  types.RID{},
+			Rid:  rec.Rid,
 			Data: make([]byte, totLen),
 		}
 		for i := range offs {
@@ -139,7 +139,7 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []
 	infoMap := attrInfoCollection.InfoMap
 	// check value compatible
 	for i := range attrNameList {
-		if !(valueList[i].ValueType == types.NO_ATTR && infoMap[attrNameList[i]].NullAllowed) {
+		if valueList[i].ValueType == types.NO_ATTR && !infoMap[attrNameList[i]].NullAllowed {
 			return errorutil.ErrorDBSysNullConstraintViolated
 		}
 		valueList[i].AdaptToType(infoMap[attrNameList[i]].AttrType)
@@ -165,21 +165,24 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, valueList []
 	}
 
 	// check if primary keys are contained in attrName list
-	checkPrimary := checkIfaLEb(attrInfoCollection.PkList, attrNameList)
+	checkPrimary := false
+	if len(attrInfoCollection.PkList) != 0 {
+		checkPrimary = checkIfaLEb(attrInfoCollection.PkList, attrNameList)
+	}
 
 	// update temporal table (not write yet)
 
 	// previous records
 	prevData := make([][]byte, 0)
 
-	for _, rec := range tmpTable.rows {
-		tmpData := make([]byte, len(rec.Data))
-		copy(tmpData, rec.Data)
+	for i := range tmpTable.rows {
+		tmpData := make([]byte, len(tmpTable.rows[i].Data))
+		copy(tmpData, tmpTable.rows[i].Data)
 		prevData = append(prevData, tmpData)
 		for attr, val := range name2Val {
 			off := infoMap[attr].AttrOffset
 			size := infoMap[attr].AttrSize
-			copy(rec.Data[off:off+size], val.Value[0:size])
+			copy(tmpTable.rows[i].Data[off:off+size], val.Value[0:size])
 		}
 	}
 
@@ -309,18 +312,15 @@ func (m *Manager) InsertRow(relName string, valueList []types.Value) error {
 		// insert we only need to check when RelName is fk's src (referencing other tables' primary key)
 
 		fkInfo := m.GetFkInfoMap()
-		for fk, cons := range fkInfo {
+		for _, cons := range fkInfo {
 			if cons.SrcRel == relName {
 				attrSet := m.GetAttrSetFromAttrs(relName, cons.SrcAttr)
 				compData := attrSet.DataToAttrs(types.RID{}, insData)
 
-				if fk != PrimaryKeyIdxName {
-					panic(0) // must reference other table's primary key
-				}
 				dataFH, _ := m.relManager.OpenFile(getTableDataFileName(cons.DstRel))
-				idxFH, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(cons.DstRel, fk), dataFH)
+				idxFH, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(cons.DstRel, PrimaryKeyIdxName), dataFH)
 				defer m.relManager.CloseFile(getTableDataFileName(cons.DstRel))
-				defer m.idxManager.CloseIndex(getTableIdxDataFileName(cons.DstRel, fk))
+				defer m.idxManager.CloseIndex(getTableIdxDataFileName(cons.DstRel, PrimaryKeyIdxName))
 
 				if len(idxFH.GetRidList(types.OpCompEQ, compData)) == 0 {
 					return errorutil.ErrorDBSysFkValueNotInPk

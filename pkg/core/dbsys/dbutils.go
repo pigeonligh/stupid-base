@@ -239,7 +239,7 @@ func (m *Manager) SetAttrInfoListByCollection(relName string, collection AttrInf
 	for _, name := range collection.NameList {
 		attrInfoList = append(attrInfoList, collection.InfoMap[name])
 	}
-	m.rels[relName] = attrInfoList
+	m.SetAttrInfoList(relName, attrInfoList)
 	file, err := os.OpenFile(getTableMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {

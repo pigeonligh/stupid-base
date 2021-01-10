@@ -225,10 +225,12 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 
 func (f *FileHandle) ForcePage(page types.PageNum) {
 	if err := f.storageFH.MarkDirty(page); err != nil {
-		panic(0)
+		log.Errorf("%v: %v", err, page)
+		panic(err)
 	}
 	if err := f.storageFH.ForcePage(page); err != nil {
-		panic(0)
+		log.Errorf("%v: %v", err, page)
+		panic(err)
 	}
 }
 

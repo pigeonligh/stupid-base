@@ -1,22 +1,21 @@
 package dbsys
 
 import (
-	"testing"
-	"time"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"testing"
+	"time"
 )
 
 func TestDbSys(t *testing.T) {
-	log.SetLevel(log.ExprLevel | log.DBSysLevel | log.IndexLevel)
+	log.SetLevel(log.DBSysLevel)
 
 	manager := GetInstance()
 
 	db1 := "testdb_1"
-	db2 := "testdb_2"
-	db3 := "testdb_3"
+	//db2 := "testdb_2"
+	//db3 := "testdb_3"
 
 	if err := manager.CreateDB(db1); err != nil {
 		t.Error(err)
@@ -81,11 +80,6 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	manager.PrintTablesWithDetails()
-
-	t.Log(manager.GetDBRelInfoMap())
-	t.Log(manager.GetAttrInfoList(rel1))
-	t.Log(manager.GetFkInfoMap())
 
 	nameMap := make(map[int]string)
 	nameMap[0] = "Alice fucks"
@@ -164,6 +158,7 @@ func TestDbSys(t *testing.T) {
 		}
 	}
 
+	// test primary key
 	if err := manager.AddPrimaryKey(rel1, []string{"attr1", "attr3"}); err != nil {
 		t.Error(err)
 		return
@@ -172,8 +167,56 @@ func TestDbSys(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
 	if err := manager.AddForeignKey("fk1", rel2, []string{"attr1", "attr3"}, rel1, []string{"attr1", "attr3"}); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := manager.DropPrimaryKey(rel1); err != nil {
+		t.Log(err)
+	}
+
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompEQ, types.NewValueFromInt64(1))); err != nil {
+		t.Log(err)
+	}
+
+	manager.PrintTablesWithDetails()
+	manager.PrintTableMeta(rel1)
+	manager.PrintTableMeta(rel2)
+
+	// test foreign key
+	for i := 0; i < 5; i++ {
+		_ = manager.InsertRow(rel2,
+			[]types.Value{
+				types.NewValueFromInt64(i),
+				types.NewValueFromFloat64(0.1 + float64(i)),
+				types.NewValueFromStr(nameMap[i%len(nameMap)]),
+			})
+	}
+	// test foreign key
+	for i := 50; i < 70; i++ {
+		_ = manager.InsertRow(rel2,
+			[]types.Value{
+				types.NewValueFromInt64(i),
+				types.NewValueFromFloat64(0.1 + float64(i)),
+				types.NewValueFromStr(nameMap[i%len(nameMap)]),
+			})
+	}
+	// test foreign key
+	for i := 50; i < 120; i++ {
+		err := manager.InsertRow(rel1,
+			[]types.Value{
+				types.NewValueFromInt64(i),
+				types.NewValueFromFloat64(0.1 + float64(i)),
+				types.NewValueFromStr(nameMap[i%len(nameMap)]),
+				types.NewValueFromStr("2013-Jan-11"),
+				types.NewValueFromBool(i%2 == 0),
+			})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(110))); err != nil {
 		t.Error(err)
 		return
 	}
@@ -191,19 +234,6 @@ func TestDbSys(t *testing.T) {
 	}
 	manager.PrintDBForeignInfos()
 
-	////if err := manager.CreateIndex("idx1", rel1, []string{"attr1"}, true); err != nil {
-	////	t.Error(err)
-	////	return
-	////}
-	//
-	//if err := manager.PrintTableMeta(rel1); err != nil {
-	//	t.Error(err)
-	//	return
-	//}
-	//if err := manager.PrintTableIndex(rel1); err != nil {
-	//	t.Error(err)
-	//	return
-	//}
 	//
 	if err := manager.PrintTableData(rel2); err != nil {
 		t.Error(err)
@@ -214,78 +244,64 @@ func TestDbSys(t *testing.T) {
 		return
 	}
 
-	//
-	//manager.PrintTablesWithDetails()
-	//
-	//// bug: when value type is not compatible from attr type, behavior is undefined
-	////expr1 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(10))
-	//expr2 := parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompGE, types.NewValueFromInt64(40))
-	//expr := parser.NewExprLogic(nil, types.OpLogicNOT, expr2)
-	//
-	//tmpTable, err := manager.SelectSingleTableByExpr(rel1, []string{"attr1", "attr2"}, expr)
-	//if err != nil {
-	//	t.Error(err)
-	//	return
-	//}
-	//
-	//manager.PrintTemporalTable(tmpTable)
+	if err := manager.DropColumn(rel1, "attr2"); err != nil {
+		t.Error(err)
+	}
+	if err := manager.DropColumn(rel1, "attr1"); err != nil {
+		t.Log(err)
+	}
+	if err := manager.AddColumn(rel2, "attrAdd", parser.AttrInfo{
+		AttrInfo: types.AttrInfo{
+			AttrSize:    40,
+			AttrOffset:  0,
+			AttrType:    types.VARCHAR,
+			NullAllowed: true,
+		},
+		IsPrimary: false,
+		AttrName:  "attrAdd",
+		Default:   types.NewValueFromStr("Hi i am added"),
+	}); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := manager.AddColumn(rel1, "attrAdd", parser.AttrInfo{
+		AttrInfo: types.AttrInfo{
+			AttrSize:    40,
+			AttrOffset:  0,
+			AttrType:    types.VARCHAR,
+			NullAllowed: true,
+		},
+		IsPrimary: false,
+		AttrName:  "attrAdd",
+		Default:   types.NewValueFromStr("Hi i am added"),
+	}); err != nil {
+		t.Error(err)
+		return
+	}
 
-	//rel2 := "rel2"
-	//attrInfoList = []parser.AttrInfo{
-	//	{
-	//		AttrName: strTo24ByteArray("attr1"),
-	//		RelName:  strTo24ByteArray(rel2),
-	//		AttrInfo: types.AttrInfo{
-	//			AttrSize:             8,
-	//			AttrType:             types.INT,
-	//			IndexNo:              0,
-	//			NullAllowed:          false,
-	//			IsPrimary:            false,
-	//			HasForeignConstraint: false,
-	//		},
-	//	},
-	//	{
-	//		AttrName: strTo24ByteArray("attr2"),
-	//		RelName:  strTo24ByteArray(rel2),
-	//		AttrInfo: types.AttrInfo{
-	//			AttrSize:             8,
-	//			AttrType:             types.FLOAT,
-	//			IndexNo:              0,
-	//			NullAllowed:          true,
-	//			IsPrimary:            false,
-	//			HasForeignConstraint: false,
-	//		},
-	//	},
-	//	{
-	//		AttrName: strTo24ByteArray("attr3"),
-	//		RelName:  strTo24ByteArray(rel2),
-	//		AttrInfo: types.AttrInfo{
-	//			AttrSize: 24,
-	//			AttrType: types.VARCHAR,
-	//			IndexNo:  0,
-	//		},
-	//	},
-	//}
-	//if err := manager.CreateTable(rel2, attrInfoList, []ConstraintInfo{}); err != nil {
-	//	t.Error(err)
-	//	return
-	//}
+	manager.PrintTablesWithDetails()
+	manager.PrintTableMeta(rel1)
+	_ = manager.PrintTableData(rel1)
+	manager.PrintTableMeta(rel2)
+	_ = manager.PrintTableData(rel2)
 
-	//tmpTable := manager.GetTemporalTableByAttrs(rel2, []string{"attr1", "attr2"}, []types.FilterCond{})
-	//manager.PrintTableByTmpColumns(tmpTable)
+	if err := manager.DropPrimaryKey(rel1); err != nil {
+		t.Error(err)
+		return
+	}
+	manager.PrintTablesWithDetails()
+	manager.PrintTableMeta(rel1)
+	if err := manager.UpdateRows(rel1, []string{"attr1"}, []types.Value{types.NewValueFromInt64(1)}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	_ = manager.PrintTableData(rel1)
 
 	// delete
-	return
 	if err := manager.DropDB(db1); err != nil {
 		t.Error(err)
 		return
 	}
-	if err := manager.DropDB(db2); err != nil {
-		t.Error(err)
-		return
-	}
-	if err := manager.DropDB(db3); err != nil {
-		t.Error(err)
-		return
-	}
+	return
 }

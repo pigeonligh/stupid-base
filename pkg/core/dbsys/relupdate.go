@@ -4,6 +4,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"os"
 	"unsafe"
 )
@@ -80,6 +81,7 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	// update each attr and index file
 	relInfo := m.GetDBRelInfoMap()[relName]
 	relInfo.IndexCount++
+	m.SetRelInfo(relInfo)
 	//idxInfoCollection.Name2Cols[idxName] = attrList
 
 	for _, attr := range attrList {
@@ -91,6 +93,7 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 
 	m.SetAttrInfoListByCollection(relName, attrInfoCollection)
 	m.SetRelInfo(relInfo)
+	log.V(log.DBSysLevel).Infof("Create index succeed %v : %v, %v", relName, attrList, idxName)
 	//m.SetIdxInfoCollection(relName, idxInfoCollection)
 	return nil
 }
@@ -103,7 +106,9 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 	if !m.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
 	}
-
+	if err := m.checkDBTableAndAttrExistence(relName, nil); err != nil {
+		return err
+	}
 	// 3
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 	if _, found := attrInfoCollection.IdxMap[idxName]; !found {
@@ -113,7 +118,7 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 
 	// 1
 	relInfo := m.GetDBRelInfoMap()[relName]
-	relInfo.IndexCount--
+	relInfo.IndexCount = relInfo.IndexCount - 1
 	m.SetRelInfo(relInfo)
 
 	// 2
@@ -127,7 +132,7 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 
 	// 4
 	_ = m.idxManager.DestroyIndex(getTableIdxDataFileName(relName, idxName))
-
+	log.Debugf("Drop index success %v : %v", relName, idxName)
 	return nil
 }
 
@@ -140,15 +145,13 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 	if err := m.checkDBTableAndAttrExistence(relName, attrList); err != nil {
 		return err
 	}
-	relInfo := m.GetDBRelInfoMap()[relName]
-	if relInfo.PrimaryCount >= 1 {
-		return errorutil.ErrorDBSysPrimaryKeyCntExceed
-	}
 
-	// 1 add primary count to dbMeta
 	if err := m.CreateIndex(PrimaryKeyIdxName, relName, attrList, false); err != nil {
 		return err
 	}
+
+	// 1 add primary count to dbMeta
+	relInfo := m.GetDBRelInfoMap()[relName]
 	relInfo.PrimaryCount += len(attrList)
 	m.SetRelInfo(relInfo)
 
@@ -160,10 +163,13 @@ func (m *Manager) AddPrimaryKey(relName string, attrList []string) error {
 		attrInfoDetailedCollection.InfoMap[attr] = attrInfo
 	}
 	m.SetAttrInfoListByCollection(relName, attrInfoDetailedCollection)
+	log.V(log.DBSysLevel).Infof("Add primary key succeed %v : %v", relName, attrList)
+
 	return nil
 }
 
 func (m *Manager) DropPrimaryKey(relName string) error {
+	// 00. check foreign key exists
 	// 0. check primary exists
 	// 1. set primary count to 0
 	// 2. update each attr info
@@ -175,26 +181,33 @@ func (m *Manager) DropPrimaryKey(relName string) error {
 	if err := m.checkDBTableAndAttrExistence(relName, nil); err != nil {
 		return err
 	}
-	relInfo := m.GetDBRelInfoMap()[relName]
-	if relInfo.PrimaryCount == 0 {
-		return errorutil.ErrorDBSysPrimaryKeyDoNotExist
+
+	// 00
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+	for _, pk := range attrInfoCollection.PkList {
+		if len(attrInfoCollection.InfoMap[pk].FkName) > 0 {
+			return errorutil.ErrorDBSysForeignKeyExists
+		}
 	}
 
 	// 1
 	if err := m.DropIndex(relName, PrimaryKeyIdxName); err != nil {
 		return err
 	}
+
+	relInfo := m.GetDBRelInfoMap()[relName]
 	relInfo.PrimaryCount = 0
 	m.SetRelInfo(relInfo)
 
 	// 2
-	attrInfoDetailedCollection := m.GetAttrInfoCollection(relName)
-	for _, key := range attrInfoDetailedCollection.PkList {
-		attrInfo := attrInfoDetailedCollection.InfoMap[key]
+	for _, key := range attrInfoCollection.PkList {
+		attrInfo := attrInfoCollection.InfoMap[key]
 		attrInfo.IsPrimary = false
-		attrInfoDetailedCollection.InfoMap[key] = attrInfo
+		attrInfo.IndexName = ""
+		attrInfoCollection.InfoMap[key] = attrInfo
 	}
-	m.SetAttrInfoListByCollection(relName, attrInfoDetailedCollection)
+	m.SetAttrInfoListByCollection(relName, attrInfoCollection)
+	log.V(log.DBSysLevel).Infof("Drop primary key succeed %v", relName)
 	return nil
 }
 
@@ -308,6 +321,7 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 		DstAttr: dstAttrList,
 	}
 	m.SetFkInfoMap(fkMap)
+	log.V(log.DBSysLevel).Infof("Create foreign key succeed %v : %v -> %v  | (%v) - > (%v)", fkName, srcRel, dstRel, srcAttrList, dstAttrList)
 	return nil
 }
 
@@ -338,12 +352,12 @@ func (m *Manager) DropForeignKey(fkName string) error {
 	srcAttrInfoCollection := m.GetAttrInfoCollection(fkInfo.SrcRel)
 	for _, attr := range fkInfo.SrcAttr {
 		attrInfo := srcAttrInfoCollection.InfoMap[attr]
-		attrInfo.IndexName = ""
+		attrInfo.FkName = ""
 		srcAttrInfoCollection.InfoMap[attr] = attrInfo
 	}
 	for _, attr := range fkInfo.DstAttr {
 		attrInfo := dstAttrInfoCollection.InfoMap[attr]
-		attrInfo.IndexName = ""
+		attrInfo.FkName = ""
 		dstAttrInfoCollection.InfoMap[attr] = attrInfo
 	}
 	m.SetAttrInfoListByCollection(fkInfo.SrcRel, srcAttrInfoCollection)
@@ -351,6 +365,7 @@ func (m *Manager) DropForeignKey(fkName string) error {
 
 	delete(fkMap, fkName)
 	m.SetFkInfoMap(fkMap)
+	log.V(log.DBSysLevel).Infof("Drop foreign key succeed %v", fkName)
 
 	return nil
 }
@@ -380,6 +395,7 @@ func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInf
 	info.AttrOffset = relInfo.RecordSize
 	info.RelName = relName
 	relInfo.RecordSize = relInfo.RecordSize + info.AttrSize + 1
+	relInfo.AttrCount++
 	m.SetRelInfo(relInfo)
 
 	_ = m.relManager.CreateFile("tmp", relInfo.RecordSize)
@@ -391,6 +407,7 @@ func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInf
 		copy(tmpData[info.AttrOffset:], info.Default.Value[0:info.AttrSize])
 		_, _ = tmpFH.InsertRec(tmpData)
 	}
+
 	_ = m.relManager.CloseFile(srcFH.Filename)
 	_ = m.relManager.CloseFile(tmpFH.Filename)
 	_ = m.relManager.DestroyFile(srcFH.Filename)
@@ -399,7 +416,7 @@ func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInf
 	attrInfoList := m.GetAttrInfoList(relName)
 	attrInfoList = append(attrInfoList, info)
 	m.SetAttrInfoList(relName, attrInfoList)
-
+	log.V(log.DBSysLevel).Infof("Add column succeed %v : %v %v", relName, attrName, info)
 	return nil
 }
 
@@ -419,9 +436,13 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	if relInfo.AttrCount == 1 {
 		return errorutil.ErrorDBSysCannotRemoveLastColumn
 	}
-	if attrInfoCollection.InfoMap[attrName].IsPrimary && relInfo.PrimaryCount == 1 {
-		if err := m.DropPrimaryKey(relName); err != nil {
-			return err
+	if attrInfoCollection.InfoMap[attrName].IsPrimary {
+		if relInfo.PrimaryCount == 1 {
+			if err := m.DropPrimaryKey(relName); err != nil {
+				return err
+			}
+		} else {
+			return errorutil.ErrorDBSysCannotRemovePrimaryColumn
 		}
 	}
 	if len(attrInfoCollection.InfoMap[attrName].FkName) != 0 {
@@ -431,15 +452,17 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	size := attrInfoCollection.InfoMap[attrName].AttrSize
 	off := attrInfoCollection.InfoMap[attrName].AttrOffset
 
-	_ = m.relManager.CreateFile("tmp", relInfo.RecordSize)
+	_ = m.relManager.CreateFile("tmp", relInfo.RecordSize-size-1)
 	tmpFH, _ := m.relManager.OpenFile("tmp")
 	srcFH, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+
 	for _, rec := range srcFH.GetRecList() {
 		tmpData := make([]byte, relInfo.RecordSize-size-1)
 		copy(tmpData[0:off], rec.Data[0:off])
 		copy(tmpData[off:], rec.Data[off+size+1:])
 		_, _ = tmpFH.InsertRec(tmpData)
 	}
+
 	_ = m.relManager.CloseFile(srcFH.Filename)
 	_ = m.relManager.CloseFile(tmpFH.Filename)
 	_ = m.relManager.DestroyFile(srcFH.Filename)
@@ -455,7 +478,7 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	}
 
 	idxMap := m.GetAttrInfoCollection(relName).IdxMap
-	if item, found := idxMap[attrInfoList[i].IndexName]; found && len(item) == 0 {
+	if item, found := idxMap[attrInfoList[i].IndexName]; found && len(item) == 1 {
 		_ = m.DropIndex(relName, attrName)
 	}
 
@@ -465,7 +488,9 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	attrInfoList = append(attrInfoList[0:i], attrInfoList[i+1:]...)
 	m.SetAttrInfoList(relName, attrInfoList)
 	relInfo.RecordSize = relInfo.RecordSize - size - 1
+	relInfo.AttrCount = relInfo.AttrCount - 1
 	m.SetRelInfo(relInfo)
+	log.V(log.DBSysLevel).Infof("Drop column succeed %v : %v", relName, attrName)
 	return nil
 }
 

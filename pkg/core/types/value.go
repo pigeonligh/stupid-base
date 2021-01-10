@@ -70,9 +70,12 @@ func (v *Value) AdaptToType(target ValueType) {
 			return
 		}
 		if v.ValueType == VARCHAR {
-			if t, err := time.Parse(v.ToStr(), "2013-Feb-03"); err == nil {
+			if t, err := time.Parse("2006-Jan-02", v.ToStr()); err == nil {
 				v.FromInt64(int(t.Unix()))
 				v.ValueType = DATE
+				return
+			} else {
+				panic(err)
 			}
 		}
 	case VARCHAR:
@@ -286,7 +289,7 @@ func NewValueFromBool(val bool) Value {
 }
 
 func (v *Value) ToStr() string {
-	return string(v.Value[:])
+	return v.Format2String()
 }
 
 func (v *Value) FromStr(s string) {

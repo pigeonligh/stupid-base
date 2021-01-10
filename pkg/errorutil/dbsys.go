@@ -80,6 +80,8 @@ var (
 	// remove column
 	ErrorDBSysCannotRemoveLastColumn = errors.New("cannot remove last column")
 
+	ErrorDBSysCannotRemovePrimaryColumn = errors.New("cannot remove primary column with multiple column define on table")
+
 	ErrorDBSysCannotRemoveForeignKeyCol = errors.New("cannot remove column which has fk")
 
 	// change

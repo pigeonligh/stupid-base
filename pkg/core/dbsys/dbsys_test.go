@@ -239,7 +239,7 @@ func TestDbSys(t *testing.T) {
 	attrInfoMap2 := manager.GetAttrInfoCollection(rel2).InfoMap
 
 	tmpMap := map[string]AttrInfoList{
-		rel1: manager.GetAttrInfoList(rel2),
+		rel1: manager.GetAttrInfoList(rel1),
 		rel2: manager.GetAttrInfoList(rel2),
 	}
 

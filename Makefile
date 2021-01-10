@@ -15,7 +15,7 @@ run: stupid-base
 	${BIN_DIR}/stupid-base
 
 dev: stupid-base
-	${BIN_DIR}/stupid-base test.sql
+	${BIN_DIR}/stupid-base STUPID-BASE-DATA/test.sql
 
 init:
 	mkdir -p ${BIN_DIR}

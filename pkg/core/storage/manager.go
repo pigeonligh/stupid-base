@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
@@ -49,7 +50,7 @@ func GetInstance() *Manager {
 
 // CreateFile creates a new file
 func (m *Manager) CreateFile(filename string) error {
-	file, err := os.Create(filename)
+	file, err := os.Create(env.WorkDir + "/" + filename)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,7 @@ func (m *Manager) CreateFile(filename string) error {
 
 // DestroyFile deletes a file
 func (m *Manager) DestroyFile(filename string) error {
-	return os.Remove(filename)
+	return os.Remove(env.WorkDir + "/" + filename)
 }
 
 // OpenFile opens a file

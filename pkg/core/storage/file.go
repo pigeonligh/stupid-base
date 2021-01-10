@@ -7,6 +7,7 @@ package storage
 import (
 	"os"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage/buffer"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -23,7 +24,7 @@ func fileHandle(filename string, bm *buffer.Manager) (*FileHandle, error) {
 	if bm == nil {
 		return nil, errorutil.ErrorUnknown
 	}
-	file, err := os.OpenFile(filename, os.O_RDWR, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+filename, os.O_RDWR, 0666)
 	if err != nil {
 		return nil, err
 	}

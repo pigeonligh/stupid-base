@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"os"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -58,7 +59,7 @@ type RelInfoMap map[string]RelInfo
 
 func (m *Manager) GetDBRelInfoMap() RelInfoMap {
 	// existence has been checked
-	file, err := os.OpenFile(DBMetaName, os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+DBMetaName, os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -75,7 +76,7 @@ func (m *Manager) GetDBRelInfoMap() RelInfoMap {
 }
 
 func (m *Manager) SetDBRelInfoMap(infoMap RelInfoMap) {
-	file, err := os.OpenFile(DBMetaName, os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+DBMetaName, os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	if err != nil {
 		panic(err)
 	}
@@ -101,7 +102,7 @@ func (m *Manager) SetRelInfo(info RelInfo) {
 //}
 //
 //func (m *Manager) GetIdxInfoCollection(relName string) IdxInfoCollection {
-//	file, err := os.OpenFile(getTableIdxMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
+//	file, err := os.OpenFile(env.WorkDir + "/" + getTableIdxMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
 //	defer func() {
 //		if err := file.Close(); err != nil {
 //			panic(err)
@@ -119,7 +120,7 @@ func (m *Manager) SetRelInfo(info RelInfo) {
 //
 //func (m *Manager) SetIdxInfoCollection(relName string, collection IdxInfoCollection) {
 //	// idx existence has been checked in upper callers
-//	file, err := os.OpenFile(getTableIdxMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
+//	file, err := os.OpenFile(env.WorkDir + "/" + getTableIdxMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 //	defer func() {
 //		if err := file.Close(); err != nil {
 //			panic(err)
@@ -150,7 +151,7 @@ const GlbFkFileName = "db.fk-meta"
 type FkConstraintMap map[string]FkConstraint
 
 func (m *Manager) GetFkInfoMap() FkConstraintMap {
-	file, err := os.OpenFile(GlbFkFileName, os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+GlbFkFileName, os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -167,7 +168,7 @@ func (m *Manager) GetFkInfoMap() FkConstraintMap {
 }
 
 func (m *Manager) SetFkInfoMap(constraintMap FkConstraintMap) {
-	file, err := os.OpenFile(GlbFkFileName, os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+GlbFkFileName, os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -199,7 +200,7 @@ func (m *Manager) GetAttrInfoList(relName string) AttrInfoList {
 	if res := m.rels[relName]; res != nil {
 		return res
 	}
-	file, err := os.OpenFile(getTableMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+getTableMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -218,7 +219,7 @@ func (m *Manager) GetAttrInfoList(relName string) AttrInfoList {
 
 func (m *Manager) SetAttrInfoList(relName string, attrInfoList AttrInfoList) {
 	m.rels[relName] = attrInfoList
-	file, err := os.OpenFile(getTableMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+getTableMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -241,7 +242,7 @@ func (m *Manager) SetAttrInfoListByCollection(relName string, collection AttrInf
 		attrInfoList = append(attrInfoList, collection.InfoMap[name])
 	}
 	m.SetAttrInfoList(relName, attrInfoList)
-	file, err := os.OpenFile(getTableMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
+	file, err := os.OpenFile(env.WorkDir+"/"+getTableMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)

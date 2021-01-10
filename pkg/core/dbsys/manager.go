@@ -5,6 +5,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
@@ -60,10 +61,11 @@ func GetInstance() *Manager {
 			rels:       nil,
 			dbSelected: "",
 		}
-		if err := os.Mkdir("STUPID-BASE-DATA", os.ModePerm); err != nil {
+		if err := os.Mkdir(env.DatabaseDir, os.ModePerm); err != nil {
 			log.V(log.DBSysLevel).Info("base dir exists!")
 		}
-		_ = os.Chdir("STUPID-BASE-DATA")
+		// _ = os.Chdir("STUPID-BASE-DATA")
+		env.SetWorkDir(env.DatabaseDir)
 	})
 	return instance
 }
@@ -73,23 +75,28 @@ func (m *Manager) DBSelected() bool {
 }
 
 func (m *Manager) CreateDB(dbName string) error {
-	if err := os.Mkdir(dbName, os.ModePerm); err != nil {
+	if err := os.Mkdir(env.DatabaseDir+"/"+dbName, os.ModePerm); err != nil {
 		log.V(log.DBSysLevel).Error(err)
 		return errorutil.ErrorDBSysCreateDBFails
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		panic(0)
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			panic(0)
+		}
+	*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	m.SetDBRelInfoMap(RelInfoMap{})
 	m.SetFkInfoMap(FkConstraintMap{})
-	_ = os.Chdir("..")
+	// _ = os.Chdir("..")
+	env.SetWorkDir(env.DatabaseDir)
 	return nil
 }
 
 func (m *Manager) DropDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 		m.rels = nil
 		m.dbSelected = ""
 	}
@@ -102,12 +109,15 @@ func (m *Manager) DropDB(dbName string) error {
 
 func (m *Manager) OpenDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		return errorutil.ErrorDBSysOpenDBFails
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			return errorutil.ErrorDBSysOpenDBFails
+		}*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	m.dbSelected = dbName
 	m.rels = make(map[string]AttrInfoList)
 	relInfoMap := m.GetDBRelInfoMap()
@@ -119,14 +129,18 @@ func (m *Manager) OpenDB(dbName string) error {
 
 func (m *Manager) CloseDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 		m.rels = nil
 		m.dbSelected = ""
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		return errorutil.ErrorDBSysOpenDBFails
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			return errorutil.ErrorDBSysOpenDBFails
+		}
+	*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	return nil
 }
 

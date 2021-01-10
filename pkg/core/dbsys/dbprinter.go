@@ -2,20 +2,19 @@ package dbsys
 
 import (
 	"fmt"
+	"io/ioutil"
+	"strconv"
+	"strings"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"io/ioutil"
-	"strconv"
-	"strings"
 )
 
 func (m *Manager) PrintDatabases() {
-	rootdir := "./"
-	if m.DBSelected() {
-		rootdir = "../"
-	}
+	rootdir := env.DatabaseDir
 	files, _ := ioutil.ReadDir(rootdir)
 	names := make([]string, 0, len(files))
 	maxLen := len("Database")

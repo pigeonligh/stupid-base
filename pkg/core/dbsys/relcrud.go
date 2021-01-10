@@ -7,13 +7,11 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
-	"time"
 )
 
 // SELECT <selector> FROM <tableList> WHERE <whereClause>
 // current support simple select functions
 func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string, expr *parser.Expr, print bool) (*TemporalTable, error) {
-	start := time.Now()
 	if err := m.checkDBTableAndAttrExistence(relName, attrNameList); err != nil {
 		return nil, err
 	}
@@ -73,11 +71,100 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 
 	if print {
 		m.PrintTemporalTable(tmpTable)
-		end := time.Now()
-		fmt.Printf("%v in set (%v s)\n", len(rows), float64(end.Nanosecond()-start.Nanosecond())/1e+6)
 	}
 
 	return tmpTable, nil
+}
+
+// default print
+func (m *Manager) SelectFromMultiple(tables []TemporalTable, rel2Attrs map[string]AttrInfoList, expr *parser.Expr) error {
+	for i := range tables {
+		if len(tables[i].rows) == 0 {
+			m.PrintEmptySet()
+		}
+	}
+	keepList := make([]int, 0)
+
+	iterList := make([]int, len(tables))
+	iterListCursor := 0
+	for iterListCursor < len(iterList) {
+		for iterList[iterListCursor] < len(tables[iterListCursor].rows) {
+			for i := range iterList {
+				if err := expr.Calculate(tables[i].rows[iterList[iterListCursor]].Data, tables[i].rels[0]); err != nil {
+					return err
+				}
+			}
+			if !expr.IsCalculated {
+				return errorutil.ErrorExprInvalidComparison
+			}
+			if expr.GetBool() {
+				// append this
+				keepList = append(keepList, iterList...)
+			}
+			expr.ResetCalculated()
+			iterList[iterListCursor]++
+		}
+		iterListCursor++
+	}
+
+	if len(keepList)%len(tables) != 0 {
+		panic(0)
+	}
+
+	totalSize := 0
+	offs := make([]int, 0)
+	lens := make([]int, 0)
+	rels := make([]string, 0)
+	attrs := make([]string, 0)
+	typs := make([]types.ValueType, 0)
+	nils := make([]bool, 0)
+
+	for i := 0; i < len(tables); i++ {
+		rel := tables[i].rels[0]
+		for _, attr := range rel2Attrs[rel] {
+			offs = append(offs, totalSize)
+			lens = append(lens, attr.AttrSize)
+			rels = append(rels, attr.RelName)
+			attrs = append(attrs, attr.AttrName)
+			typs = append(typs, attr.AttrType)
+			nils = append(nils, attr.NullAllowed)
+
+			totalSize += attr.AttrSize + 1
+		}
+	}
+
+	finalRows := make([]*record.Record, 0)
+	// i for row and j for column
+	for i := 0; i < len(keepList)/len(tables); i++ {
+		tmpRec := record.Record{
+			Rid:  types.RID{},
+			Data: make([]byte, totalSize),
+		}
+
+		curColCursor := 0
+		tmpList := keepList[i*len(tables) : i+len(tables)]
+		for j := 0; j < len(tables); j++ {
+			rel := tables[j].rels[0]
+			row := tables[j].rows[tmpList[j]]
+			for _, attr := range rel2Attrs[rel] {
+				copy(tmpRec.Data[offs[curColCursor]:offs[curColCursor]+lens[curColCursor]+1], row.Data[attr.AttrOffset:attr.AttrOffset+attr.AttrSize+1])
+				curColCursor += 1
+			}
+		}
+		finalRows = append(finalRows, &tmpRec)
+	}
+
+	tmpTable := TemporalTable{
+		rels:  rels,
+		attrs: attrs,
+		lens:  lens,
+		offs:  offs,
+		types: typs,
+		nils:  nils,
+		rows:  finalRows,
+	}
+	m.PrintTemporalTable(&tmpTable)
+	return nil
 }
 
 // DELETE FROM <tbName> WHERE <whereClause>

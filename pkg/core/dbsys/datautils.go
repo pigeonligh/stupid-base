@@ -28,7 +28,8 @@ func data2StringByTypes(data []byte, valueType types.ValueType) string {
 		val := *(*float64)(types.ByteSliceToPointer(data))
 		ret = strconv.FormatFloat(val, 'g', 10, 64) // TODO: more dynamic float converting
 	case types.VARCHAR:
-		ret = string(data)
+		ret = strings.TrimSpace(string(bytes.Trim((data), string(byte(0)))))
+		ret = "`" + ret + "`"
 	case types.DATE:
 		val := *(*int)(types.ByteSliceToPointer(data))
 		unixTime := time.Unix(int64(val), 0)

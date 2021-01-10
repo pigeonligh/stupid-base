@@ -10,6 +10,7 @@ LD_FLAGS=" \
 
 stupid-base: init
 	go build -v -ldflags ${LD_FLAGS} -o ${BIN_DIR}/stupid-base ./cmd/stupid-base
+	go build -v -ldflags ${LD_FLAGS} -o ${BIN_DIR}/load-data ./cmd/load-data
 
 run: stupid-base
 	${BIN_DIR}/stupid-base

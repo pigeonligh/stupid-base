@@ -23,3 +23,5 @@ testdb_*
 vitess/
 
 STUPID-BASE-DATA
+
+temp/

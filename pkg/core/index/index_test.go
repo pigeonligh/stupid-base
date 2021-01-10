@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
@@ -94,6 +95,8 @@ func scanData(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
+	env.SetWorkDir(".")
+
 	log.SetLevel(log.IndexLevel | log.StorageLevel | log.BptreeLevel)
 
 	iManager := GetInstance()

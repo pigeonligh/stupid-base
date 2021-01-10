@@ -69,13 +69,13 @@ func String2Value(str string, size int, target ValueType) (Value, error) {
 			val.FromInt64(int(t.Unix()))
 		}
 	case INT:
-		if i, err := strconv.ParseInt(str, 10, size); err != nil {
+		if i, err := strconv.ParseInt(str, 10, size*8); err != nil {
 			return val, err
 		} else {
 			val.FromInt64(int(i))
 		}
 	case FLOAT:
-		if f, err := strconv.ParseFloat(str, size); err != nil {
+		if f, err := strconv.ParseFloat(str, size*8); err != nil {
 			return val, err
 		} else {
 			val.FromFloat64(f)

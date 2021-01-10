@@ -9,7 +9,7 @@ import (
 )
 
 func TestDbSys(t *testing.T) {
-	log.SetLevel(log.DBSysLevel)
+	//log.SetLevel(log.DBSysLevel)
 
 	manager := GetInstance()
 
@@ -90,7 +90,7 @@ func TestDbSys(t *testing.T) {
 	nameMap[5] = "Fred haha"
 	nameMap[6] = "Harry hey hey"
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 10000; i++ {
 		//time := time.Now().AddDate(0, 0, i)
 		err := manager.InsertRow(rel1,
 			[]string{
@@ -102,6 +102,22 @@ func TestDbSys(t *testing.T) {
 			return
 		}
 	}
+	if err := manager.AddPrimaryKey(rel1, []string{"attr1"}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := manager.DeleteRows(rel1, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(1000))); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := manager.DropDB(db1); err != nil {
+		t.Error(err)
+		return
+	}
+
+	return
 
 	rel2 := "rel2"
 	attrInfoList2 := []parser.AttrInfo{
@@ -149,8 +165,8 @@ func TestDbSys(t *testing.T) {
 		}
 	}
 
-	manager.SelectSingleTableByExpr(rel1, []string{}, parser.NewExprCompQuickAttrCompValue(0, 8, types.OpCompEQ, types.NewValueFromInt64(1)), true)
-	return
+	//manager.SelectSingleTableByExpr(rel1, []string{}, parser.NewExprCompQuickAttrCompValue(8, 0, types.OpCompLE, types.NewValueFromInt64(1)), true)
+
 	manager.PrintTablesWithDetails()
 	manager.PrintTableMeta(rel1)
 	manager.PrintTableMeta(rel2)

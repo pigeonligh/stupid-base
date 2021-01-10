@@ -9,7 +9,6 @@ import (
 )
 
 func exprToString(expr sqlparser.Expr) string {
-
 	if value, ok := expr.(*sqlparser.Literal); ok {
 		if value == nil {
 			return types.MagicNullString
@@ -30,6 +29,7 @@ func solveWhere(where *sqlparser.Where, attrs dbsys.AttrInfoList, tableName stri
 		return nil, err
 	}
 	if !ambiguity {
+		// PrintExpr(result)
 		return result, nil
 	}
 	return parser.NewExprConst(types.NewValueFromBool(true)), nil

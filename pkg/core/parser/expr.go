@@ -253,7 +253,7 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 	case types.NodeAttr:
 		// this can be used for multiple tables join
 		if expr.AttrInfo.RelName != "" && relName != "" {
-			if expr.AttrInfo.RelName == relName {
+			if expr.AttrInfo.RelName != relName {
 				return nil
 			}
 		}

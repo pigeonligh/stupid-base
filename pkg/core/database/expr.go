@@ -160,3 +160,31 @@ func splitExprForUnionQuery(
 	}
 	return nil, true, nil
 }
+
+func PrintExpr(expr *parser.Expr) {
+	switch expr.NodeType {
+	case types.NodeArith:
+
+	case types.NodeComp:
+		PrintExpr(expr.Left)
+		PrintExpr(expr.Right)
+		fmt.Println("compare", expr.OpType)
+
+	case types.NodeLogic:
+		if expr.OpType == types.OpLogicNOT {
+			PrintExpr(expr.Right)
+			fmt.Println("not")
+		} else {
+			PrintExpr(expr.Left)
+			PrintExpr(expr.Right)
+			fmt.Println("logic", expr.OpType)
+		}
+
+	case types.NodeConst:
+		fmt.Println(string(expr.Value.Value[:]))
+
+	case types.NodeAttr:
+		fmt.Println(expr.AttrInfo.AttrName)
+
+	}
+}

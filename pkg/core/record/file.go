@@ -260,7 +260,7 @@ func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
 	filterList := make([]*Record, 0)
 	for _, rec := range recList {
 		expr.ResetCalculated()
-		if err := expr.Calculate(rec.Data); err != nil {
+		if err := expr.Calculate(rec.Data, ""); err != nil {
 			return nil, err
 		}
 		if expr.GetBool() {

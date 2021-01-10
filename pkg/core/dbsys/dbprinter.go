@@ -1,6 +1,7 @@
 package dbsys
 
 import (
+	"fmt"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -38,7 +39,7 @@ func (m *Manager) PrintDatabases() {
 
 func (m *Manager) PrintTables() {
 	if !m.DBSelected() {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		maxLen := len(m.dbSelected)
 		for i := range m.rels {
@@ -175,7 +176,7 @@ func (m *Manager) PrintDBForeignInfos() {
 
 func (m *Manager) PrintTablesWithDetails() {
 	if !m.DBSelected() {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		relInfoMap := m.GetDBRelInfoMap()
 		tableHeaders := []string{"RelationName", "RecordSize", "AttrCnt", "IndexCnt", "PrimaryCnt", "ForeignCnt"}
@@ -220,7 +221,7 @@ func (m *Manager) PrintTablesWithDetails() {
 func (m *Manager) PrintTableMeta(relName string) {
 	relInfoMap := m.GetDBRelInfoMap()
 	if _, found := relInfoMap[relName]; !found {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		attrInfoList := m.GetAttrInfoList(relName)
 		tableHeaders := []string{
@@ -312,7 +313,7 @@ func (m *Manager) PrintTableMeta(relName string) {
 //	}
 //}
 
-func PrintEmptySet() {
+func (m *Manager) PrintEmptySet() {
 	println("+---------------+")
 	println("|     empty     |")
 	println("+---------------+")
@@ -469,6 +470,7 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 		print("+" + strings.Repeat("-", info.ColWidMap[info.TableHeaderList[i]]+2))
 	}
 	println("+")
+	fmt.Printf("%v in set\n", len(recordList))
 }
 
 // PrintTableMeta is implemented since GetRecordShould be wrapped up

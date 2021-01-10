@@ -48,9 +48,9 @@ func CheckIfValueTypeCompatible(l, r ValueType) bool {
 
 func String2Value(str string, size int, target ValueType) (Value, error) {
 	val := NewValueFromEmpty()
-	//if str == MagicNullStr {
-	//
-	//}
+	if str == MagicNullString {
+		return val, nil
+	}
 	switch target {
 	case VARCHAR:
 		if len(str) > size {

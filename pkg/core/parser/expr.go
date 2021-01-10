@@ -109,30 +109,44 @@ func (expr *Expr) isLogicComputable() bool {
 	return expr.NodeType == types.NodeLogic || expr.NodeType == types.NodeComp
 }
 
-func (expr *Expr) Calculate(data []byte) error {
+func (expr *Expr) Calculate(data []byte, relName string) error {
 	if expr.IsCalculated {
 		return nil
 	}
 	if expr.Left != nil {
-		if err := expr.Left.Calculate(data); err != nil {
+		if err := expr.Left.Calculate(data, relName); err != nil {
 			return err
 		}
-		if !expr.Left.IsCalculated {
-			panic(0) // defense programming
-		}
+		//if !expr.Left.IsCalculated {
+		//	panic(0) // defense programming
+		//}
 	}
 	if expr.Right != nil {
-		if err := expr.Right.Calculate(data); err != nil {
+		if err := expr.Right.Calculate(data, relName); err != nil {
 			return err
 		}
-		if !expr.Right.IsCalculated {
-			panic(0) // defense programming
-		}
+		//if !expr.Right.IsCalculated {
+		//	panic(0) // defense programming
+		//}
 	}
 
 	switch expr.NodeType {
 	case types.NodeLogic:
 		// And, or are binary operators, there must be left and right
+		if expr.Left == nil && expr.Right == nil {
+			return errorutil.ErrorExprBinaryOpWithNilChild
+		}
+		if expr.Left != nil {
+			if !expr.Left.IsCalculated {
+				return nil
+			}
+		}
+		if expr.Right != nil {
+			if !expr.Right.IsCalculated {
+				return nil
+			}
+		}
+
 		expr.IsCalculated = true
 		switch expr.OpType {
 		// child type will be guarantee in constructor
@@ -172,9 +186,8 @@ func (expr *Expr) Calculate(data []byte) error {
 		if expr.Right == nil || expr.Left == nil {
 			return errorutil.ErrorExprInvalidComparison
 		}
-
-		if (!expr.Left.IsNull && !expr.Left.IsCalculated) || (!expr.Right.IsNull && !expr.Right.IsCalculated) {
-			panic(0)
+		if !expr.Left.IsCalculated || !expr.Right.IsCalculated {
+			return nil
 		}
 		expr.IsCalculated = true
 		if expr.OpType == types.OpCompIS || expr.OpType == types.OpCompISNOT {
@@ -227,6 +240,13 @@ func (expr *Expr) Calculate(data []byte) error {
 		}
 		return nil
 	case types.NodeAttr:
+		// this can be used for multiple tables join
+		if expr.AttrInfo.RelName != "" && relName != "" {
+			if expr.AttrInfo.RelName == relName {
+				return nil
+			}
+		}
+
 		expr.IsCalculated = true
 		if expr.AttrInfo.NullAllowed {
 			if data[expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize] == 1 {

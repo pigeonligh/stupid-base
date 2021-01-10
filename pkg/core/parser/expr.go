@@ -4,6 +4,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type AttrInfo struct {
@@ -215,6 +216,14 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 				expr.Value.FromBool(false)
 			} else {
 				switch expr.OpType {
+				case types.OpCompLIKE:
+					regex := sqlparser.LikeToRegexp(expr.Value.ToStr())
+					left := expr.Left.Value.ToStr()
+					if regex.Match([]byte(left)) {
+						expr.Value.FromBool(true)
+					} else {
+						expr.Value.FromBool(false)
+					}
 				case types.OpCompEQ:
 					expr.Value.FromBool(expr.Left.Value.EQ(&expr.Right.Value))
 				case types.OpCompLT:

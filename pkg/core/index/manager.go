@@ -40,7 +40,6 @@ func (m *Manager) CreateIndex(filename string, attr types.AttrSet) error {
 
 func (m *Manager) OpenIndex(filename string, record *record.FileHandle) (*FileHandle, error) {
 	if file, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.IndexLevel).Infof("OpenFile: %v has already opened! ", filename)
 		return file, nil
 	}
@@ -74,7 +73,6 @@ func (m *Manager) CloseIndex(filename string) error {
 
 func (m *Manager) DestroyIndex(filename string) error {
 	if _, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.IndexLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
 		return nil
 	}

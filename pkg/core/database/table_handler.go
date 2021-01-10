@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -65,7 +66,7 @@ func (db *Database) addConstraintDefinition(
 	if foreign, ok := constraint.Details.(*sqlparser.ForeignKeyDefinition); ok {
 		src := []string{}
 		dst := []string{}
-		for i, _ := range foreign.Source {
+		for i := range foreign.Source {
 			src = append(src, foreign.Source[i].CompliantName())
 			dst = append(dst, foreign.ReferencedColumns[i].CompliantName())
 		}
@@ -182,7 +183,7 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 						return err
 					}
 				case sqlparser.NormalKeyType:
-					// TODO ?
+					// TODO: nothing
 					fmt.Println("TODO: ?")
 				case sqlparser.PrimaryKeyType:
 					if err := db.sysManager.DropPrimaryKey(tableName); err != nil {
@@ -205,7 +206,10 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 				colName := act.OldColumn.Name.CompliantName()
 				col := act.NewColDefinition
 				attr := columnDefinitionToAttrInfo(col, tableName)
-				err := db.sysManager.ChangeColumn(tableName, colName, &attr, 0)
+
+				changeField := dbsys.ChangeDefault | dbsys.ChangeNull | dbsys.ChangeValueType
+
+				err := db.sysManager.ChangeColumn(tableName, colName, &attr, changeField)
 				if err != nil {
 					return err
 				}

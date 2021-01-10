@@ -74,7 +74,6 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 	if file, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.RecordLevel).Infof("OpenFile: %v has already opened! ", filename)
 		return file, nil
 	}
@@ -90,7 +89,6 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 func (m *Manager) DestroyFile(filename string) error {
 	if _, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.RecordLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
 		return nil
 	}

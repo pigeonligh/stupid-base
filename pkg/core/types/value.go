@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 	"unsafe"
-
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 //type ConvertValue interface {
@@ -88,6 +86,15 @@ func String2Value(str string, size int, target ValueType) (Value, error) {
 
 // AdaptToType set no attr means convert fails
 func (v *Value) AdaptToType(target ValueType) {
+	if v.ValueType == VARCHAR && target != VARCHAR {
+		tmp, err := String2Value(v.ToStr(), ValueTypeDefaultSize[target], target)
+		if err != nil {
+			v.ValueType = NO_ATTR
+			return
+		}
+		*v = tmp
+		return
+	}
 	switch target {
 	case INT:
 		if v.ValueType == FLOAT {
@@ -109,13 +116,6 @@ func (v *Value) AdaptToType(target ValueType) {
 		if v.ValueType == INT || v.ValueType == DATE {
 			v.ValueType = DATE
 			return
-		}
-		if v.ValueType == VARCHAR {
-			if t, err := time.Parse("2006-Jan-02", v.ToStr()); err == nil {
-				v.FromInt64(int(t.Unix()))
-				v.ValueType = DATE
-				return
-			}
 		}
 	case VARCHAR:
 		if v.ValueType == VARCHAR {
@@ -157,10 +157,6 @@ func (v *Value) Format2String() string {
 
 func (v *Value) GE(c *Value) bool {
 	c.AdaptToType(v.ValueType)
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() >= c.ToInt64()
@@ -178,10 +174,6 @@ func (v *Value) GE(c *Value) bool {
 
 func (v *Value) GT(c *Value) bool {
 	c.AdaptToType(v.ValueType)
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() > c.ToInt64()
@@ -198,10 +190,7 @@ func (v *Value) GT(c *Value) bool {
 }
 
 func (v *Value) LE(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() <= c.ToInt64()
@@ -219,10 +208,6 @@ func (v *Value) LE(c *Value) bool {
 
 func (v *Value) LT(c *Value) bool {
 	c.AdaptToType(v.ValueType)
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() < c.ToInt64()
@@ -240,10 +225,6 @@ func (v *Value) LT(c *Value) bool {
 
 func (v *Value) NE(c *Value) bool {
 	c.AdaptToType(v.ValueType)
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() != c.ToInt64()
@@ -263,10 +244,6 @@ func (v *Value) NE(c *Value) bool {
 
 func (v *Value) EQ(c *Value) bool {
 	c.AdaptToType(v.ValueType)
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
 
 	switch v.ValueType {
 	case INT:
@@ -286,7 +263,8 @@ func (v *Value) EQ(c *Value) bool {
 }
 
 func (v *Value) ToInt64() int {
-	return *(*int)(unsafe.Pointer(&v.Value))
+
+	return *(*int)(ByteSliceToPointer(v.Value[:]))
 }
 
 func (v *Value) FromInt64(val int) {

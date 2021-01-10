@@ -5,47 +5,34 @@ Copyright (c) 2020, pigeonligh.
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"os"
-	"strings"
+
+	"github.com/c-bata/go-prompt"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/database"
 )
 
 func main() {
-	db, _ := database.New()
+	db, _ = database.New()
 
-	r := bufio.NewReader(os.Stdin)
+	fmt.Println("  _________ __               .__    .___ __________                       ")
+	fmt.Println(" /   _____//  |_ __ ________ |__| __| _/ \\______   \\_____    ______ ____  ")
+	fmt.Println(" \\_____  \\\\   __\\  |  \\____ \\|  |/ __ |   |    |  _/\\__  \\  /  ___// __ \\ ")
+	fmt.Println(" /        \\|  | |  |  /  |_> >  / /_/ |   |    |   \\ / __ \\_\\___ \\\\  ___/ ")
+	fmt.Println("/_______  /|__| |____/|   __/|__\\____ |   |______  /(____  /____  >\\___  >")
+	fmt.Println("        \\/            |__|           \\/          \\/      \\/     \\/     \\/ ")
+	fmt.Println("")
 
-	sqls := ""
+	reader := prompt.New(executor, completer,
+		prompt.OptionTitle("sql-prompt"),
+		prompt.OptionHistory(history),
+		prompt.OptionPrefixTextColor(prompt.Yellow),
+		prompt.OptionPreviewSuggestionTextColor(prompt.Blue),
+		prompt.OptionSelectedSuggestionBGColor(prompt.LightGray),
+		prompt.OptionSuggestionBGColor(prompt.DarkGray),
+		prompt.OptionPrefix("stupid-base >>> "),
+		prompt.OptionLivePrefix(changeLivePrefix),
+	)
 
-	for {
-		fmt.Println("")
-
-		sql, err := r.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Println("Error: ", err)
-			break
-		}
-
-		sqls = sqls + " " + sql
-		sqls = strings.TrimRight(sqls, " \n")
-		if len(sqls) == 0 {
-			continue
-		}
-		if sqls[len(sqls)-1] == '\\' {
-			sqls = sqls[0 : len(sqls)-1]
-			continue
-		}
-
-		if err := db.Run(sqls); err != nil {
-			fmt.Println("Error: ", err)
-		}
-		sqls = ""
-	}
+	reader.Run()
 }

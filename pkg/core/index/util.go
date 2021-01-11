@@ -17,7 +17,7 @@ func compareBytes(attr1, attr2 []byte) int {
 		return -1
 	}
 	if len(attr1) < len(attr2) {
-		return 1
+		return 0 // ?
 	}
 	return 0
 }

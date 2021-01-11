@@ -15,7 +15,14 @@ import (
 )
 
 func main() {
-	// log.SetLevel(log.RecordLevel)
+	/*
+		f, err := os.Create("_output/cpu_profile")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	*/
 
 	db, _ = database.New()
 

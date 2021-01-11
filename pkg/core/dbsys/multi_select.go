@@ -71,11 +71,9 @@ func (m *Manager) SelectTablesByWhereExpr(
 			values := TT2Attrs(table, cvs)
 			newCalculatedValues = append(newCalculatedValues, values...)
 
-			// fmt.Println(index+1, len(newCalculatedValues))
 		}
 
 		calculatedValues = newCalculatedValues
-		fmt.Println(len(calculatedValues))
 	}
 
 	fmt.Println("find", len(calculatedValues))

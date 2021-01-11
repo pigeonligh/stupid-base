@@ -244,7 +244,7 @@ func GetRidListFromRecList(recList []*Record) []types.RID {
 }
 
 func GetRecListFromRidList(fh *FileHandle, ridList []types.RID) []*Record {
-	var recList []*Record
+	recList := []*Record{}
 	for _, rid := range ridList {
 		rec, _ := fh.GetRec(rid)
 		recList = append(recList, rec)

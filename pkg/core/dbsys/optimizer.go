@@ -53,7 +53,7 @@ func (m *Manager) getIndexHintFromExpr(relName string, expr *parser.Expr) []*par
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 	for _, expr := range tmpList {
 		if item, found := attrInfoCollection.IdxMap[expr.Left.AttrInfo.IndexName]; found {
-			if len(item) == 1 {
+			if len(item) > 0 && item[0] == expr.Left.AttrInfo.AttrName {
 				retList = append(retList, expr)
 			}
 		}

@@ -13,16 +13,35 @@ import (
 
 // SELECT <selector> FROM <tableList> WHERE <whereClause>
 // current support simple select functions
+
 func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string, expr *parser.Expr, print bool) (*TemporalTable, error) {
 	if err := m.checkDBTableAndAttrExistence(relName, attrNameList); err != nil {
 		return nil, err
 	}
-	attrInfoMap := m.GetAttrInfoCollection(relName).InfoMap
+	attrInfoCollection := m.GetAttrInfoCollection(relName)
+	attrInfoMap := attrInfoCollection.InfoMap
 	datafile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
 	defer m.relManager.CloseFile(datafile.Filename)
+
 	recList, err := datafile.GetFilteredRecList(expr)
 	if err != nil {
 		return nil, err
+	}
+
+	// index hint
+	possibleIdxCompList := m.getIndexHintFromExpr(relName, expr)
+	if len(possibleIdxCompList) != 0 {
+		for _, expr := range possibleIdxCompList {
+			idxFH, err := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, expr.Left.AttrInfo.IndexName), datafile)
+			if err != nil || idxFH == nil {
+				break
+			}
+			expr.Right.Value.AdaptToType(expr.Left.Value.ValueType)
+			ridList := idxFH.GetRidList(expr.OpType, expr.Right.Value.Value[0:expr.Left.AttrInfo.AttrSize])
+			// currently test one
+			recList = record.GetRecListFromRidList(datafile, ridList)
+			break
+		}
 	}
 
 	rels := make([]string, 0)

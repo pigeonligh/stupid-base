@@ -242,6 +242,15 @@ func GetRidListFromRecList(recList []*Record) []types.RID {
 	return ridCollection
 }
 
+func GetRecListFromRidList(fh *FileHandle, ridList []types.RID) []*Record {
+	var recList []*Record
+	for _, rid := range ridList {
+		rec, _ := fh.GetRec(rid)
+		recList = append(recList, rec)
+	}
+	return recList
+}
+
 func (f *FileHandle) GetRecList() []*Record {
 	relScan := FileScan{}
 	_ = relScan.OpenFullScan(f)

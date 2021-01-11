@@ -84,7 +84,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			panic(0)
 		} else {
 			if f.cond != nil {
-				err := f.cond.Calculate(record.Data)
+				err := f.cond.Calculate(record.Data, "")
 				if err != nil {
 					return nil, err
 				}

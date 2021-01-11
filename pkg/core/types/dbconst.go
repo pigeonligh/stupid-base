@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 const MaxNameSize = 24
 const MaxAttrNums = 40
 const MaxStringSize = 255
@@ -24,6 +26,24 @@ var ValueTypeStringMap = map[ValueType]string{
 	BOOL:    "BOOL",
 }
 
+var ValueTypeDefaultSize = map[ValueType]int{
+	NO_ATTR: 0,
+	INT:     8,
+	FLOAT:   8,
+	DATE:    8,
+	VARCHAR: 8,
+	BOOL:    1,
+}
+
+func GetValueType(s string) ValueType {
+	for k, v := range ValueTypeStringMap {
+		if strings.ToLower(v) == strings.ToLower(s) {
+			return k
+		}
+	}
+	return NO_ATTR
+}
+
 type OpType = int
 
 const (
@@ -37,7 +57,7 @@ const (
 	OpCompIS
 	OpCompISNOT
 	OpCompLIKE
-	OpCompNO
+	OpCompNOTLIKE
 
 	OpArithADD
 	OpArithSUB
@@ -61,7 +81,9 @@ func IsOpComp(op OpType) bool {
 		op == OpCompGE ||
 		op == OpCompNE ||
 		op == OpCompIS ||
-		op == OpCompISNOT
+		op == OpCompISNOT ||
+		op == OpCompLIKE ||
+		op == OpCompNOTLIKE
 }
 
 func IsOpLogic(op OpType) bool {

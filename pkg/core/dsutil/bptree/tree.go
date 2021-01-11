@@ -6,6 +6,7 @@ package bptree
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 // BpTree is structure of bptree
@@ -16,10 +17,12 @@ type BpTree struct {
 
 // NewBpTree returns a bptree by an operator
 func NewBpTree(oper Operator) (*BpTree, error) {
+	log.V(log.BptreeLevel).Debug("Start to create BpTree")
 	root, err := oper.LoadRoot()
 	if err != nil {
 		return nil, err
 	}
+	log.V(log.BptreeLevel).Debug("Succeeded to create BpTree")
 	return &BpTree{
 		operator: oper,
 		root:     root,
@@ -34,6 +37,7 @@ func (t *BpTree) Close() error {
 
 // Insert adds a row into bptree
 func (t *BpTree) Insert(row *types.RID) error {
+	log.V(log.BptreeLevel).Debug("Insert data into BpTree")
 	oldRoot := t.root
 	newNode, err := t.insert(oldRoot, row)
 	if err != nil {
@@ -52,7 +56,7 @@ func (t *BpTree) Insert(row *types.RID) error {
 			if err != nil {
 				return err
 			}
-			err = newRoot.insertData(0, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
+			err = newRoot.insertData(1, newNode.Keys[0], types.MakeRID(newNode.Index, -1))
 			if err != nil {
 				return err
 			}
@@ -61,6 +65,9 @@ func (t *BpTree) Insert(row *types.RID) error {
 		if err != nil {
 			return err
 		}
+	}
+	if t.root != nil {
+		log.V(log.BptreeLevel).Debugf("Root node size: %v\n", t.root.Size)
 	}
 	return nil
 }

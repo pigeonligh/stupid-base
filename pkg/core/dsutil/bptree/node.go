@@ -7,6 +7,7 @@ package bptree
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
 // TreeNode is node for bptree
@@ -40,7 +41,7 @@ func NewTreeNodeByData(data []byte) (*TreeNode, error) {
 func InitTreeNode(index types.PageNum, node *TreeNode, isLeaf bool) {
 	node.IsLeaf = isLeaf
 	node.Size = 0
-	node.Capacity = types.NodeMaxItem
+	node.Capacity = types.NodeMaxItemNum
 
 	node.Index = index
 	node.NextIndex = types.InvalidPageNum
@@ -62,6 +63,7 @@ func (tn *TreeNode) getChild(pos int, oper Operator) (*TreeNode, error) {
 	if pos < 0 || pos >= tn.Size {
 		return nil, errorutil.ErrorBpTreeNodeOutOfBound
 	}
+	log.V(log.BptreeLevel).Debugf("get child %v %v %v", pos, tn.Indexes[pos].Page, tn.Keys[pos])
 	return oper.LoadNode(tn.Indexes[pos].Page)
 }
 

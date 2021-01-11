@@ -1,15 +1,17 @@
 package dbsys
 
 import (
+	"os"
+	"sync"
+	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/index"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"os"
-	"sync"
-	"unsafe"
 )
 
 const DBMetaName = "db.meta"
@@ -29,13 +31,13 @@ func getTableIdxDataFileName(table, idxName string) string {
 	return table + "-" + idxName + ".index"
 }
 
-func getTableIdxMetaFileName(table string) string {
-	return table + ".table-index"
-}
+//func getTableIdxMetaFileName(table string) string {
+//	return table + ".table-index"
+//}
 
-func getTableConstraintFileName(table string) string {
-	return table + ".constraint-meta"
-}
+//func getTableConstraintFileName(table string) string {
+//	return table + ".constraint-meta"
+//}
 
 type Manager struct {
 	relManager *record.Manager
@@ -59,40 +61,46 @@ func GetInstance() *Manager {
 			rels:       nil,
 			dbSelected: "",
 		}
+		if err := os.Mkdir(env.DatabaseDir, os.ModePerm); err != nil {
+			log.V(log.DBSysLevel).Info("base dir exists!")
+		}
+		// _ = os.Chdir("STUPID-BASE-DATA")
+		env.SetWorkDir(env.DatabaseDir)
 	})
 	return instance
 }
 
 func (m *Manager) DBSelected() bool {
-	if len(m.dbSelected) == 0 {
-		return false
-	} else {
-		return true
-	}
+	return len(m.dbSelected) != 0
 }
 
 func (m *Manager) CreateDB(dbName string) error {
-	if err := os.Mkdir(dbName, os.ModePerm); err != nil {
+	if err := os.Mkdir(env.DatabaseDir+"/"+dbName, os.ModePerm); err != nil {
 		log.V(log.DBSysLevel).Error(err)
 		return errorutil.ErrorDBSysCreateDBFails
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		panic(0)
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			panic(0)
+		}
+	*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	m.SetDBRelInfoMap(RelInfoMap{})
 	m.SetFkInfoMap(FkConstraintMap{})
-	_ = os.Chdir("..")
+	// _ = os.Chdir("..")
+	env.SetWorkDir(env.DatabaseDir)
 	return nil
 }
 
 func (m *Manager) DropDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 		m.rels = nil
 		m.dbSelected = ""
 	}
-	if err := os.RemoveAll(dbName); err != nil {
+	if err := os.RemoveAll(env.WorkDir + "/" + dbName); err != nil {
 		log.V(log.DBSysLevel).Error(err)
 		return errorutil.ErrorDBSysDropDBFails
 	}
@@ -101,12 +109,15 @@ func (m *Manager) DropDB(dbName string) error {
 
 func (m *Manager) OpenDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		return errorutil.ErrorDBSysOpenDBFails
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			return errorutil.ErrorDBSysOpenDBFails
+		}*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	m.dbSelected = dbName
 	m.rels = make(map[string]AttrInfoList)
 	relInfoMap := m.GetDBRelInfoMap()
@@ -118,14 +129,18 @@ func (m *Manager) OpenDB(dbName string) error {
 
 func (m *Manager) CloseDB(dbName string) error {
 	if m.DBSelected() {
-		_ = os.Chdir("..")
+		// _ = os.Chdir("..")
+		env.SetWorkDir(env.DatabaseDir)
 		m.rels = nil
 		m.dbSelected = ""
 	}
-	if err := os.Chdir(dbName); err != nil {
-		log.V(log.DBSysLevel).Error(err)
-		return errorutil.ErrorDBSysOpenDBFails
-	}
+	/*
+		if err := os.Chdir(dbName); err != nil {
+			log.V(log.DBSysLevel).Error(err)
+			return errorutil.ErrorDBSysOpenDBFails
+		}
+	*/
+	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	return nil
 }
 
@@ -134,7 +149,7 @@ func (m *Manager) CreateTable(relName string, attrList []parser.AttrInfo) error 
 		return errorutil.ErrorDBSysDBNotSelected
 	}
 	if _, found := m.rels[relName]; found {
-		return errorutil.ErrorDBSysTableExisted
+		return errorutil.ErrorDBSysRelationExisted
 	}
 	if len(relName) >= types.MaxNameSize {
 		return errorutil.ErrorDBSysMaxNameExceeded
@@ -200,12 +215,11 @@ func (m *Manager) DropTable(relName string) error {
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 
 	for idxName := range attrInfoCollection.IdxMap {
-		_ = os.Remove(getTableIdxDataFileName(relName, idxName))
+		_ = os.Remove(env.WorkDir + "/" + getTableIdxDataFileName(relName, idxName))
 	}
-	_ = os.Remove(getTableMetaFileName(relName))
-	//_ = os.Remove(getTableIdxMetaFileName(relName))
-	_ = os.Remove(getTableConstraintFileName(relName))
-	_ = os.Remove(getTableDataFileName(relName))
+	_ = os.Remove(env.WorkDir + "/" + getTableMetaFileName(relName))
+	//_ = os.Remove(env.WorkDir + "/" + getTableIdxMetaFileName(relName))
+	_ = os.Remove(env.WorkDir + "/" + getTableDataFileName(relName))
 
 	relInfo := m.GetDBRelInfoMap()
 	delete(relInfo, relName)

@@ -1,20 +1,20 @@
 package dbsys
 
 import (
+	"fmt"
+	"io/ioutil"
+	"strconv"
+	"strings"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"io/ioutil"
-	"strconv"
-	"strings"
 )
 
 func (m *Manager) PrintDatabases() {
-	rootdir := "./"
-	if m.DBSelected() {
-		rootdir = "../"
-	}
+	rootdir := env.DatabaseDir
 	files, _ := ioutil.ReadDir(rootdir)
 	names := make([]string, 0, len(files))
 	maxLen := len("Database")
@@ -38,7 +38,7 @@ func (m *Manager) PrintDatabases() {
 
 func (m *Manager) PrintTables() {
 	if !m.DBSelected() {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		maxLen := len(m.dbSelected)
 		for i := range m.rels {
@@ -128,17 +128,17 @@ func (m *Manager) PrintDBForeignInfos() {
 	maxLen += maxAttrCnt*2 + 3 - 1
 
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 
 	for _, header := range tableHeaders {
-		print("| " + header + " ")
+		print("| " + header + strings.Repeat(" ", col2Wid[header]-len(header)+1))
 	}
 	println("|")
 
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 	for fk, cons := range fkInfoMap {
@@ -149,7 +149,7 @@ func (m *Manager) PrintDBForeignInfos() {
 			header := "src" + strconv.Itoa(i)
 			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
 		}
-		for i := maxAttrCnt - len(cons.SrcAttr); i < maxAttrCnt; i++ {
+		for i := len(cons.SrcAttr); i < maxAttrCnt; i++ {
 			header := "src" + strconv.Itoa(i)
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
@@ -157,13 +157,14 @@ func (m *Manager) PrintDBForeignInfos() {
 			header := "dst" + strconv.Itoa(i)
 			print("| " + attr + strings.Repeat(" ", col2Wid[header]-len(attr)+1))
 		}
-		for i := maxAttrCnt - len(cons.DstAttr); i < maxAttrCnt; i++ {
+		for i := len(cons.DstAttr); i < maxAttrCnt; i++ {
 			header := "dst" + strconv.Itoa(i)
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
+		println("|")
 	}
 	for _, header := range tableHeaders {
-		print("+" + strings.Repeat("-", len(header)+2))
+		print("+" + strings.Repeat("-", col2Wid[header]+2))
 	}
 	println("+")
 	//maxLen += len(tableHeaders) - 1
@@ -172,7 +173,7 @@ func (m *Manager) PrintDBForeignInfos() {
 
 func (m *Manager) PrintTablesWithDetails() {
 	if !m.DBSelected() {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		relInfoMap := m.GetDBRelInfoMap()
 		tableHeaders := []string{"RelationName", "RecordSize", "AttrCnt", "IndexCnt", "PrimaryCnt", "ForeignCnt"}
@@ -217,7 +218,7 @@ func (m *Manager) PrintTablesWithDetails() {
 func (m *Manager) PrintTableMeta(relName string) {
 	relInfoMap := m.GetDBRelInfoMap()
 	if _, found := relInfoMap[relName]; !found {
-		PrintEmptySet()
+		m.PrintEmptySet()
 	} else {
 		attrInfoList := m.GetAttrInfoList(relName)
 		tableHeaders := []string{
@@ -309,7 +310,7 @@ func (m *Manager) PrintTableMeta(relName string) {
 //	}
 //}
 
-func PrintEmptySet() {
+func (m *Manager) PrintEmptySet() {
 	println("+---------------+")
 	println("|     empty     |")
 	println("+---------------+")
@@ -465,7 +466,8 @@ func (m *Manager) PrintTableByInfo(recordList []*record.Record, info *TablePrint
 	for i := 0; i < len(info.TableHeaderList); i++ {
 		print("+" + strings.Repeat("-", info.ColWidMap[info.TableHeaderList[i]]+2))
 	}
-	println("+\n")
+	println("+")
+	fmt.Printf("%v in set\n", len(recordList))
 }
 
 // PrintTableMeta is implemented since GetRecordShould be wrapped up

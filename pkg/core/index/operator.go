@@ -5,7 +5,6 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 )
 
@@ -28,16 +27,16 @@ func NewOperator(filename string, record *record.FileHandle, attr *types.AttrSet
 	if err != nil {
 		return nil, err
 	}
-	headerPage, err := handle.GetPage(0)
+	headerPage, err := handle.NewPage(0)
 	if err != nil {
-		log.V(log.IndexLevel).Errorf("handle.GetPage(0) failed")
+		log.V(log.IndexLevel).Errorf("handle.NewPage(0) failed")
 		return nil, err
 	}
 	currentHeader := (*types.IndexHeaderPage)(types.ByteSliceToPointer(headerPage.Data))
 	currentHeader.FirstFree = 0
 	currentHeader.FirstFreeValue = types.RID{}
 	currentHeader.Pages = 1
-	currentHeader.RootPage = 0
+	currentHeader.RootPage = types.InvalidPageNum
 	attr.WriteAttrToHeader(currentHeader)
 	if err := handle.MarkDirty(0); err != nil {
 		return nil, err
@@ -104,6 +103,7 @@ func (oper *Operator) Close() error {
 }
 
 func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
+	log.V(log.BptreeLevel).Debug("New Node")
 	var page *storage.PageHandle
 	var err error
 	if oper.headerPage.FirstFree != 0 {
@@ -134,8 +134,10 @@ func (oper *Operator) NewNode(isLeaf bool) (*bptree.TreeNode, error) {
 }
 
 func (oper *Operator) LoadNode(pageNum types.PageNum) (*bptree.TreeNode, error) {
+	// log.V(log.BptreeLevel).Debug("Load Node")
 	if pageNum <= 0 || pageNum > oper.headerPage.Pages {
-		return nil, errorutil.ErrorInvalidPage
+		log.V(log.BptreeLevel).Warningf("Loading valid page(%d), skip.", pageNum)
+		return nil, nil
 	}
 	page, err := oper.iHandle.GetPage(pageNum)
 	if err != nil {
@@ -192,6 +194,9 @@ func (oper *Operator) DeleteNode(node *bptree.TreeNode) error {
 }
 
 func (oper *Operator) LoadRoot() (*bptree.TreeNode, error) {
+	if oper.headerPage.RootPage == types.InvalidPageNum {
+		return nil, nil
+	}
 	return oper.LoadNode(oper.headerPage.RootPage)
 }
 
@@ -223,6 +228,7 @@ func (oper *Operator) CompareAttrs(attr1, attr2 []byte) (int, error) {
 func (oper *Operator) GetAttr(rid types.RID) ([]byte, error) {
 	record, err := oper.rHandle.GetRec(rid)
 	if err != nil {
+		log.V(log.BptreeLevel).Debugf("Read RID %v failed\n", rid)
 		return nil, err
 	}
 	return oper.attr.DataToAttrs(rid, record.Data), nil

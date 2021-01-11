@@ -1,6 +1,8 @@
 package index
 
 func compareBytes(attr1, attr2 []byte) int {
+	// TODO: need to be compared based on the origin type
+
 	if len(attr1) > len(attr2) {
 		return -compareBytes(attr2, attr1)
 	}
@@ -15,7 +17,7 @@ func compareBytes(attr1, attr2 []byte) int {
 		return -1
 	}
 	if len(attr1) < len(attr2) {
-		return 1
+		return 0 // ?
 	}
 	return 0
 }

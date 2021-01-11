@@ -4,6 +4,7 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type AttrInfo struct {
@@ -15,6 +16,8 @@ type AttrInfo struct {
 	RelName   string
 	Default   types.Value
 }
+
+type AttrInfoList []AttrInfo
 
 type Expr struct {
 	Left  *Expr
@@ -78,6 +81,20 @@ func NewExprConst(value types.Value) *Expr {
 }
 
 func NewExprComp(l *Expr, op types.OpType, r *Expr) *Expr {
+	if r.NodeType == types.NodeAttr {
+		l, r = r, l
+		switch op {
+		case types.OpCompLT:
+			op = types.OpCompGT
+		case types.OpCompGT:
+			op = types.OpCompLT
+		case types.OpCompLE:
+			op = types.OpCompGE
+		case types.OpCompGE:
+			op = types.OpCompLE
+		}
+	}
+
 	return &Expr{
 		Left:         l,
 		Right:        r,
@@ -109,30 +126,44 @@ func (expr *Expr) isLogicComputable() bool {
 	return expr.NodeType == types.NodeLogic || expr.NodeType == types.NodeComp
 }
 
-func (expr *Expr) Calculate(data []byte) error {
+func (expr *Expr) Calculate(data []byte, relName string) error {
 	if expr.IsCalculated {
 		return nil
 	}
 	if expr.Left != nil {
-		if err := expr.Left.Calculate(data); err != nil {
+		if err := expr.Left.Calculate(data, relName); err != nil {
 			return err
 		}
-		if !expr.Left.IsCalculated {
-			panic(0) // defense programming
-		}
+		//if !expr.Left.IsCalculated {
+		//	panic(0) // defense programming
+		//}
 	}
 	if expr.Right != nil {
-		if err := expr.Right.Calculate(data); err != nil {
+		if err := expr.Right.Calculate(data, relName); err != nil {
 			return err
 		}
-		if !expr.Right.IsCalculated {
-			panic(0) // defense programming
-		}
+		//if !expr.Right.IsCalculated {
+		//	panic(0) // defense programming
+		//}
 	}
 
 	switch expr.NodeType {
 	case types.NodeLogic:
 		// And, or are binary operators, there must be left and right
+		if expr.Left == nil && expr.Right == nil {
+			return errorutil.ErrorExprBinaryOpWithNilChild
+		}
+		if expr.Left != nil {
+			if !expr.Left.IsCalculated {
+				return nil
+			}
+		}
+		if expr.Right != nil {
+			if !expr.Right.IsCalculated {
+				return nil
+			}
+		}
+
 		expr.IsCalculated = true
 		switch expr.OpType {
 		// child type will be guarantee in constructor
@@ -172,9 +203,8 @@ func (expr *Expr) Calculate(data []byte) error {
 		if expr.Right == nil || expr.Left == nil {
 			return errorutil.ErrorExprInvalidComparison
 		}
-
-		if (!expr.Left.IsNull && !expr.Left.IsCalculated) || (!expr.Right.IsNull && !expr.Right.IsCalculated) {
-			panic(0)
+		if !expr.Left.IsCalculated || !expr.Right.IsCalculated {
+			return nil
 		}
 		expr.IsCalculated = true
 		if expr.OpType == types.OpCompIS || expr.OpType == types.OpCompISNOT {
@@ -201,6 +231,16 @@ func (expr *Expr) Calculate(data []byte) error {
 				expr.IsNull = true
 				expr.Value.FromBool(false)
 			} else {
+				if expr.OpType == types.OpCompLIKE || expr.OpType == types.OpCompNOTLIKE {
+					regex := sqlparser.LikeToRegexp(expr.Right.Value.ToStr())
+					left := expr.Left.Value.ToStr()
+					if regex.Match([]byte(left)) && expr.OpType == types.OpCompLIKE {
+						expr.Value.FromBool(true)
+					} else {
+						expr.Value.FromBool(false)
+					}
+					return nil
+				}
 				switch expr.OpType {
 				case types.OpCompEQ:
 					expr.Value.FromBool(expr.Left.Value.EQ(&expr.Right.Value))
@@ -227,6 +267,13 @@ func (expr *Expr) Calculate(data []byte) error {
 		}
 		return nil
 	case types.NodeAttr:
+		// this can be used for multiple tables join
+		if expr.AttrInfo.RelName != "" && relName != "" {
+			if expr.AttrInfo.RelName != relName {
+				return nil
+			}
+		}
+
 		expr.IsCalculated = true
 		if expr.AttrInfo.NullAllowed {
 			if data[expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize] == 1 {
@@ -245,6 +292,7 @@ func (expr *Expr) Calculate(data []byte) error {
 			expr.Value.FromStr(string(data[expr.AttrInfo.AttrOffset : expr.AttrInfo.AttrOffset+expr.AttrInfo.AttrSize]))
 		case types.DATE:
 			expr.Value.FromInt64(*(*int)(types.ByteSliceToPointerWithOffset(data, expr.AttrInfo.AttrOffset)))
+			expr.Value.ValueType = types.DATE
 		case types.NO_ATTR:
 		default:
 			log.V(log.ExprLevel).Warningf("data is not implemented\n")

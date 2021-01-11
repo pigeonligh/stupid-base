@@ -16,6 +16,21 @@ type Scaner struct {
 	forceGet bool
 }
 
+func NewFullScaner(handle *FileHandle) (*Scaner, error) {
+	scaner := &Scaner{
+		handle:   handle,
+		forceGet: false,
+	}
+	var err error
+	if scaner.now, err = handle.tree.Begin(); err != nil {
+		return nil, err
+	}
+	if scaner.end, err = handle.tree.End(); err != nil {
+		return nil, err
+	}
+	return scaner, nil
+}
+
 func NewScaner(handle *FileHandle, compOp types.OpType, attr []byte) (*Scaner, error) {
 	scaner := &Scaner{
 		handle:   handle,
@@ -108,10 +123,13 @@ func (sc *Scaner) GetNextEntry() (types.RID, error) {
 func (f *FileHandle) GetRidList(compOp types.OpType, attr []byte) []types.RID {
 	scanner, err := NewScaner(f, compOp, attr)
 	if err != nil {
-		panic(0)
+		panic(err)
 	}
 	filterList := make([]types.RID, 0)
-	for rec, err := scanner.GetNextEntry(); err == nil; {
+	for rec, err := scanner.GetNextEntry(); rec.Page != 0; rec, err = scanner.GetNextEntry() {
+		if err != nil {
+			panic(0)
+		}
 		filterList = append(filterList, rec)
 	}
 	return filterList

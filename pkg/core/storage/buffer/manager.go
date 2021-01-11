@@ -5,8 +5,9 @@ Copyright (c) 2020, pigeonligh.
 package buffer
 
 import (
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"os"
+
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"

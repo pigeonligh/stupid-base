@@ -14,11 +14,15 @@ var (
 
 	ErrorDBSysDBNotSelected = errors.New("database not selected")
 
-	ErrorDBSysTableExisted = errors.New("table existed")
+	ErrorDBSysRelationExisted = errors.New("table existed")
 
 	ErrorDBSysRelationNotExisted = errors.New("table not existed")
 
 	ErrorDBSysAttrNotExisted = errors.New("table attribute not existed")
+
+	ErrorDBSysAttrExisted = errors.New("table attribute existed")
+
+	ErrorDBSysDuplicatedAttrsFound = errors.New("duplicated attrs found")
 
 	// some rules
 	ErrorDBSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
@@ -30,6 +34,8 @@ var (
 	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
 	// foreign key
+	ErrorDBSysForeignKeyConstraintNotMatch = errors.New("foreign key constraint not match while deleting")
+
 	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
 
 	ErrorDBSysForeignKeyLenNotMatch = errors.New("foreign key len not match")
@@ -38,7 +44,7 @@ var (
 
 	ErrorDBSysForeignKeyNotExists = errors.New("foreign key not exists")
 
-	ErrorDBSysFkNotRefPk = errors.New("foreign key not reference primary key")
+	ErrorDBSysFkValueNotInPk = errors.New("foreign key value not in pk")
 
 	ErrorDBSysFkTypeNotMatchPk = errors.New("foreign key type not match primary key")
 
@@ -61,5 +67,33 @@ var (
 	ErrorDBSysIsNotPrimaryKeys = errors.New("is not primary keys")
 
 	// insert rules
-	ErrorDBSysInsertValueTypeNotMatch = errors.New("insert value type not match")
+	ErrorDBSysInsertValueNotValid = errors.New("insert value not valid")
+
+	ErrorDBSysStringExceedLength = errors.New("insert string exceed length")
+
+	ErrorDBSysInsertIntFormatError = errors.New("insert int format fail")
+
+	ErrorDBSysInsertFloatFormatError = errors.New("insert float format fail")
+
+	ErrorDBSysInsertDateFormatError = errors.New("insert date format fail")
+
+	ErrorDBSysInsertBoolFormatError = errors.New("insert bool format fail")
+
+	// update rules
+	ErrorDBSysUpdateValueTypeNotMatch = errors.New("update value type not match")
+
+	ErrorDBSysNullConstraintViolated = errors.New("null constraint violated")
+
+	// add column
+	ErrorDBSysAddComplicateColumnNotSupported = errors.New("add complicate col not supported")
+
+	// remove column
+	ErrorDBSysCannotRemoveLastColumn = errors.New("cannot remove last column")
+
+	ErrorDBSysCannotRemovePrimaryColumn = errors.New("cannot remove primary column with multiple column define on table")
+
+	ErrorDBSysCannotRemoveForeignKeyCol = errors.New("cannot remove column which has fk")
+
+	// change
+	ErrorDBSysCannotChangePkFkColumn = errors.New("cannot change primary columnn")
 )

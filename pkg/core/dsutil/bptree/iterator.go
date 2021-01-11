@@ -97,6 +97,10 @@ func (iter *Iterator) Next() error {
 			if err != nil {
 				return err
 			}
+			if node == nil {
+				iter.ended = true
+				return nil
+			}
 		}
 		nextIndex = node.Indexes[iter.nodePos]
 	}

@@ -17,6 +17,10 @@ type FileHandle struct {
 	storageFH      *storage.FileHandle
 }
 
+func (f *FileHandle) GetHeader() types.RecordHeaderPage {
+	return f.header
+}
+
 func NewFileHandle(filename string) (*FileHandle, error) {
 	storageFH, err := storage.GetInstance().OpenFile(filename)
 	if err != nil {
@@ -200,9 +204,10 @@ func (f *FileHandle) DeleteRecByBatch(ridList []types.RID) {
 }
 
 func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
+	// log.V(log.RecordLevel).Infof("GetRecord : get rid(%v, %v) page", rid.Page, rid.Slot)
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
-		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
+		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails: %v", rid.Page, rid.Slot, err)
 		return NewEmptyRecord(), errorutil.ErrorRecordRidNotValid
 	}
 	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -221,10 +226,12 @@ func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
 
 func (f *FileHandle) ForcePage(page types.PageNum) {
 	if err := f.storageFH.MarkDirty(page); err != nil {
-		panic(0)
+		log.Errorf("%v: %v", err, page)
+		panic(err)
 	}
 	if err := f.storageFH.ForcePage(page); err != nil {
-		panic(0)
+		log.Errorf("%v: %v", err, page)
+		panic(err)
 	}
 }
 
@@ -234,6 +241,15 @@ func GetRidListFromRecList(recList []*Record) []types.RID {
 		ridCollection[i] = rec.Rid
 	}
 	return ridCollection
+}
+
+func GetRecListFromRidList(fh *FileHandle, ridList []types.RID) []*Record {
+	recList := []*Record{}
+	for _, rid := range ridList {
+		rec, _ := fh.GetRec(rid)
+		recList = append(recList, rec)
+	}
+	return recList
 }
 
 func (f *FileHandle) GetRecList() []*Record {
@@ -254,13 +270,15 @@ func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
 	filterList := make([]*Record, 0)
 	for _, rec := range recList {
 		expr.ResetCalculated()
-		if err := expr.Calculate(rec.Data); err != nil {
+		if err := expr.Calculate(rec.Data, ""); err != nil {
 			return nil, err
 		}
 		if expr.GetBool() {
 			filterList = append(filterList, rec)
 		}
 	}
+	expr.ResetCalculated()
+
 	return filterList, nil
 }
 

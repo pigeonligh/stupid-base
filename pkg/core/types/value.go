@@ -2,11 +2,12 @@ package types
 
 import (
 	"bytes"
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
 //type ConvertValue interface {
@@ -44,8 +45,57 @@ func CheckIfValueTypeCompatible(l, r ValueType) bool {
 	return l == r
 }
 
+func String2Value(str string, size int, target ValueType) (Value, error) {
+	val := NewValueFromEmpty()
+	if str == MagicNullString {
+		return val, nil
+	}
+	switch target {
+	case VARCHAR:
+		if len(str) > size {
+			return val, errorutil.ErrorDBSysStringExceedLength
+		} else {
+			val.FromStr(str)
+		}
+	case BOOL:
+		if b, err := strconv.ParseBool(str); err != nil {
+			return val, err
+		} else {
+			val.FromBool(b)
+		}
+	case DATE:
+		if t, err := time.Parse("2006-1-2", str); err != nil {
+			return val, err
+		} else {
+			val.FromInt64(int(t.Unix()))
+		}
+	case INT:
+		if i, err := strconv.ParseInt(str, 10, size*8); err != nil {
+			return val, err
+		} else {
+			val.FromInt64(int(i))
+		}
+	case FLOAT:
+		if f, err := strconv.ParseFloat(str, size*8); err != nil {
+			return val, err
+		} else {
+			val.FromFloat64(f)
+		}
+	}
+	return val, nil
+}
+
 // AdaptToType set no attr means convert fails
 func (v *Value) AdaptToType(target ValueType) {
+	if v.ValueType == VARCHAR && target != VARCHAR {
+		tmp, err := String2Value(v.ToStr(), ValueTypeDefaultSize[target], target)
+		if err != nil {
+			v.ValueType = NO_ATTR
+			return
+		}
+		*v = tmp
+		return
+	}
 	switch target {
 	case INT:
 		if v.ValueType == FLOAT {
@@ -96,7 +146,7 @@ func (v *Value) Format2String() string {
 	case DATE:
 		val := *(*int)(ByteSliceToPointer(v.Value[:]))
 		unixTime := time.Unix(int64(val), 0)
-		ret = unixTime.Format(time.RFC822)
+		ret = unixTime.Format("2006-1-2")
 	case BOOL:
 		val := *(*bool)(ByteSliceToPointer(v.Value[:]))
 		ret = strconv.FormatBool(val)
@@ -107,10 +157,7 @@ func (v *Value) Format2String() string {
 }
 
 func (v *Value) GE(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() >= c.ToInt64()
@@ -127,10 +174,7 @@ func (v *Value) GE(c *Value) bool {
 }
 
 func (v *Value) GT(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() > c.ToInt64()
@@ -147,10 +191,7 @@ func (v *Value) GT(c *Value) bool {
 }
 
 func (v *Value) LE(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() <= c.ToInt64()
@@ -167,10 +208,7 @@ func (v *Value) LE(c *Value) bool {
 }
 
 func (v *Value) LT(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() < c.ToInt64()
@@ -187,10 +225,7 @@ func (v *Value) LT(c *Value) bool {
 }
 
 func (v *Value) NE(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() != c.ToInt64()
@@ -209,10 +244,8 @@ func (v *Value) NE(c *Value) bool {
 }
 
 func (v *Value) EQ(c *Value) bool {
-	if v.ValueType != c.ValueType {
-		log.V(log.ExprLevel).Warningf("op Value type not match\n")
-		return false
-	}
+	c.AdaptToType(v.ValueType)
+
 	switch v.ValueType {
 	case INT:
 		return v.ToInt64() == c.ToInt64()
@@ -231,7 +264,8 @@ func (v *Value) EQ(c *Value) bool {
 }
 
 func (v *Value) ToInt64() int {
-	return *(*int)(unsafe.Pointer(&v.Value))
+
+	return *(*int)(ByteSliceToPointer(v.Value[:]))
 }
 
 func (v *Value) FromInt64(val int) {
@@ -279,7 +313,7 @@ func NewValueFromBool(val bool) Value {
 }
 
 func (v *Value) ToStr() string {
-	return string(v.Value[:])
+	return v.Format2String()
 }
 
 func (v *Value) FromStr(s string) {

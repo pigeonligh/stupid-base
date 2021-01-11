@@ -7,10 +7,13 @@ package storage
 import (
 	"testing"
 
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func TestBuffer(t *testing.T) {
+	env.SetWorkDir(".")
+
 	manager := GetInstance()
 
 	count := 10000

@@ -2,10 +2,11 @@ package dbsys
 
 import (
 	"bytes"
-	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func strTo24ByteArray(name string) [24]byte {
@@ -28,11 +29,12 @@ func data2StringByTypes(data []byte, valueType types.ValueType) string {
 		val := *(*float64)(types.ByteSliceToPointer(data))
 		ret = strconv.FormatFloat(val, 'g', 10, 64) // TODO: more dynamic float converting
 	case types.VARCHAR:
-		ret = string(data)
+		ret = strings.TrimSpace(string(bytes.Trim((data), string(byte(0)))))
+		ret = "`" + ret + "`"
 	case types.DATE:
 		val := *(*int)(types.ByteSliceToPointer(data))
 		unixTime := time.Unix(int64(val), 0)
-		ret = unixTime.Format(time.RFC822)
+		ret = unixTime.Format("2006-1-2")
 	case types.BOOL:
 		val := *(*bool)(types.ByteSliceToPointer(data))
 		ret = strconv.FormatBool(val)

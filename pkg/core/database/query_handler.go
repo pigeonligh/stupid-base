@@ -66,7 +66,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
-	db.sysManager.SelectTablesByWhereExpr(tableNames, attrNames, stmt.Where)
+	db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, stmt.Where)
 	return nil
 
 	/*

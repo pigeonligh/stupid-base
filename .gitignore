@@ -25,3 +25,5 @@ vitess/
 STUPID-BASE-DATA
 
 temp/
+
+.DS_Store

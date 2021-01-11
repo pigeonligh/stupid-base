@@ -1,7 +1,7 @@
 package dbsys
 
 import (
-	"fmt"
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
@@ -45,9 +45,14 @@ func TT2Attrs(table *TemporalTable, addition types.CalculatedValuesType) []types
 
 func (m *Manager) SelectTablesByWhereExpr(
 	relNameList []string,
+	attrTableList []string,
 	attrNameList []string,
 	expr *sqlparser.Where,
 ) (*TemporalTable, error) {
+	allAttrs := AttrInfoList{}
+
+	selectedAttrs := AttrInfoList{}
+
 	calculatedValues := []types.CalculatedValuesType{
 		make(types.CalculatedValuesType),
 	}
@@ -73,9 +78,90 @@ func (m *Manager) SelectTablesByWhereExpr(
 
 		}
 
+		allAttrs = append(allAttrs, attrs...)
 		calculatedValues = newCalculatedValues
 	}
 
-	fmt.Println("find", len(calculatedValues))
+	if attrNameList == nil {
+		selectedAttrs = append(selectedAttrs, allAttrs...)
+	} else {
+		for index, attrName := range attrNameList {
+			attr, err := parser.GetAttrFromList(allAttrs, attrTableList[index], attrName)
+			if err != nil || attr == nil {
+				panic(err)
+			}
+			selectedAttrs = append(selectedAttrs, *attr)
+		}
+	}
+
+	offs := make([]int, 0)
+	lens := make([]int, 0)
+	rels := make([]string, 0)
+	attrs := make([]string, 0)
+	typs := make([]types.ValueType, 0)
+	nils := make([]bool, 0)
+
+	totLength := 0
+	for _, attr := range selectedAttrs {
+		offs = append(offs, attr.AttrOffset)
+		lens = append(lens, attr.AttrSize)
+		rels = append(rels, attr.RelName)
+		attrs = append(attrs, attr.AttrName)
+		typs = append(typs, attr.AttrType)
+		nils = append(nils, attr.NullAllowed)
+		totLength += attr.AttrSize + 1
+	}
+
+	rows := make([]*record.Record, 0)
+	for _, row := range calculatedValues {
+		tmpRec := record.Record{
+			Rid:  types.RID{},
+			Data: make([]byte, totLength),
+		}
+
+		for i := range selectedAttrs {
+			rawVal, found := row[types.SimpleAttr{
+				TableName: rels[i],
+				ColName:   attrs[i],
+			}]
+			if !found {
+				panic(0) // must be found
+			}
+
+			if val, err := types.String2Value(rawVal, lens[i], typs[i]); err != nil {
+				panic(0)
+			} else {
+				if val.ValueType == types.NO_ATTR {
+					// null
+					tmpRec.Data[offs[i]+lens[i]] = 1
+				} else {
+					copy(tmpRec.Data[offs[i]:offs[i]+lens[i]], val.Value[0:lens[i]])
+				}
+			}
+		}
+		rows = append(rows, &tmpRec)
+	}
+
+	tmpTable := &TemporalTable{
+		rels:  rels,
+		attrs: attrs,
+		lens:  lens,
+		offs:  offs,
+		types: typs,
+		nils:  nils,
+		rows:  rows,
+	}
+	m.PrintTemporalTable(tmpTable)
+
+	//fmt.Println(attrTableList, attrNameList)
+	//fmt.Println("find", len(calculatedValues))
+	//
+	//for _, value := range calculatedValues {
+	//	for key, val := range value {
+	//		fmt.Printf("%v %v\n", key, val)
+	//	}
+	//	println("")
+	//}
+
 	return nil, nil
 }

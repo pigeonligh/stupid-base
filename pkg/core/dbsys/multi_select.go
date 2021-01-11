@@ -1,8 +1,10 @@
 package dbsys
 
 import (
-	"github.com/pigeonligh/stupid-base/pkg/core/record"
 	"strings"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/record"
+	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -88,7 +90,8 @@ func (m *Manager) SelectTablesByWhereExpr(
 		for index, attrName := range attrNameList {
 			attr, err := parser.GetAttrFromList(allAttrs, attrTableList[index], attrName)
 			if err != nil || attr == nil {
-				panic(err)
+				// panic(err)
+				return nil, errorutil.ErrorColNotFound
 			}
 			selectedAttrs = append(selectedAttrs, *attr)
 		}
@@ -125,7 +128,7 @@ func (m *Manager) SelectTablesByWhereExpr(
 				ColName:   attrs[i],
 			}]
 			if !found {
-				panic(0) // must be found
+				return nil, errorutil.ErrorColNotFound
 			}
 
 			if val, err := types.String2Value(rawVal, lens[i], typs[i]); err != nil {
@@ -151,17 +154,6 @@ func (m *Manager) SelectTablesByWhereExpr(
 		nils:  nils,
 		rows:  rows,
 	}
-	m.PrintTemporalTable(tmpTable)
 
-	//fmt.Println(attrTableList, attrNameList)
-	//fmt.Println("find", len(calculatedValues))
-	//
-	//for _, value := range calculatedValues {
-	//	for key, val := range value {
-	//		fmt.Printf("%v %v\n", key, val)
-	//	}
-	//	println("")
-	//}
-
-	return nil, nil
+	return tmpTable, nil
 }

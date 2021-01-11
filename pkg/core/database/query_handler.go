@@ -66,66 +66,14 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
-	db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, stmt.Where)
+	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, stmt.Where)
+
+	if err != nil {
+		return err
+	}
+
+	db.sysManager.PrintTemporalTable(table)
 	return nil
-
-	/*
-		tables := []*dbsys.TemporalTable{}
-		allAttrs := dbsys.AttrInfoList{}
-
-		selectedAttrs := map[string]dbsys.AttrInfoList{}
-
-		for _, tableName := range tableNames {
-			attrs := db.sysManager.GetAttrInfoList(tableName)
-			where, err := parser.SolveWhere(stmt.Where, attrs, tableName, nil)
-			if err != nil {
-				return err
-			}
-
-			table, err := db.sysManager.SelectSingleTableByExpr(tableName, nil, where, false)
-			if err != nil {
-				return err
-			}
-
-			tables = append(tables, table)
-			allAttrs = append(allAttrs, attrs...)
-		}
-
-		if attrNames == nil {
-			// select *
-			for _, attr := range allAttrs {
-				if _, ok := selectedAttrs[attr.RelName]; !ok {
-					selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
-				}
-				selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], attr)
-			}
-		} else {
-			for index, attrName := range attrNames {
-				attr, err := parser.GetAttrFromList(allAttrs, attrTables[index], attrName)
-				if err != nil {
-					return err
-				}
-				if attr != nil {
-					if _, ok := selectedAttrs[attr.RelName]; !ok {
-						selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
-					}
-					selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
-				}
-			}
-		}
-
-		where, err := parser.SolveWhere(stmt.Where, allAttrs, "", nil)
-		if err != nil {
-			return err
-		}
-
-		err = db.sysManager.SelectFromMultiple(tables, selectedAttrs, where)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	*/
 }
 
 func (db *Database) solveInsert(obj sqlparser.Statement) error {

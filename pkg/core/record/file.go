@@ -204,9 +204,10 @@ func (f *FileHandle) DeleteRecByBatch(ridList []types.RID) {
 }
 
 func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
+	// log.V(log.RecordLevel).Infof("GetRecord : get rid(%v, %v) page", rid.Page, rid.Slot)
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
-		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
+		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails: %v", rid.Page, rid.Slot, err)
 		return NewEmptyRecord(), errorutil.ErrorRecordRidNotValid
 	}
 	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -276,6 +277,8 @@ func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
 			filterList = append(filterList, rec)
 		}
 	}
+	expr.ResetCalculated()
+
 	return filterList, nil
 }
 

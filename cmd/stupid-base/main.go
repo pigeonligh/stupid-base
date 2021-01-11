@@ -15,6 +15,8 @@ import (
 )
 
 func main() {
+	// log.SetLevel(log.RecordLevel)
+
 	db, _ = database.New()
 
 	switch len(os.Args) {

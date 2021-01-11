@@ -91,8 +91,6 @@ func (db *Database) solveCreateTable(obj sqlparser.Statement) error {
 	tableName := stmt.Table.Name.CompliantName()
 	tableName = strings.ToLower(tableName)
 
-	fmt.Println(sqlparser.String(stmt))
-
 	attrList := []parser.AttrInfo{}
 	for _, col := range stmt.TableSpec.Columns {
 		attr := columnDefinitionToAttrInfo(col, tableName)

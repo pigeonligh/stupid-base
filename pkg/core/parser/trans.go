@@ -47,16 +47,17 @@ func splitExprForUnionQuery(
 	expr sqlparser.Expr,
 	attrs AttrInfoList,
 	tableName string,
+	calculatedValues types.CalculatedValuesType,
 ) (*Expr, bool, error) {
 	switch expr.(type) {
 	case *sqlparser.AndExpr:
 		expr := expr.(*sqlparser.AndExpr)
 
-		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName)
+		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
-		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName)
+		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
@@ -75,11 +76,11 @@ func splitExprForUnionQuery(
 	case *sqlparser.OrExpr:
 		expr := expr.(*sqlparser.OrExpr)
 
-		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName)
+		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
-		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName)
+		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
@@ -98,7 +99,7 @@ func splitExprForUnionQuery(
 	case *sqlparser.NotExpr:
 		expr := expr.(*sqlparser.NotExpr)
 
-		subexpr, ambiguity, err := splitExprForUnionQuery(expr.Expr, attrs, tableName)
+		subexpr, ambiguity, err := splitExprForUnionQuery(expr.Expr, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
@@ -111,11 +112,11 @@ func splitExprForUnionQuery(
 	case *sqlparser.ComparisonExpr:
 		expr := expr.(*sqlparser.ComparisonExpr)
 
-		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName)
+		lexpr, lambiguity, err := splitExprForUnionQuery(expr.Left, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
-		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName)
+		rexpr, rambiguity, err := splitExprForUnionQuery(expr.Right, attrs, tableName, calculatedValues)
 		if err != nil {
 			return nil, false, err
 		}
@@ -147,17 +148,27 @@ func splitExprForUnionQuery(
 		attr, err := GetAttrFromList(attrs, colTable, colName)
 
 		if err == errorutil.ErrorColNotFound && tableName != "" {
-			return nil, true, nil
+			err = nil
 		}
 
 		if err != nil {
 			return nil, false, err
 		}
 
-		if tableName != "" && attr.RelName != tableName {
-			return nil, true, nil
+		if attr != nil {
+			colTable = attr.RelName
 		}
 
+		if tableName != "" && colTable != tableName {
+			if calculatedValues != nil {
+				for k, v := range calculatedValues {
+					if colName == k.ColName && (colTable == "" || colTable == k.TableName) {
+						return NewExprConst(types.NewValueFromStr(v)), false, nil
+					}
+				}
+			}
+			return nil, true, nil
+		}
 		return NewExprAttr(*attr), false, nil
 
 	default:
@@ -194,11 +205,16 @@ func PrintExpr(expr *Expr) {
 	}
 }
 
-func SolveWhere(where *sqlparser.Where, attrs AttrInfoList, tableName string) (*Expr, error) {
+func SolveWhere(
+	where *sqlparser.Where,
+	attrs AttrInfoList,
+	tableName string,
+	calculatedValues types.CalculatedValuesType,
+) (*Expr, error) {
 	if where == nil {
 		return NewExprConst(types.NewValueFromBool(true)), nil
 	}
-	result, ambiguity, err := splitExprForUnionQuery(where.Expr, attrs, tableName)
+	result, ambiguity, err := splitExprForUnionQuery(where.Expr, attrs, tableName, calculatedValues)
 	if err != nil {
 		return nil, err
 	}

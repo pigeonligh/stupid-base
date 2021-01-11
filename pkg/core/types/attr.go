@@ -7,6 +7,13 @@ type AttrInfo struct {
 	NullAllowed bool // used by system manager
 }
 
+type SimpleAttr struct {
+	TableName string
+	ColName   string
+}
+
+type CalculatedValuesType map[SimpleAttr]string
+
 type AttrSet struct {
 	attrs   []AttrInfo
 	nullPos []int

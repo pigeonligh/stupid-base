@@ -123,7 +123,7 @@ func (sc *Scaner) GetNextEntry() (types.RID, error) {
 func (f *FileHandle) GetRidList(compOp types.OpType, attr []byte) []types.RID {
 	scanner, err := NewScaner(f, compOp, attr)
 	if err != nil {
-		panic(0)
+		panic(err)
 	}
 	filterList := make([]types.RID, 0)
 	for rec, err := scanner.GetNextEntry(); rec.Page != 0; rec, err = scanner.GetNextEntry() {

@@ -146,7 +146,7 @@ func (v *Value) Format2String() string {
 	case DATE:
 		val := *(*int)(ByteSliceToPointer(v.Value[:]))
 		unixTime := time.Unix(int64(val), 0)
-		ret = unixTime.Format(time.RFC822)
+		ret = unixTime.Format("2006-1-2")
 	case BOOL:
 		val := *(*bool)(ByteSliceToPointer(v.Value[:]))
 		ret = strconv.FormatBool(val)

@@ -81,6 +81,20 @@ func NewExprConst(value types.Value) *Expr {
 }
 
 func NewExprComp(l *Expr, op types.OpType, r *Expr) *Expr {
+	if r.NodeType == types.NodeAttr {
+		l, r = r, l
+		switch op {
+		case types.OpCompLT:
+			op = types.OpCompGT
+		case types.OpCompGT:
+			op = types.OpCompLT
+		case types.OpCompLE:
+			op = types.OpCompGE
+		case types.OpCompGE:
+			op = types.OpCompLE
+		}
+	}
+
 	return &Expr{
 		Left:         l,
 		Right:        r,

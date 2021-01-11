@@ -3,7 +3,6 @@ package database
 import (
 	"strings"
 
-	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -67,61 +66,66 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
-	tables := []*dbsys.TemporalTable{}
-	allAttrs := dbsys.AttrInfoList{}
+	db.sysManager.SelectTablesByWhereExpr(tableNames, attrNames, stmt.Where)
+	return nil
 
-	selectedAttrs := map[string]dbsys.AttrInfoList{}
+	/*
+		tables := []*dbsys.TemporalTable{}
+		allAttrs := dbsys.AttrInfoList{}
 
-	for _, tableName := range tableNames {
-		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
-		if err != nil {
-			return err
-		}
+		selectedAttrs := map[string]dbsys.AttrInfoList{}
 
-		table, err := db.sysManager.SelectSingleTableByExpr(tableName, nil, where, false)
-		if err != nil {
-			return err
-		}
-
-		tables = append(tables, table)
-		allAttrs = append(allAttrs, attrs...)
-	}
-
-	if attrNames == nil {
-		// select *
-		for _, attr := range allAttrs {
-			if _, ok := selectedAttrs[attr.RelName]; !ok {
-				selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
-			}
-			selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], attr)
-		}
-	} else {
-		for index, attrName := range attrNames {
-			attr, err := parser.GetAttrFromList(allAttrs, attrTables[index], attrName)
+		for _, tableName := range tableNames {
+			attrs := db.sysManager.GetAttrInfoList(tableName)
+			where, err := parser.SolveWhere(stmt.Where, attrs, tableName, nil)
 			if err != nil {
 				return err
 			}
-			if attr != nil {
+
+			table, err := db.sysManager.SelectSingleTableByExpr(tableName, nil, where, false)
+			if err != nil {
+				return err
+			}
+
+			tables = append(tables, table)
+			allAttrs = append(allAttrs, attrs...)
+		}
+
+		if attrNames == nil {
+			// select *
+			for _, attr := range allAttrs {
 				if _, ok := selectedAttrs[attr.RelName]; !ok {
 					selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
 				}
-				selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
+				selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], attr)
+			}
+		} else {
+			for index, attrName := range attrNames {
+				attr, err := parser.GetAttrFromList(allAttrs, attrTables[index], attrName)
+				if err != nil {
+					return err
+				}
+				if attr != nil {
+					if _, ok := selectedAttrs[attr.RelName]; !ok {
+						selectedAttrs[attr.RelName] = dbsys.AttrInfoList{}
+					}
+					selectedAttrs[attr.RelName] = append(selectedAttrs[attr.RelName], *attr)
+				}
 			}
 		}
-	}
 
-	where, err := parser.SolveWhere(stmt.Where, allAttrs, "")
-	if err != nil {
-		return err
-	}
+		where, err := parser.SolveWhere(stmt.Where, allAttrs, "", nil)
+		if err != nil {
+			return err
+		}
 
-	err = db.sysManager.SelectFromMultiple(tables, selectedAttrs, where)
-	if err != nil {
-		return err
-	}
+		err = db.sysManager.SelectFromMultiple(tables, selectedAttrs, where)
+		if err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	*/
 }
 
 func (db *Database) solveInsert(obj sqlparser.Statement) error {
@@ -196,7 +200,7 @@ func (db *Database) solveUpdate(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
+		where, err := parser.SolveWhere(stmt.Where, attrs, tableName, nil)
 		if err != nil {
 			return err
 		}
@@ -239,7 +243,7 @@ func (db *Database) solveDelete(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
+		where, err := parser.SolveWhere(stmt.Where, attrs, tableName, nil)
 		if err != nil {
 			return err
 		}

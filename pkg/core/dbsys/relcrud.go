@@ -20,27 +20,40 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	}
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 	attrInfoMap := attrInfoCollection.InfoMap
-	datafile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
+	datafile, err := m.relManager.OpenFile(getTableDataFileName(relName))
+	if err != nil {
+		panic(err)
+	}
 	defer m.relManager.CloseFile(datafile.Filename)
 
-	recList, err := datafile.GetFilteredRecList(expr)
-	if err != nil {
-		return nil, err
-	}
+	var recList []*record.Record = nil
 
-	// index hint
 	possibleIdxCompList := m.getIndexHintFromExpr(relName, expr)
 	if len(possibleIdxCompList) != 0 {
 		for _, expr := range possibleIdxCompList {
-			idxFH, err := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, expr.Left.AttrInfo.IndexName), datafile)
+			indexname := getTableIdxDataFileName(relName, expr.Left.AttrInfo.IndexName)
+			idxFH, err := m.idxManager.OpenIndex(indexname, datafile)
+			defer m.idxManager.CloseIndex(indexname)
 			if err != nil || idxFH == nil {
 				break
 			}
-			expr.Right.Value.AdaptToType(expr.Left.Value.ValueType)
+			expr.Right.Value.AdaptToType(expr.Left.AttrInfo.AttrType)
+
 			ridList := idxFH.GetRidList(expr.OpType, expr.Right.Value.Value[0:expr.Left.AttrInfo.AttrSize])
 			// currently test one
 			recList = record.GetRecListFromRidList(datafile, ridList)
 			break
+		}
+	}
+	if recList == nil {
+		recList, err = datafile.GetFilteredRecList(expr)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		recList, err = record.FilterOnRecList(recList, expr)
+		if err != nil {
+			return nil, err
 		}
 	}
 

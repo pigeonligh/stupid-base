@@ -161,8 +161,6 @@ func (m *Manager) PrintDBForeignInfos() {
 			header := "dst" + strconv.Itoa(i)
 			print("| " + strings.Repeat(" ", col2Wid[header]+1))
 		}
-	}
-	if len(fkInfoMap) != 0 {
 		println("|")
 	}
 	for _, header := range tableHeaders {

@@ -5,21 +5,16 @@ Copyright (c) 2020, pigeonligh.
 package database
 
 import (
-	"fmt"
 	"io"
-	"reflect"
 	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
-	"github.com/pigeonligh/stupid-base/pkg/core/query"
-	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 // Database is the context for stupid-base
 type Database struct {
-	sysManager   *dbsys.Manager
-	queryManager *query.Manager
+	sysManager *dbsys.Manager
 
 	nowDatabase string
 }
@@ -27,8 +22,7 @@ type Database struct {
 // New returns a database context
 func New() (*Database, error) {
 	return &Database{
-		sysManager:   dbsys.GetInstance(),
-		queryManager: query.GetInstance(),
+		sysManager: dbsys.GetInstance(),
 
 		nowDatabase: "",
 	}, nil
@@ -42,17 +36,19 @@ func (db *Database) Run(sqls string) error {
 	for {
 		startPosition := token.Position
 		stmt, err := sqlparser.ParseNext(token)
+		endPosition := token.Position
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
+			sql := strings.Trim(sqls[startPosition:endPosition-1], " \n;")
+			err = db.solveString(sql, err)
+		}
+		if err != nil {
 			return err
 		}
-		endPosition := token.Position
 
 		var solveFunc func(sqlparser.Statement) error = nil
-		var solveStringFunc func(string) error = nil
-		var solveString string = ""
 
 		switch stmt.(type) {
 		case *sqlparser.CreateDatabase:
@@ -88,10 +84,6 @@ func (db *Database) Run(sqls string) error {
 		case *sqlparser.Show:
 			solveFunc = db.solveShow
 
-		case *sqlparser.OtherRead:
-			solveStringFunc = db.solveOtherRead
-			solveString = strings.Trim(sqls[startPosition:endPosition], " ")
-
 		default:
 		}
 
@@ -100,14 +92,9 @@ func (db *Database) Run(sqls string) error {
 				return err
 			}
 		} else {
-			if solveStringFunc != nil {
-				if err := solveStringFunc(solveString); err != nil {
-					return err
-				}
-			} else {
-				stmtType := reflect.TypeOf(stmt)
-				fmt.Println(stmtType)
-				return errorutil.ErrorParseCommand
+			sql := strings.Trim(sqls[startPosition:endPosition-1], " \n;")
+			if err := db.solveString(sql, nil); err != nil {
+				return err
 			}
 		}
 	}

@@ -1,7 +1,8 @@
 package database
 
 import (
-	"fmt"
+	"os"
+	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -22,7 +23,42 @@ func (db *Database) solveShow(obj sqlparser.Statement) error {
 	return nil
 }
 
-func (db *Database) solveOtherRead(sql string) error {
-	fmt.Println("TODO:", sql)
-	return nil
+func (db *Database) solveString(sql string, originError error) error {
+	if strings.ToLower(sql) == "exit" {
+		os.Exit(0)
+	}
+
+	fields := strings.Fields(sql)
+	if len(fields) == 0 {
+		return nil
+	}
+
+	if strings.ToLower(fields[0]) == "desc" {
+		if !db.sysManager.DBSelected() {
+			return errorutil.ErrorDBSysDBNotSelected
+		}
+
+		if len(fields) == 2 && strings.ToLower(fields[1]) == "fk" {
+			db.sysManager.PrintDBForeignInfos()
+			return nil
+		}
+
+		relMap := db.sysManager.GetDBRelInfoMap()
+
+		for i, name := range fields {
+			if i == 0 {
+				continue
+			}
+			name := strings.Trim(name, "`'\"")
+			name = strings.ToLower(name)
+
+			if _, ok := relMap[name]; ok {
+				db.sysManager.PrintTableMeta(name)
+			} else {
+				return errorutil.ErrorDBSysRelationExisted
+			}
+		}
+	}
+
+	return originError
 }

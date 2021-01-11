@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/database"
@@ -42,10 +41,6 @@ func changeLivePrefix() (string, bool) {
 }
 
 func solve(sqls string) {
-	if sqls == "exit" {
-		os.Exit(0)
-	}
-
 	if err := db.Run(sqls); err != nil {
 		fmt.Println("Error: ", err)
 	}

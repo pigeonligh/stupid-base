@@ -91,6 +91,8 @@ func (db *Database) solveCreateTable(obj sqlparser.Statement) error {
 	tableName := stmt.Table.Name.CompliantName()
 	tableName = strings.ToLower(tableName)
 
+	fmt.Println(sqlparser.String(stmt))
+
 	attrList := []parser.AttrInfo{}
 	for _, col := range stmt.TableSpec.Columns {
 		attr := columnDefinitionToAttrInfo(col, tableName)
@@ -142,7 +144,6 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 	tableName := stmt.Table.Name.CompliantName()
 	tableName = strings.ToLower(tableName)
 	for _, option := range stmt.AlterOptions {
-		fmt.Println("alter option")
 		switch option.(type) {
 		case *sqlparser.AddColumns:
 			if act, ok := option.(*sqlparser.AddColumns); ok {

@@ -25,7 +25,7 @@ var startSuggests = []prompt.Suggest{
 	},
 	{
 		Text:        "desc",
-		Description: "to describe a table",
+		Description: "to describe a table or foreign keys",
 	},
 	{
 		Text:        "alter",
@@ -68,6 +68,10 @@ var fieldSuggests = []prompt.Suggest{
 }
 
 var multiStepSuggests = map[string][]prompt.Suggest{
+	"desc": {
+		{Text: "fk"},
+	},
+
 	"create": {
 		{Text: "database"},
 		{Text: "table"},

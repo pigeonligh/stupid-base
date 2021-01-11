@@ -28,13 +28,10 @@ func main() {
 		}
 
 		for tableName, tableConfig := range configs {
-			fmt.Println("insert", tableName)
+			fmt.Println("create", tableName)
 
 			attrs := ""
 			for _, attr := range tableConfig {
-				if attrs != "" {
-					attrs = attrs + ", "
-				}
 				attrs = attrs + attr
 			}
 			sql := "create table " + tableName + " ( " + attrs + " );"
@@ -43,16 +40,32 @@ func main() {
 				fmt.Println("Error:", err)
 				os.Exit(1)
 			}
+		}
 
-			data, err := ioutil.ReadFile(os.Args[1] + "/" + tableName + ".tbl.csv")
+		for _, sql := range afterCommand {
+			if err := db.Run(sql); err != nil {
+				fmt.Println("Error:", err)
+				os.Exit(1)
+			}
+		}
+
+		for _, tableName := range configOrder {
+			fmt.Println("insert", tableName)
+
+			filename := os.Args[1] + "/" + tableName + ".tbl.csv"
+			if tableName == "supplier" {
+				filename = os.Args[1] + "/" + tableName + ".tbl"
+			}
+			data, err := ioutil.ReadFile(filename)
 			if err != nil {
 				fmt.Println("Error:", err)
 				os.Exit(1)
 			}
 
 			lines := strings.Split(string(data), "\n")
+			count := 0
 			for i, line := range lines {
-				if i == 0 {
+				if i == 0 && tableName != "supplier" {
 					continue
 				}
 				if len(strings.TrimSpace(line)) == 0 {
@@ -72,11 +85,11 @@ func main() {
 				sql := "insert into " + tableName + " values ( " + values + " )"
 
 				err := db.Run(sql)
-				if err != nil {
-					fmt.Println("Error:", err)
-					os.Exit(1)
+				if err == nil {
+					count++
 				}
 			}
+			fmt.Println("insert", count)
 		}
 
 		db.Run("show tables;")

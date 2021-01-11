@@ -1,13 +1,14 @@
 package dbsys
 
 import (
+	"os"
+	"unsafe"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"os"
-	"unsafe"
 )
 
 type TableUpdateType int

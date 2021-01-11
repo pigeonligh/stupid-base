@@ -22,21 +22,6 @@ func exprToString(expr sqlparser.Expr) string {
 	return types.MagicNullString
 }
 
-func solveWhere(where *sqlparser.Where, attrs dbsys.AttrInfoList, tableName string) (*parser.Expr, error) {
-	if where == nil {
-		return parser.NewExprConst(types.NewValueFromBool(true)), nil
-	}
-	result, ambiguity, err := splitExprForUnionQuery(where.Expr, attrs, tableName)
-	if err != nil {
-		return nil, err
-	}
-	if !ambiguity {
-		// PrintExpr(result)
-		return result, nil
-	}
-	return parser.NewExprConst(types.NewValueFromBool(true)), nil
-}
-
 func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	stmt, ok := obj.(*sqlparser.Select)
 	if !ok {
@@ -89,7 +74,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := solveWhere(stmt.Where, attrs, tableName)
+		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}
@@ -113,7 +98,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	} else {
 		for index, attrName := range attrNames {
-			attr, err := getAttrFromList(allAttrs, attrTables[index], attrName)
+			attr, err := parser.GetAttrFromList(allAttrs, attrTables[index], attrName)
 			if err != nil {
 				return err
 			}
@@ -126,7 +111,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
-	where, err := solveWhere(stmt.Where, allAttrs, "")
+	where, err := parser.SolveWhere(stmt.Where, allAttrs, "")
 	if err != nil {
 		return err
 	}
@@ -211,7 +196,7 @@ func (db *Database) solveUpdate(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := solveWhere(stmt.Where, attrs, tableName)
+		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}
@@ -254,7 +239,7 @@ func (db *Database) solveDelete(obj sqlparser.Statement) error {
 
 	for _, tableName := range tableNames {
 		attrs := db.sysManager.GetAttrInfoList(tableName)
-		where, err := solveWhere(stmt.Where, attrs, tableName)
+		where, err := parser.SolveWhere(stmt.Where, attrs, tableName)
 		if err != nil {
 			return err
 		}

@@ -186,7 +186,7 @@ func (m *Manager) SetFkInfoMap(constraintMap FkConstraintMap) {
 }
 
 type AttrInfoMap map[string]parser.AttrInfo
-type AttrInfoList []parser.AttrInfo
+type AttrInfoList = parser.AttrInfoList
 type AttrInfoCollection struct {
 	NameList []string
 	PkList   []string

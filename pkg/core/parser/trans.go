@@ -1,12 +1,10 @@
-package database
+package parser
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
-	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -29,8 +27,8 @@ var compOpTrans = map[sqlparser.ComparisonExprOperator]types.OpType{
 	// sqlparser.NullSafeEqualOp: 0,
 }
 
-func getAttrFromList(attrs dbsys.AttrInfoList, tableName, colName string) (*parser.AttrInfo, error) {
-	var result *parser.AttrInfo = nil
+func GetAttrFromList(attrs AttrInfoList, tableName, colName string) (*AttrInfo, error) {
+	var result *AttrInfo = nil
 	for index, attr := range attrs {
 		if attr.AttrName == colName && (tableName == "" || tableName == attr.RelName) {
 			if result != nil {
@@ -47,9 +45,9 @@ func getAttrFromList(attrs dbsys.AttrInfoList, tableName, colName string) (*pars
 
 func splitExprForUnionQuery(
 	expr sqlparser.Expr,
-	attrs dbsys.AttrInfoList,
+	attrs AttrInfoList,
 	tableName string,
-) (*parser.Expr, bool, error) {
+) (*Expr, bool, error) {
 	switch expr.(type) {
 	case *sqlparser.AndExpr:
 		expr := expr.(*sqlparser.AndExpr)
@@ -72,7 +70,7 @@ func splitExprForUnionQuery(
 		if rambiguity {
 			return lexpr, false, nil
 		}
-		return parser.NewExprLogic(lexpr, types.OpLogicAND, rexpr), false, nil
+		return NewExprLogic(lexpr, types.OpLogicAND, rexpr), false, nil
 
 	case *sqlparser.OrExpr:
 		expr := expr.(*sqlparser.OrExpr)
@@ -95,7 +93,7 @@ func splitExprForUnionQuery(
 		if rambiguity {
 			return lexpr, false, nil
 		}
-		return parser.NewExprLogic(lexpr, types.OpLogicOR, rexpr), false, nil
+		return NewExprLogic(lexpr, types.OpLogicOR, rexpr), false, nil
 
 	case *sqlparser.NotExpr:
 		expr := expr.(*sqlparser.NotExpr)
@@ -108,7 +106,7 @@ func splitExprForUnionQuery(
 		if ambiguity {
 			return nil, true, nil
 		}
-		return parser.NewExprLogic(nil, types.OpLogicNOT, subexpr), false, nil
+		return NewExprLogic(nil, types.OpLogicNOT, subexpr), false, nil
 
 	case *sqlparser.ComparisonExpr:
 		expr := expr.(*sqlparser.ComparisonExpr)
@@ -130,23 +128,23 @@ func splitExprForUnionQuery(
 		if !ok {
 			return nil, false, errorutil.ErrorOpNotFound
 		}
-		return parser.NewExprComp(lexpr, op, rexpr), false, nil
+		return NewExprComp(lexpr, op, rexpr), false, nil
 
 	case *sqlparser.Literal:
 		value := expr.(*sqlparser.Literal)
 		if value == nil {
-			ret := parser.NewExprConst(types.NewValueFromEmpty())
+			ret := NewExprConst(types.NewValueFromEmpty())
 			ret.IsNull = true
 			return ret, false, nil
 		}
-		return parser.NewExprConst(types.NewValueFromStr(string(value.Val))), false, nil
+		return NewExprConst(types.NewValueFromStr(string(value.Val))), false, nil
 
 	case *sqlparser.ColName:
 		col := expr.(*sqlparser.ColName)
 		colTable := strings.ToLower(col.Qualifier.Name.CompliantName())
 		colName := strings.ToLower(col.Name.CompliantName())
 
-		attr, err := getAttrFromList(attrs, colTable, colName)
+		attr, err := GetAttrFromList(attrs, colTable, colName)
 
 		if err == errorutil.ErrorColNotFound && tableName != "" {
 			return nil, true, nil
@@ -160,7 +158,7 @@ func splitExprForUnionQuery(
 			return nil, true, nil
 		}
 
-		return parser.NewExprAttr(*attr), false, nil
+		return NewExprAttr(*attr), false, nil
 
 	default:
 		fmt.Println(reflect.TypeOf(expr))
@@ -168,7 +166,7 @@ func splitExprForUnionQuery(
 	return nil, true, nil
 }
 
-func PrintExpr(expr *parser.Expr) {
+func PrintExpr(expr *Expr) {
 	switch expr.NodeType {
 	case types.NodeArith:
 
@@ -194,4 +192,19 @@ func PrintExpr(expr *parser.Expr) {
 		fmt.Println(expr.AttrInfo.AttrName)
 
 	}
+}
+
+func SolveWhere(where *sqlparser.Where, attrs AttrInfoList, tableName string) (*Expr, error) {
+	if where == nil {
+		return NewExprConst(types.NewValueFromBool(true)), nil
+	}
+	result, ambiguity, err := splitExprForUnionQuery(where.Expr, attrs, tableName)
+	if err != nil {
+		return nil, err
+	}
+	if !ambiguity {
+		// PrintExpr(result)
+		return result, nil
+	}
+	return NewExprConst(types.NewValueFromBool(true)), nil
 }

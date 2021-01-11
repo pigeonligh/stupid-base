@@ -17,6 +17,8 @@ type AttrInfo struct {
 	Default   types.Value
 }
 
+type AttrInfoList []AttrInfo
+
 type Expr struct {
 	Left  *Expr
 	Right *Expr

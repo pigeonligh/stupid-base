@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
@@ -142,8 +143,8 @@ func splitExprForUnionQuery(
 
 	case *sqlparser.ColName:
 		col := expr.(*sqlparser.ColName)
-		colTable := col.Qualifier.Name.CompliantName()
-		colName := col.Name.CompliantName()
+		colTable := strings.ToLower(col.Qualifier.Name.CompliantName())
+		colName := strings.ToLower(col.Name.CompliantName())
 
 		attr, err := getAttrFromList(attrs, colTable, colName)
 

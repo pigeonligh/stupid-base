@@ -2,8 +2,8 @@ package database
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
@@ -14,7 +14,7 @@ import (
 
 func columnDefinitionToAttrInfo(col *sqlparser.ColumnDefinition, tableName string) parser.AttrInfo {
 	var attr parser.AttrInfo
-	attr.AttrName = col.Name.CompliantName()
+	attr.AttrName = strings.ToLower(col.Name.CompliantName())
 	attr.RelName = tableName
 	attr.NullAllowed = !col.Type.NotNull
 	attr.IsPrimary = false
@@ -42,7 +42,8 @@ func (db *Database) addIndexDefinition(
 ) error {
 	names := []string{}
 	for _, col := range index.Columns {
-		names = append(names, col.Column.CompliantName())
+		name := col.Column.CompliantName()
+		names = append(names, strings.ToLower(name))
 	}
 	if index.Info.Primary {
 		err := db.sysManager.AddPrimaryKey(tableName, names)
@@ -51,6 +52,7 @@ func (db *Database) addIndexDefinition(
 		}
 	} else {
 		indexName := index.Info.Name.CompliantName()
+		indexName = strings.ToLower(indexName)
 		err := db.sysManager.CreateIndex(indexName, tableName, names, !index.Info.Unique)
 		if err != nil {
 			return err
@@ -68,10 +70,10 @@ func (db *Database) addConstraintDefinition(
 		src := []string{}
 		dst := []string{}
 		for i := range foreign.Source {
-			src = append(src, foreign.Source[i].CompliantName())
-			dst = append(dst, foreign.ReferencedColumns[i].CompliantName())
+			src = append(src, strings.ToLower(foreign.Source[i].CompliantName()))
+			dst = append(dst, strings.ToLower(foreign.ReferencedColumns[i].CompliantName()))
 		}
-		tab := foreign.ReferencedTable.Name.CompliantName()
+		tab := strings.ToLower(foreign.ReferencedTable.Name.CompliantName())
 		err := db.sysManager.AddForeignKey(keyName, tableName, src, tab, dst)
 		if err != nil {
 			return err
@@ -87,6 +89,7 @@ func (db *Database) solveCreateTable(obj sqlparser.Statement) error {
 	}
 
 	tableName := stmt.Table.Name.CompliantName()
+	tableName = strings.ToLower(tableName)
 
 	attrList := []parser.AttrInfo{}
 	for _, col := range stmt.TableSpec.Columns {
@@ -94,7 +97,7 @@ func (db *Database) solveCreateTable(obj sqlparser.Statement) error {
 		attrList = append(attrList, attr)
 	}
 
-	err := db.sysManager.CreateTable(stmt.Table.Name.CompliantName(), attrList)
+	err := db.sysManager.CreateTable(tableName, attrList)
 	if err != nil {
 		return err
 	}
@@ -120,7 +123,9 @@ func (db *Database) solveDropTable(obj sqlparser.Statement) error {
 	}
 
 	for _, table := range stmt.FromTables {
-		if err := db.sysManager.DropTable(table.Name.CompliantName()); err != nil {
+		tableName := table.Name.CompliantName()
+		tableName = strings.ToLower(tableName)
+		if err := db.sysManager.DropTable(tableName); err != nil {
 			return err
 		}
 	}
@@ -135,14 +140,17 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 	}
 
 	tableName := stmt.Table.Name.CompliantName()
+	tableName = strings.ToLower(tableName)
 	for _, option := range stmt.AlterOptions {
-		fmt.Println(reflect.TypeOf(option))
+		fmt.Println("alter option")
 		switch option.(type) {
 		case *sqlparser.AddColumns:
 			if act, ok := option.(*sqlparser.AddColumns); ok {
 				for _, col := range act.Columns {
 					attr := columnDefinitionToAttrInfo(col, tableName)
-					err := db.sysManager.AddColumn(tableName, col.Name.CompliantName(), attr)
+					colName := col.Name.CompliantName()
+					colName = strings.ToLower(colName)
+					err := db.sysManager.AddColumn(tableName, colName, attr)
 					if err != nil {
 						return err
 					}
@@ -152,7 +160,9 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 
 		case *sqlparser.RenameTable:
 			if act, ok := option.(*sqlparser.RenameTable); ok {
-				err := db.sysManager.RenameTable(tableName, act.Table.Name.CompliantName())
+				actName := act.Table.Name.CompliantName()
+				actName = strings.ToLower(actName)
+				err := db.sysManager.RenameTable(tableName, actName)
 				if err != nil {
 					return err
 				}
@@ -161,7 +171,9 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 
 		case *sqlparser.DropColumn:
 			if act, ok := option.(*sqlparser.DropColumn); ok {
-				err := db.sysManager.DropColumn(tableName, act.Name.Name.CompliantName())
+				actName := act.Name.Name.CompliantName()
+				actName = strings.ToLower(actName)
+				err := db.sysManager.DropColumn(tableName, actName)
 				if err != nil {
 					return err
 				}
@@ -206,6 +218,7 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 		case *sqlparser.ChangeColumn:
 			if act, ok := option.(*sqlparser.ChangeColumn); ok {
 				colName := act.OldColumn.Name.CompliantName()
+				colName = strings.ToLower(colName)
 				col := act.NewColDefinition
 				attr := columnDefinitionToAttrInfo(col, tableName)
 

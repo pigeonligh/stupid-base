@@ -216,7 +216,7 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 				expr.Value.FromBool(false)
 			} else {
 				if expr.OpType == types.OpCompLIKE || expr.OpType == types.OpCompNOTLIKE {
-					regex := sqlparser.LikeToRegexp(expr.Value.ToStr())
+					regex := sqlparser.LikeToRegexp(expr.Right.Value.ToStr())
 					left := expr.Left.Value.ToStr()
 					if regex.Match([]byte(left)) && expr.OpType == types.OpCompLIKE {
 						expr.Value.FromBool(true)

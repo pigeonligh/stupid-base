@@ -1,6 +1,8 @@
 package database
 
 import (
+	"strings"
+
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -16,10 +18,12 @@ func (db *Database) solveUse(obj sqlparser.Statement) error {
 		}
 	}
 
-	if err := db.sysManager.OpenDB(stmt.DBName.CompliantName()); err != nil {
+	dbName := stmt.DBName.CompliantName()
+	dbName = strings.ToLower(dbName)
+	if err := db.sysManager.OpenDB(dbName); err != nil {
 		return err
 	}
-	db.nowDatabase = stmt.DBName.CompliantName()
+	db.nowDatabase = dbName
 
 	return nil
 }

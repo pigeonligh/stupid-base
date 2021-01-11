@@ -1,6 +1,8 @@
 package database
 
 import (
+	"strings"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/dbsys"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
@@ -45,10 +47,21 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	attrTables := []string{}
 	attrNames := []string{}
 
+	if !db.sysManager.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	relMap := db.sysManager.GetDBRelInfoMap()
+
 	for _, expr := range stmt.From {
 		if ate, ok := expr.(*sqlparser.AliasedTableExpr); ok {
 			table, _ := ate.TableName()
 			tableName := table.Name.CompliantName()
+			tableName = strings.ToLower(tableName)
+
+			if _, ok := relMap[tableName]; !ok {
+				return errorutil.ErrorDBSysRelationNotExisted
+			}
+
 			tableNames = append(tableNames, tableName)
 		}
 	}
@@ -61,8 +74,10 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		case *sqlparser.AliasedExpr:
 			ae := expr.(*sqlparser.AliasedExpr)
 			if col, ok := ae.Expr.(*sqlparser.ColName); ok {
-				attrTables = append(attrTables, col.Qualifier.Name.CompliantName())
-				attrNames = append(attrNames, col.Name.CompliantName())
+				attrTable := col.Qualifier.Name.CompliantName()
+				attrName := col.Name.CompliantName()
+				attrTables = append(attrTables, strings.ToLower(attrTable))
+				attrNames = append(attrNames, strings.ToLower(attrName))
 			}
 		}
 	}
@@ -88,22 +103,6 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		allAttrs = append(allAttrs, attrs...)
 	}
 
-	findFn := func(table, col string) (*parser.AttrInfo, error) {
-		var result *parser.AttrInfo = nil
-		for index, attr := range allAttrs {
-			if col == attr.AttrName && (table == "" || table == attr.RelName) {
-				if result != nil {
-					return nil, errorutil.ErrorColDuplicated
-				}
-				result = &allAttrs[index]
-			}
-		}
-		if result == nil {
-			return nil, errorutil.ErrorColNotFound
-		}
-		return result, nil
-	}
-
 	if attrNames == nil {
 		// select *
 		for _, attr := range allAttrs {
@@ -114,7 +113,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	} else {
 		for index, attrName := range attrNames {
-			attr, err := findFn(attrTables[index], attrName)
+			attr, err := getAttrFromList(allAttrs, attrTables[index], attrName)
 			if err != nil {
 				return err
 			}
@@ -146,7 +145,18 @@ func (db *Database) solveInsert(obj sqlparser.Statement) error {
 		return errorutil.ErrorParseCommand
 	}
 
+	if !db.sysManager.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	relMap := db.sysManager.GetDBRelInfoMap()
+
 	tableName := stmt.Table.Name.CompliantName()
+	tableName = strings.ToLower(tableName)
+
+	if _, ok := relMap[tableName]; !ok {
+		return errorutil.ErrorDBSysRelationNotExisted
+	}
+
 	values := stmt.Rows.(sqlparser.Values)
 
 	for _, tuple := range values {
@@ -174,16 +184,28 @@ func (db *Database) solveUpdate(obj sqlparser.Statement) error {
 	attrNames := []string{}
 	attrValues := []string{}
 
+	if !db.sysManager.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	relMap := db.sysManager.GetDBRelInfoMap()
+
 	for _, expr := range stmt.TableExprs {
 		if ate, ok := expr.(*sqlparser.AliasedTableExpr); ok {
 			table, _ := ate.TableName()
 			tableName := table.Name.CompliantName()
+			tableName = strings.ToLower(tableName)
+
+			if _, ok := relMap[tableName]; !ok {
+				return errorutil.ErrorDBSysRelationNotExisted
+			}
+
 			tableNames = append(tableNames, tableName)
 		}
 	}
 
 	for _, expr := range stmt.Exprs {
-		attrNames = append(attrNames, expr.Name.Name.CompliantName())
+		attrName := expr.Name.Name.CompliantName()
+		attrNames = append(attrNames, strings.ToLower(attrName))
 		attrValues = append(attrValues, exprToString(expr.Expr))
 	}
 
@@ -211,10 +233,21 @@ func (db *Database) solveDelete(obj sqlparser.Statement) error {
 
 	tableNames := []string{}
 
+	if !db.sysManager.DBSelected() {
+		return errorutil.ErrorDBSysDBNotSelected
+	}
+	relMap := db.sysManager.GetDBRelInfoMap()
+
 	for _, expr := range stmt.TableExprs {
 		if ate, ok := expr.(*sqlparser.AliasedTableExpr); ok {
 			table, _ := ate.TableName()
 			tableName := table.Name.CompliantName()
+			tableName = strings.ToLower(tableName)
+
+			if _, ok := relMap[tableName]; !ok {
+				return errorutil.ErrorDBSysRelationNotExisted
+			}
+
 			tableNames = append(tableNames, tableName)
 		}
 	}

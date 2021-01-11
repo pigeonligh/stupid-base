@@ -81,7 +81,9 @@ func IsOpComp(op OpType) bool {
 		op == OpCompGE ||
 		op == OpCompNE ||
 		op == OpCompIS ||
-		op == OpCompISNOT
+		op == OpCompISNOT ||
+		op == OpCompLIKE ||
+		op == OpCompNOTLIKE
 }
 
 func IsOpLogic(op OpType) bool {

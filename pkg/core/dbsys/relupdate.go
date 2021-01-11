@@ -1,6 +1,7 @@
 package dbsys
 
 import (
+	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
@@ -411,7 +412,7 @@ func (m *Manager) AddColumn(relName string, attrName string, info parser.AttrInf
 	_ = m.relManager.CloseFile(srcFH.Filename)
 	_ = m.relManager.CloseFile(tmpFH.Filename)
 	_ = m.relManager.DestroyFile(srcFH.Filename)
-	_ = os.Rename(tmpFH.Filename, srcFH.Filename)
+	_ = os.Rename(env.WorkDir+"/"+tmpFH.Filename, env.WorkDir+"/"+srcFH.Filename)
 
 	attrInfoList := m.GetAttrInfoList(relName)
 	attrInfoList = append(attrInfoList, info)
@@ -466,7 +467,7 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	_ = m.relManager.CloseFile(srcFH.Filename)
 	_ = m.relManager.CloseFile(tmpFH.Filename)
 	_ = m.relManager.DestroyFile(srcFH.Filename)
-	_ = os.Rename(tmpFH.Filename, srcFH.Filename)
+	_ = os.Rename(env.WorkDir+"/"+tmpFH.Filename, env.WorkDir+"/"+srcFH.Filename)
 
 	attrInfoList := m.GetAttrInfoList(relName)
 	i := 0
@@ -507,21 +508,24 @@ func (m *Manager) RenameTable(srcName, dstName string) error {
 	m.SetAttrInfoListByCollection(srcName, attrInfoCollection)
 
 	relInfoMap := m.GetDBRelInfoMap()
-	if item, found := relInfoMap[dstName]; found {
+	if _, found := relInfoMap[dstName]; found {
 		return errorutil.ErrorDBSysRelationExisted
 	} else {
-		relInfoMap[dstName] = item
+		relInfo := relInfoMap[srcName]
+		relInfo.RelName = dstName
+		relInfoMap[dstName] = relInfo
 		delete(relInfoMap, srcName)
 	}
+	m.SetDBRelInfoMap(relInfoMap)
 
 	// rename index file
 	for idx := range attrInfoCollection.IdxMap {
-		_ = os.Rename(getTableIdxDataFileName(srcName, idx), getTableIdxDataFileName(dstName, idx))
+		_ = os.Rename(env.WorkDir+"/"+getTableIdxDataFileName(srcName, idx), env.WorkDir+"/"+getTableIdxDataFileName(dstName, idx))
 	}
 
 	// rename data file
-	_ = os.Rename(getTableDataFileName(srcName), getTableDataFileName(dstName))
-	_ = os.Rename(getTableMetaFileName(srcName), getTableMetaFileName(dstName))
+	_ = os.Rename(env.WorkDir+"/"+getTableDataFileName(srcName), env.WorkDir+"/"+getTableDataFileName(dstName))
+	_ = os.Rename(env.WorkDir+"/"+getTableMetaFileName(srcName), env.WorkDir+"/"+getTableMetaFileName(dstName))
 
 	// rename fk related
 	fkMap := m.GetFkInfoMap()

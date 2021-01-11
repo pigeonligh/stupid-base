@@ -49,11 +49,12 @@ func (db *Database) addIndexDefinition(
 		if err != nil {
 			return err
 		}
-	}
-	indexName := index.Info.Name.CompliantName()
-	err := db.sysManager.CreateIndex(indexName, tableName, names, !index.Info.Unique)
-	if err != nil {
-		return err
+	} else {
+		indexName := index.Info.Name.CompliantName()
+		err := db.sysManager.CreateIndex(indexName, tableName, names, !index.Info.Unique)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

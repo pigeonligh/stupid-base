@@ -95,7 +95,7 @@ func TestDbSys(t *testing.T) {
 		err := manager.InsertRow(rel1,
 			[]string{
 				strconv.Itoa(i), strconv.FormatFloat(0.1+float64(i), 'g', 10, 64),
-				nameMap[i%len(nameMap)], "2018-Feb-28", strconv.FormatBool(i%2 == 0),
+				nameMap[i%len(nameMap)], "2018-1-28", strconv.FormatBool(i%2 == 0),
 			})
 		if err != nil {
 			t.Error(err)

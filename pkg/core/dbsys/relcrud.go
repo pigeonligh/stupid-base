@@ -20,7 +20,6 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	attrInfoMap := m.GetAttrInfoCollection(relName).InfoMap
 	datafile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
 	defer m.relManager.CloseFile(datafile.Filename)
-
 	recList, err := datafile.GetFilteredRecList(expr)
 	if err != nil {
 		return nil, err

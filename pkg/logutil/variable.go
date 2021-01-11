@@ -16,4 +16,19 @@ const (
 
 	// BitsetLevel is bitset log level
 	BitsetLevel
+
+	// ExprLevel
+	ExprLevel
+
+	// DBSysLevel
+	DBSysLevel
+
+	// IndexLevel
+	IndexLevel
+
+	// BptreeLevel
+	BptreeLevel
+
+	// QueryLanguageLevel
+	QueryLanguageLevel
 )

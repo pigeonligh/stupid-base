@@ -1,15 +1,16 @@
 package bitset
 
 import (
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"testing"
+
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func TestMyBitset(t *testing.T) {
 
-	log.SetDebugMode(true)
+	// log.SetDebugMode(true)
 	log.SetLevel(log.BitsetLevel)
 	data := make([]byte, types.PageSize)
 

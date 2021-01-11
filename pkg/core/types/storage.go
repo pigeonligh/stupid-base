@@ -17,13 +17,16 @@ const (
 	PageSize = 4096
 
 	// PageHeaderSize is the size of a page header
-	PageHeaderSize = unsafe.Sizeof(PageHeader{})
+	PageHeaderSize = int(unsafe.Sizeof(PageHeader{}))
 
 	// PageDataSize is the size of a page data
 	PageDataSize = PageSize - PageHeaderSize
 
 	// AllPageNum is defined and used by the ForcePages method defined in RM and PF layers
 	AllPageNum = -1
+
+	// InvalidPageNum is defined for invalid page
+	InvalidPageNum = -1
 )
 
 // PageNum uniquely identifies a page in a file

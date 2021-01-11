@@ -18,3 +18,12 @@ _output/
 .vscode/
 .idea
 testfiles_*
+testdb_*
+
+vitess/
+
+STUPID-BASE-DATA
+
+temp/
+
+.DS_Store

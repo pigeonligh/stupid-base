@@ -2,19 +2,23 @@ package record
 
 import (
 	"github.com/pigeonligh/stupid-base/pkg/core/dsutil/bitset"
+	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"unsafe"
 )
 
 type FileHandle struct {
-	filename       string
+	Filename       string
 	header         types.RecordHeaderPage
 	headerModified bool
 	initialized    bool
 	storageFH      *storage.FileHandle
+}
+
+func (f *FileHandle) GetHeader() types.RecordHeaderPage {
+	return f.header
 }
 
 func NewFileHandle(filename string) (*FileHandle, error) {
@@ -32,7 +36,7 @@ func NewFileHandle(filename string) (*FileHandle, error) {
 		return nil, err
 	}
 	return &FileHandle{
-		filename:       filename,
+		Filename:       filename,
 		header:         copiedHeader,
 		headerModified: false,
 		initialized:    true,
@@ -58,7 +62,8 @@ func (f *FileHandle) Close() error {
 			return err
 		}
 		f.initialized = false
-		return storage.GetInstance().CloseFile(f.filename)
+		f.header = types.RecordHeaderPage{}
+		return nil
 	}
 }
 
@@ -77,10 +82,14 @@ func (f *FileHandle) AllocateFreeRID() types.RID {
 	if err != nil {
 		return ret
 	}
-	myBitset := bitset.NewBitset(types.ByteSlice2uint32ArrayPtr(pageHandle.Data, int(unsafe.Sizeof(types.PageHeader{}))), f.header.RecordSize)
+
+	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
+	myBitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
 	freeSlot := myBitset.FindLowestZeroBitIdx()
 	ret.Page = freePage
 	ret.Slot = freeSlot
+	_ = f.storageFH.UnpinPage(pageHandle.Page)
+	//log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
 	return ret
 }
 
@@ -89,13 +98,14 @@ func (f *FileHandle) insertPage() error {
 	if err != nil {
 		return err
 	}
-	copy(pageHandle.Data, make([]byte, types.PageSize)) // Header.FirstFree = 0 marks for the last page
+	copy(pageHandle.Data, make([]byte, types.PageSize)) // header.FirstFree = 0 marks for the last page
 	_ = f.storageFH.MarkDirty(pageHandle.Page)
 	_ = f.storageFH.UnpinPage(pageHandle.Page)
 
 	f.header.FirstFree = pageHandle.Page
 	f.header.Pages += 1
 	f.headerModified = true
+	log.V(log.RecordLevel).Infof("insertPage, FirstFree: %v, Pages: %v", f.header.FirstFree, f.header.Pages)
 	return nil
 }
 
@@ -106,28 +116,28 @@ func (f *FileHandle) getSlotByteSlice(data []byte, slot types.SlotNum) []byte {
 	return slice
 }
 
-func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
+func (f *FileHandle) InsertRec(data []byte) (types.RID, error) {
 	if len(data) != f.header.RecordSize {
 		log.V(log.RecordLevel).Errorf("InsertRecord passed parameter len(data) won't match record size")
-		return errorutil.ErrorRecordLengthNotMatch
+		return types.RID{}, errorutil.ErrorRecordLengthNotMatch
 	}
-	if !rid.IsValid() {
-		rid = f.AllocateFreeRID()
-	}
+
+	rid := f.AllocateFreeRID()
+
 	freePage := rid.Page
 	freeSlot := rid.Slot
 
 	pageHandle, err := f.storageFH.GetPage(freePage)
 	if err != nil {
-		return err
+		return types.RID{}, err
 	}
 	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
 	slotByteSlice := f.getSlotByteSlice(recordPagePtr.Data[:], freeSlot)
 	copy(slotByteSlice, data)
 	mybitset := bitset.NewBitset(&recordPagePtr.BitsetData, f.header.RecordPerPage)
 	mybitset.Set(freeSlot)
-	if mybitset.FindLowestZeroBitIdx() != bitset.BitsetFindNoRes {
-		log.V(log.RecordLevel).Infof("InsertRecord, current page(%v) full!", freePage)
+	if mybitset.FindLowestZeroBitIdx() == bitset.BitsetFindNoRes {
+		log.V(log.RecordLevel).Infof("InsertRecord, current page(%v) full! Marked FirstFree 0", freePage)
 		// current bitset if full
 		if recordPagePtr.NextFree > 0 {
 			f.header.FirstFree = recordPagePtr.NextFree
@@ -138,15 +148,18 @@ func (f *FileHandle) InsertRec(data []byte, rid types.RID) error {
 	}
 
 	if err := f.storageFH.MarkDirty(rid.Page); err != nil {
-		return err
+		return types.RID{}, err
 	}
 	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
-		return err
+		return types.RID{}, err
 	}
 	f.header.RecordNum += 1
 	f.headerModified = true
 	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
-	return nil
+	return types.RID{
+		Page: freePage,
+		Slot: freeSlot,
+	}, nil
 }
 
 func (f *FileHandle) DeleteRec(rid types.RID) error {
@@ -180,13 +193,21 @@ func (f *FileHandle) DeleteRec(rid types.RID) error {
 	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
 		return err
 	}
+	log.V(log.RecordLevel).Infof("DelRecord(%v %v) succeeded!", rid.Page, rid.Slot)
 	return nil
 }
 
-func (f *FileHandle) GetRec(rid types.RID) (Record, error) {
+func (f *FileHandle) DeleteRecByBatch(ridList []types.RID) {
+	for _, rid := range ridList {
+		_ = f.DeleteRec(rid)
+	}
+}
+
+func (f *FileHandle) GetRec(rid types.RID) (*Record, error) {
+	// log.V(log.RecordLevel).Infof("GetRecord : get rid(%v, %v) page", rid.Page, rid.Slot)
 	pageHandle, err := f.storageFH.GetPage(rid.Page)
 	if err != nil {
-		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails", rid.Page, rid.Slot)
+		log.V(log.RecordLevel).Errorf("GetRecord failed: get rid(%v, %v) page fails: %v", rid.Page, rid.Slot, err)
 		return NewEmptyRecord(), errorutil.ErrorRecordRidNotValid
 	}
 	recordPagePtr := (*types.RecordPage)(types.ByteSliceToPointer(pageHandle.Data))
@@ -201,4 +222,66 @@ func (f *FileHandle) GetRec(rid types.RID) (Record, error) {
 	}
 
 	return NewRecord(rid, slotByteSlice, f.header.RecordSize)
+}
+
+func (f *FileHandle) ForcePage(page types.PageNum) {
+	if err := f.storageFH.MarkDirty(page); err != nil {
+		log.Errorf("%v: %v", err, page)
+		panic(err)
+	}
+	if err := f.storageFH.ForcePage(page); err != nil {
+		log.Errorf("%v: %v", err, page)
+		panic(err)
+	}
+}
+
+func GetRidListFromRecList(recList []*Record) []types.RID {
+	ridCollection := make([]types.RID, len(recList))
+	for i, rec := range recList {
+		ridCollection[i] = rec.Rid
+	}
+	return ridCollection
+}
+
+func GetRecListFromRidList(fh *FileHandle, ridList []types.RID) []*Record {
+	recList := []*Record{}
+	for _, rid := range ridList {
+		rec, _ := fh.GetRec(rid)
+		recList = append(recList, rec)
+	}
+	return recList
+}
+
+func (f *FileHandle) GetRecList() []*Record {
+	relScan := FileScan{}
+	_ = relScan.OpenFullScan(f)
+	recCollection := make([]*Record, 0, types.MaxAttrNums) // Though it's useful, currently it serves for db meta and table meta
+
+	for rec, err := relScan.GetNextRecord(); rec != nil && err == nil; rec, _ = relScan.GetNextRecord() {
+		recCollection = append(recCollection, rec)
+	}
+	return recCollection
+}
+
+func FilterOnRecList(recList []*Record, expr *parser.Expr) ([]*Record, error) {
+	if expr == nil {
+		return recList, nil
+	}
+	filterList := make([]*Record, 0)
+	for _, rec := range recList {
+		expr.ResetCalculated()
+		if err := expr.Calculate(rec.Data, ""); err != nil {
+			return nil, err
+		}
+		if expr.GetBool() {
+			filterList = append(filterList, rec)
+		}
+	}
+	expr.ResetCalculated()
+
+	return filterList, nil
+}
+
+func (f *FileHandle) GetFilteredRecList(expr *parser.Expr) ([]*Record, error) {
+	return FilterOnRecList(f.GetRecList(), expr)
 }

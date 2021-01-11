@@ -1,10 +1,11 @@
 package record
 
 import (
+	"sync"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/storage"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	log "github.com/pigeonligh/stupid-base/pkg/logutil"
-	"sync"
 )
 
 type Manager struct {
@@ -48,13 +49,11 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 	if err != nil {
 		return err
 	}
-
 	// set up the header page
 	header := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
 	header.RecordSize = recordSize
 	header.RecordNum = 0
 	header.RecordPerPage = recordPerPage(recordSize)
-	header.SlotMapSize = bitMapSize(header.RecordPerPage)
 
 	header.FileHeaderPage.Pages = 1
 	header.FileHeaderPage.FirstFree = 0
@@ -63,15 +62,18 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 		return err
 	}
 	if err = fileHandle.UnpinPage(pageHandle.Page); err != nil {
-		return nil
+		return err
 	}
+	if err = m.storage.CloseFile(filename); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 	if file, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.RecordLevel).Infof("OpenFile: %v has already opened! ", filename)
 		return file, nil
 	}
@@ -87,7 +89,6 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 
 func (m *Manager) DestroyFile(filename string) error {
 	if _, found := m.files[filename]; found {
-		// TODO: should return warn for open file which is opened
 		log.V(log.RecordLevel).Warningf("DestroyFile failed: %v, file opened!", filename)
 		return nil
 	}
@@ -104,6 +105,8 @@ func (m *Manager) CloseFile(filename string) error {
 			return err
 		}
 		delete(m.files, filename)
+		log.V(log.RecordLevel).Infof("CloseFile succeeded: %v", filename)
+		return m.storage.CloseFile(filename)
 	}
 	return nil
 }

@@ -9,7 +9,7 @@ const MaxStringSize = 255
 type ValueType = int
 
 const (
-	NO_ATTR ValueType = iota
+	NO_ATTR ValueType = iota // nolint: golint, stylecheck
 	INT
 	FLOAT
 	DATE
@@ -37,7 +37,7 @@ var ValueTypeDefaultSize = map[ValueType]int{
 
 func GetValueType(s string) ValueType {
 	for k, v := range ValueTypeStringMap {
-		if strings.ToLower(v) == strings.ToLower(s) {
+		if strings.EqualFold(v, s) {
 			return k
 		}
 	}
@@ -69,7 +69,7 @@ const (
 	OpLogicAND
 	OpLogicOR
 	OpLogicNOT
-	//OpLogicNO don't know what is it
+	// OpLogicNO don't know what is it
 )
 
 func IsOpComp(op OpType) bool {

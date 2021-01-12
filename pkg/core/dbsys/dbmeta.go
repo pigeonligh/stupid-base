@@ -5,14 +5,6 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
-// currently AttrInfo has been split into expr.AttrInfo & types.AttrInfo
-//type AttrInfo struct {
-//	AttrSize             int // used by expr::NodeAttr
-//	AttrOffset           int // used by expr::NodeAttr
-//	AttrType             ValueType
-//	NullAllowed          bool // used by system manager
-//}
-
 type RelInfo struct {
 	RelName      string
 	RecordSize   int

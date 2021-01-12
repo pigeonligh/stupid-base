@@ -13,9 +13,8 @@ func exprToString(expr sqlparser.Expr) string {
 	if value, ok := expr.(*sqlparser.Literal); ok {
 		if value == nil {
 			return types.MagicNullString
-		} else {
-			return string(value.Val)
 		}
+		return string(value.Val)
 	}
 	// parse failed, treat as NULL
 	return types.MagicNullString
@@ -53,26 +52,23 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 
 LOOP:
 	for _, expr := range stmt.SelectExprs {
-		switch expr.(type) {
+		switch obj := expr.(type) {
 		case *sqlparser.StarExpr:
 			attrTables = nil
 			attrNames = nil
 			attrFuncs = nil
 			break LOOP
 		case *sqlparser.AliasedExpr:
-			ae := expr.(*sqlparser.AliasedExpr)
-			switch ae.Expr.(type) {
+			switch objexpr := obj.Expr.(type) {
 			case *sqlparser.ColName:
-				col := ae.Expr.(*sqlparser.ColName)
-				attrTable := col.Qualifier.Name.CompliantName()
-				attrName := col.Name.CompliantName()
+				attrTable := objexpr.Qualifier.Name.CompliantName()
+				attrName := objexpr.Name.CompliantName()
 				attrTables = append(attrTables, strings.ToLower(attrTable))
 				attrNames = append(attrNames, strings.ToLower(attrName))
 				attrFuncs = append(attrFuncs, types.NoneCluster)
 			case *sqlparser.FuncExpr:
-				fun := ae.Expr.(*sqlparser.FuncExpr)
-				funcType := types.NoneCluster
-				switch fun.Name.Lowered() {
+				var funcType types.ClusterType
+				switch objexpr.Name.Lowered() {
 				case "min":
 					funcType = types.MinCluster
 				case "max":
@@ -85,7 +81,7 @@ LOOP:
 					return errorutil.ErrorUndefinedBehaviour
 				}
 
-				for _, fexpr := range fun.Exprs {
+				for _, fexpr := range objexpr.Exprs {
 					if fae, ok := fexpr.(*sqlparser.AliasedExpr); ok {
 						if col, ok := fae.Expr.(*sqlparser.ColName); ok {
 							attrTable := col.Qualifier.Name.CompliantName()

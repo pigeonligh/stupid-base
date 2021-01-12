@@ -9,11 +9,13 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
+/*
 func strTo24ByteArray(name string) [24]byte {
 	ret := [24]byte{}
 	copy(ret[:], name)
 	return ret
 }
+*/
 
 func ByteArray24tostr(array [24]byte) string {
 	return strings.TrimSpace(string(bytes.Trim(array[:], string(byte(0)))))
@@ -41,5 +43,4 @@ func data2StringByTypes(data []byte, valueType types.ValueType) string {
 	}
 	// NO ATTR return "" by default
 	return strings.TrimSpace(string(bytes.Trim([]byte(ret), string(byte(0)))))
-
 }

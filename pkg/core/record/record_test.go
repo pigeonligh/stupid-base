@@ -30,7 +30,7 @@ func TestRecord(t *testing.T) {
 		return
 	}
 
-	//ridVec := [200]types.RID{}
+	// ridVec := [200]types.RID{}
 	ridVec := make([]types.RID, 0, 200)
 
 	type EmployerRecord struct {
@@ -46,10 +46,9 @@ func TestRecord(t *testing.T) {
 	nameMap[4] = "Emily"
 	nameMap[5] = "Fred"
 
-	//nameSize := 20
+	// nameSize := 20
 
 	for i := 0; i < cap(ridVec); i++ {
-
 		data := make([]byte, recordSize1)
 		record := EmployerRecord{
 			id:  i,
@@ -71,12 +70,11 @@ func TestRecord(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		record, _ := f1.GetRec(ridVec[i])
 
-		id := RecordData2IntWithOffset(record.Data, 0)
-		age := RecordData2IntWithOffset(record.Data, 8)
-		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
+		id := Data2IntWithOffset(record.Data, 0)
+		age := Data2IntWithOffset(record.Data, 8)
+		name := Data2TrimmedStringWithOffset(record.Data, 16)
 
 		t.Logf("Rid(%v %v)\n - id: %v, age: %v, name: %v\n", ridVec[i].Page, ridVec[i].Slot, id, age, name)
-
 	}
 
 	for i := 0; i < 200; i += 2 {
@@ -111,11 +109,10 @@ func TestRecord(t *testing.T) {
 		if record == nil {
 			break
 		}
-		id := RecordData2IntWithOffset(record.Data, 0)
-		age := RecordData2IntWithOffset(record.Data, 8)
-		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
+		id := Data2IntWithOffset(record.Data, 0)
+		age := Data2IntWithOffset(record.Data, 8)
+		name := Data2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
-
 	}
 
 	fscan2 := FileScan{}
@@ -141,11 +138,10 @@ func TestRecord(t *testing.T) {
 		if record == nil {
 			break
 		}
-		id := RecordData2IntWithOffset(record.Data, 0)
-		age := RecordData2IntWithOffset(record.Data, 8)
-		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
+		id := Data2IntWithOffset(record.Data, 0)
+		age := Data2IntWithOffset(record.Data, 8)
+		name := Data2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
-
 	}
 
 	err = manager.CloseFile(filename1)
@@ -164,10 +160,9 @@ func TestRecord(t *testing.T) {
 	t.Log(f1.header)
 	recList := f1.GetRecList()
 	for _, record := range recList {
-		id := RecordData2IntWithOffset(record.Data, 0)
-		age := RecordData2IntWithOffset(record.Data, 8)
-		name := RecordData2TrimmedStringWithOffset(record.Data, 16)
+		id := Data2IntWithOffset(record.Data, 0)
+		age := Data2IntWithOffset(record.Data, 8)
+		name := Data2TrimmedStringWithOffset(record.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
 	}
-
 }

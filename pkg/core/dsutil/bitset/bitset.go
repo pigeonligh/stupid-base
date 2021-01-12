@@ -1,9 +1,10 @@
 package bitset
 
 import (
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"math"
 	"strings"
+
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
@@ -34,7 +35,6 @@ func NewBitset(data *[types.BitsetArrayMaxLength]uint32, contentNums int) *Bitse
 				bitset.data[i] |= 1 << (31 - j)
 			}
 		}
-
 	}
 	return &bitset
 }
@@ -54,9 +54,8 @@ func (b *Bitset) FindLowestOneBitIdx() int {
 			idx := i*32 + int(math.Log2(float64(-b.data[i]&b.data[i])))
 			if idx >= b.size {
 				return BitsetFindNoRes
-			} else {
-				return idx
 			}
+			return idx
 		}
 	}
 	return BitsetFindNoRes
@@ -93,7 +92,7 @@ func (b *Bitset) DebugBitset() {
 
 	var sb strings.Builder
 
-	//var b2i = map[bool]int8{false: 0, true: 1}
+	// var b2i = map[bool]int8{false: 0, true: 1}
 	var b2c = map[bool]string{false: "0", true: "1"}
 
 	for i := 0; i < b.size; i++ {

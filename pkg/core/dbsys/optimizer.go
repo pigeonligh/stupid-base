@@ -29,11 +29,11 @@ func getAttrCompConstNode(expr *parser.Expr) []*parser.Expr {
 	}
 	if expr.NodeType != types.NodeComp && expr.NodeType != types.NodeLogic {
 		return []*parser.Expr{}
-	} else {
-		if expr.Left.NodeType == types.NodeAttr && expr.Right.NodeType == types.NodeConst {
-			return []*parser.Expr{expr}
-		}
 	}
+	if expr.Left.NodeType == types.NodeAttr && expr.Right.NodeType == types.NodeConst {
+		return []*parser.Expr{expr}
+	}
+
 	res := []*parser.Expr{}
 
 	res = append(res, getAttrCompConstNode(expr.Left)...)

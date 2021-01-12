@@ -52,6 +52,9 @@ func calcClusterValues(
 
 		case types.AverageCluster:
 			result = strconv.FormatFloat(float64(sum)/float64(count), 'G', 10, 64)
+
+		case types.NoneCluster:
+		default:
 		}
 
 	case types.FLOAT:
@@ -90,7 +93,10 @@ func calcClusterValues(
 			result = strconv.FormatFloat(sum, 'G', 10, 64)
 
 		case types.AverageCluster:
-			result = strconv.FormatFloat(float64(sum)/float64(count), 'G', 10, 64)
+			result = strconv.FormatFloat(sum/float64(count), 'G', 10, 64)
+
+		case types.NoneCluster:
+		default:
 		}
 	}
 	return result, nil

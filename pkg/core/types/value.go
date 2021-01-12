@@ -10,28 +10,11 @@ import (
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
 )
 
-//type ConvertValue interface {
-//	ToInt64() int
-//	FromInt64(val int)
-//	ToFloat64() float64
-//	FromFloat64(val float64)
-//	ToBool() bool
-//	FromBool(val bool)
-//}
-
 type Value struct {
 	Value     [MaxStringSize]byte
 	ValueType ValueType
 }
 
-//const (
-//	NO_ATTR ValueType = iota
-//	INT
-//	FLOAT
-//	DATE
-//	VARCHAR
-//	BOOL
-//)
 func CheckIfValueTypeCompatible(l, r ValueType) bool {
 	if l == INT {
 		return r == INT || r == FLOAT || r == DATE
@@ -54,33 +37,32 @@ func String2Value(str string, size int, target ValueType) (Value, error) {
 	case VARCHAR:
 		if len(str) > size {
 			return val, errorutil.ErrorDBSysStringExceedLength
-		} else {
-			val.FromStr(str)
 		}
+		val.FromStr(str)
 	case BOOL:
-		if b, err := strconv.ParseBool(str); err != nil {
+		b, err := strconv.ParseBool(str)
+		if err != nil {
 			return val, err
-		} else {
-			val.FromBool(b)
 		}
+		val.FromBool(b)
 	case DATE:
-		if t, err := time.Parse("2006-1-2", str); err != nil {
+		t, err := time.Parse("2006-1-2", str)
+		if err != nil {
 			return val, err
-		} else {
-			val.FromInt64(int(t.Unix()))
 		}
+		val.FromInt64(int(t.Unix()))
 	case INT:
-		if i, err := strconv.ParseInt(str, 10, size*8); err != nil {
+		i, err := strconv.ParseInt(str, 10, size*8)
+		if err != nil {
 			return val, err
-		} else {
-			val.FromInt64(int(i))
 		}
+		val.FromInt64(int(i))
 	case FLOAT:
-		if f, err := strconv.ParseFloat(str, size*8); err != nil {
+		f, err := strconv.ParseFloat(str, size*8)
+		if err != nil {
 			return val, err
-		} else {
-			val.FromFloat64(f)
 		}
+		val.FromFloat64(f)
 	}
 	return val, nil
 }
@@ -264,7 +246,6 @@ func (v *Value) EQ(c *Value) bool {
 }
 
 func (v *Value) ToInt64() int {
-
 	return *(*int)(ByteSliceToPointer(v.Value[:]))
 }
 

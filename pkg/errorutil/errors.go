@@ -22,11 +22,11 @@ var (
 	// ErrorBufferFull is an error
 	ErrorBufferFull = errors.New("the buffer is full")
 
-	// ErrorImcompleteRead is an error
-	ErrorImcompleteRead = errors.New("the data is imcomplete read")
+	// ErrorIncompleteRead is an error
+	ErrorIncompleteRead = errors.New("the data is incomplete read")
 
-	// ErrorImcompleteWrite is an error
-	ErrorImcompleteWrite = errors.New("the data is imcomplete written")
+	// ErrorIncompleteWrite is an error
+	ErrorIncompleteWrite = errors.New("the data is incomplete written")
 
 	// ErrorNotImplemented is an error
 	ErrorNotImplemented = errors.New("function is not implemented")
@@ -43,6 +43,6 @@ var (
 	// ErrorUnknown is an error
 	ErrorUnknown = errors.New("you meet unknown error")
 
-	// ErrorUndefinedBehaviour
+	// ErrorUndefinedBehaviour is an error
 	ErrorUndefinedBehaviour = errors.New("undefined behaviour")
 )

@@ -221,6 +221,7 @@ func (m *Manager) DropTable(relName string) error {
 
 	relInfo := m.GetDBRelInfoMap()
 	delete(relInfo, relName)
+	m.SetDBRelInfoMap(relInfo)
 
 	return nil
 }

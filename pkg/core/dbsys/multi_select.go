@@ -78,7 +78,6 @@ func (m *Manager) SelectTablesByWhereExpr(
 
 			values := TT2Attrs(table, cvs)
 			newCalculatedValues = append(newCalculatedValues, values...)
-
 		}
 
 		allAttrs = append(allAttrs, attrs...)
@@ -184,6 +183,9 @@ func (m *Manager) SelectTablesByWhereExpr(
 						clusterValues[key] = value
 					}
 					rawVal = clusterValues[key]
+
+				case types.NoneCluster:
+				default:
 				}
 			}
 
@@ -212,6 +214,7 @@ func (m *Manager) SelectTablesByWhereExpr(
 				attrs[i] = "sum(" + attrs[i] + ")"
 			case types.AverageCluster:
 				attrs[i] = "avg(" + attrs[i] + ")"
+			case types.NoneCluster:
 			}
 		}
 	}

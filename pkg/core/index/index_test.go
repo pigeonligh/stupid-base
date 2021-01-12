@@ -86,11 +86,10 @@ func scanData(rHandle *record.FileHandle, iHandle *FileHandle, t *testing.T) {
 			return
 		}
 
-		id := record.RecordData2IntWithOffset(rec.Data, 0)
-		age := record.RecordData2IntWithOffset(rec.Data, 8)
-		name := record.RecordData2TrimmedStringWithOffset(rec.Data, 16)
+		id := record.Data2IntWithOffset(rec.Data, 0)
+		age := record.Data2IntWithOffset(rec.Data, 8)
+		name := record.Data2TrimmedStringWithOffset(rec.Data, 16)
 		t.Logf("id: %v, age: %v, name: %v\n", id, age, name)
-
 	}
 }
 

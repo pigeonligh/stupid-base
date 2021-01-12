@@ -30,7 +30,7 @@ func columnDefinitionToAttrInfo(col *sqlparser.ColumnDefinition, tableName strin
 	} else {
 		attr.Default.ValueType = attr.AttrType
 		value := col.Type.Default.(*sqlparser.Literal)
-		copy(attr.Default.Value[:], value.Val[:])
+		copy(attr.Default.Value[:], value.Val)
 	}
 	return attr
 }
@@ -105,7 +105,6 @@ func (db *Database) solveCreateTable(obj sqlparser.Statement) error {
 		if err := db.addIndexDefinition(index, tableName); err != nil {
 			return err
 		}
-
 	}
 	for _, constraint := range stmt.TableSpec.Constraints {
 		if err := db.addConstraintDefinition(constraint, tableName); err != nil {
@@ -141,93 +140,79 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 	tableName := stmt.Table.Name.CompliantName()
 	tableName = strings.ToLower(tableName)
 	for _, option := range stmt.AlterOptions {
-		switch option.(type) {
+		switch act := option.(type) {
 		case *sqlparser.AddColumns:
-			if act, ok := option.(*sqlparser.AddColumns); ok {
-				for _, col := range act.Columns {
-					attr := columnDefinitionToAttrInfo(col, tableName)
-					colName := col.Name.CompliantName()
-					colName = strings.ToLower(colName)
-					err := db.sysManager.AddColumn(tableName, colName, attr)
-					if err != nil {
-						return err
-					}
+			for _, col := range act.Columns {
+				attr := columnDefinitionToAttrInfo(col, tableName)
+				colName := col.Name.CompliantName()
+				colName = strings.ToLower(colName)
+				err := db.sysManager.AddColumn(tableName, colName, attr)
+				if err != nil {
+					return err
 				}
-				return nil
 			}
+			return nil
 
 		case *sqlparser.RenameTable:
-			if act, ok := option.(*sqlparser.RenameTable); ok {
-				actName := act.Table.Name.CompliantName()
-				actName = strings.ToLower(actName)
-				err := db.sysManager.RenameTable(tableName, actName)
-				if err != nil {
-					return err
-				}
-				return nil
+			actName := act.Table.Name.CompliantName()
+			actName = strings.ToLower(actName)
+			err := db.sysManager.RenameTable(tableName, actName)
+			if err != nil {
+				return err
 			}
+			return nil
 
 		case *sqlparser.DropColumn:
-			if act, ok := option.(*sqlparser.DropColumn); ok {
-				actName := act.Name.Name.CompliantName()
-				actName = strings.ToLower(actName)
-				err := db.sysManager.DropColumn(tableName, actName)
-				if err != nil {
-					return err
-				}
-				return nil
+			actName := act.Name.Name.CompliantName()
+			actName = strings.ToLower(actName)
+			err := db.sysManager.DropColumn(tableName, actName)
+			if err != nil {
+				return err
 			}
+			return nil
 
 		case *sqlparser.AddConstraintDefinition:
-			if act, ok := option.(*sqlparser.AddConstraintDefinition); ok {
-				if err := db.addConstraintDefinition(act.ConstraintDefinition, tableName); err != nil {
-					return err
-				}
-				return nil
+			if err := db.addConstraintDefinition(act.ConstraintDefinition, tableName); err != nil {
+				return err
 			}
+			return nil
 
 		case *sqlparser.DropKey:
-			if act, ok := option.(*sqlparser.DropKey); ok {
-				switch act.Type {
-				case sqlparser.ForeignKeyType:
-					if err := db.sysManager.DropForeignKey(strings.ToLower(act.Name)); err != nil {
-						return err
-					}
-				case sqlparser.NormalKeyType:
-					if err := db.sysManager.DropIndex(strings.ToLower(tableName), strings.ToLower(act.Name)); err != nil {
-						return err
-					}
-				case sqlparser.PrimaryKeyType:
-					if err := db.sysManager.DropPrimaryKey(strings.ToLower(tableName)); err != nil {
-						return err
-					}
+			switch act.Type {
+			case sqlparser.ForeignKeyType:
+				if err := db.sysManager.DropForeignKey(strings.ToLower(act.Name)); err != nil {
+					return err
 				}
-				return nil
+			case sqlparser.NormalKeyType:
+				if err := db.sysManager.DropIndex(strings.ToLower(tableName), strings.ToLower(act.Name)); err != nil {
+					return err
+				}
+			case sqlparser.PrimaryKeyType:
+				if err := db.sysManager.DropPrimaryKey(strings.ToLower(tableName)); err != nil {
+					return err
+				}
 			}
+			return nil
 
 		case *sqlparser.AddIndexDefinition:
-			if act, ok := option.(*sqlparser.AddIndexDefinition); ok {
-				if err := db.addIndexDefinition(act.IndexDefinition, tableName); err != nil {
-					return err
-				}
-				return nil
+			if err := db.addIndexDefinition(act.IndexDefinition, tableName); err != nil {
+				return err
 			}
+			return nil
 
 		case *sqlparser.ChangeColumn:
-			if act, ok := option.(*sqlparser.ChangeColumn); ok {
-				colName := act.OldColumn.Name.CompliantName()
-				colName = strings.ToLower(colName)
-				col := act.NewColDefinition
-				attr := columnDefinitionToAttrInfo(col, tableName)
+			colName := act.OldColumn.Name.CompliantName()
+			colName = strings.ToLower(colName)
+			col := act.NewColDefinition
+			attr := columnDefinitionToAttrInfo(col, tableName)
 
-				changeField := dbsys.ChangeDefault | dbsys.ChangeNull | dbsys.ChangeValueType
+			changeField := dbsys.ChangeDefault | dbsys.ChangeNull | dbsys.ChangeValueType
 
-				err := db.sysManager.ChangeColumn(tableName, colName, &attr, changeField)
-				if err != nil {
-					return err
-				}
-				return nil
+			err := db.sysManager.ChangeColumn(tableName, colName, &attr, changeField)
+			if err != nil {
+				return err
 			}
+			return nil
 
 		case *sqlparser.AlgorithmValue:
 		case *sqlparser.AlterCharset:

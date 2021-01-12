@@ -39,15 +39,6 @@ func GetInstance() *Manager {
 	return instance
 }
 
-//func init() {
-//	log.V(log.StorageLevel).Info("Storage Manager starts to initialize.")
-//	defer log.V(log.StorageLevel).Info("Storage Manager has been initialized.")
-//	instance = &Manager{
-//		buffer: buffer.NewManager(bufferSize, types.PageSize),
-//		files:  make(map[string]*FileHandle),
-//	}
-//}
-
 // CreateFile creates a new file
 func (m *Manager) CreateFile(filename string) error {
 	file, err := os.Create(env.WorkDir + "/" + filename)
@@ -79,7 +70,7 @@ func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
 // CloseFile closes a file
 func (m *Manager) CloseFile(filename string) error {
 	if handle, found := m.files[filename]; found {
-		m.buffer.FlushPages(handle.file)
+		_ = m.buffer.FlushPages(handle.file)
 		if err := handle.file.Close(); err != nil {
 			return err
 		}

@@ -13,7 +13,7 @@ type IndexedValue struct {
 
 func initValuePage(page *storage.PageHandle) types.RID {
 	currentValuePage := (*types.IMValuePage)(types.ByteSliceToPointer(page.Data))
-	for i := 0; i < int(types.IMValueItem); i++ {
+	for i := 0; i < types.IMValueItem; i++ {
 		currentValuePage.Values[i].Next = types.MakeRID(page.Page, i-1)
 	}
 	return types.RID{

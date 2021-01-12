@@ -9,7 +9,6 @@ import (
 )
 
 func TestMyBitset(t *testing.T) {
-
 	// log.SetDebugMode(true)
 	log.SetLevel(log.BitsetLevel)
 	data := make([]byte, types.PageSize)
@@ -32,7 +31,7 @@ func TestMyBitset(t *testing.T) {
 	log.Debugf("Set: %v %v %v %v %v\n", 48, 63, 64, 126, 125)
 	bitset.DebugBitset()
 
-	for i := 0; i < contentSize; i += 1 {
+	for i := 0; i < contentSize; i++ {
 		bitset.Clean(i)
 	}
 
@@ -55,5 +54,4 @@ func TestMyBitset(t *testing.T) {
 			t.Errorf("FindLowestZeroBitIdx Error! Results should be %v but it's %v", i, res)
 		}
 	}
-
 }

@@ -28,12 +28,14 @@ func GetInstance() *Manager {
 	return instance
 }
 
-//func init() {
-//	instance = &Manager{
-//		storage: storage.GetInstance(),
-//		files: make(map[string]*FileHandle),
-//	}
-//}
+/*
+func init() {
+	instance = &Manager{
+		storage: storage.GetInstance(),
+		files: make(map[string]*FileHandle),
+	}
+}
+*/
 
 func (m *Manager) CreateFile(filename string, recordSize int) error {
 	var err error
@@ -72,7 +74,6 @@ func (m *Manager) CreateFile(filename string, recordSize int) error {
 }
 
 func (m *Manager) OpenFile(filename string) (*FileHandle, error) {
-
 	if file, found := m.files[filename]; found {
 		log.V(log.RecordLevel).Infof("OpenFile: %v has already opened! ", filename)
 		return file, nil

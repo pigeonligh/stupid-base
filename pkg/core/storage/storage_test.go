@@ -109,5 +109,4 @@ func TestBuffer(t *testing.T) {
 	if err := manager.DestroyFile(filename2); err != nil {
 		t.Error(err)
 	}
-	return
 }

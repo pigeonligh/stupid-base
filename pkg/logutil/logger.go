@@ -43,55 +43,55 @@ func (logger *Logger) wrap(s string) string {
 // Debug logs important message
 func (logger *Logger) Debug(v ...interface{}) {
 	if logger.debugLogger != nil && mode == modeDebug {
-		logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
+		_ = logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
 	}
 }
 
 // Debugf logs important message
 func (logger *Logger) Debugf(format string, v ...interface{}) {
 	if logger.debugLogger != nil && mode == modeDebug {
-		logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
+		_ = logger.debugLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
 	}
 }
 
 // Info logs important message
 func (logger *Logger) Info(v ...interface{}) {
 	if logger.infoLogger != nil {
-		logger.infoLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
+		_ = logger.infoLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
 	}
 }
 
 // Infof logs important message
 func (logger *Logger) Infof(format string, v ...interface{}) {
 	if logger.infoLogger != nil {
-		logger.infoLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
+		_ = logger.infoLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
 	}
 }
 
 // Warning logs warning message
 func (logger *Logger) Warning(v ...interface{}) {
 	if logger.warningLogger != nil {
-		logger.warningLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
+		_ = logger.warningLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
 	}
 }
 
 // Warningf logs important message
 func (logger *Logger) Warningf(format string, v ...interface{}) {
 	if logger.warningLogger != nil {
-		logger.warningLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
+		_ = logger.warningLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
 	}
 }
 
 // Error logs error message
 func (logger *Logger) Error(v ...interface{}) {
 	if logger.errorLogger != nil {
-		logger.errorLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
+		_ = logger.errorLogger.Output(logger.depth, logger.wrap(fmt.Sprintln(v...)))
 	}
 }
 
 // Errorf logs important message
 func (logger *Logger) Errorf(format string, v ...interface{}) {
 	if logger.errorLogger != nil {
-		logger.errorLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
+		_ = logger.errorLogger.Output(logger.depth, logger.wrap(fmt.Sprintf(format, v...)+"\n"))
 	}
 }

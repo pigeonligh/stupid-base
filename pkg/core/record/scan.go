@@ -13,9 +13,9 @@ type FileScan struct {
 	cond           *parser.Expr
 	currentBitset  *bitset.Bitset
 	currentBitData [types.BitsetArrayMaxLength]uint32
-	tableName      string
-	currentPage    types.PageNum
-	init           bool
+	// tableName      string
+	currentPage types.PageNum
+	init        bool
 }
 
 func (f *FileScan) OpenFullScan(file *FileHandle) error {
@@ -57,7 +57,7 @@ func (f *FileScan) GetNextRecord() (*Record, error) {
 			slot = f.currentBitset.FindLowestOneBitIdx()
 		}
 		for slot == bitset.BitsetFindNoRes {
-			f.currentPage += 1
+			f.currentPage++
 			if f.currentPage >= f.file.header.Pages {
 				f.init = false
 				return nil, nil

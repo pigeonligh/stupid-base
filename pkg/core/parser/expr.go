@@ -134,17 +134,21 @@ func (expr *Expr) Calculate(data []byte, relName string) error {
 		if err := expr.Left.Calculate(data, relName); err != nil {
 			return err
 		}
-		//if !expr.Left.IsCalculated {
-		//	panic(0) // defense programming
-		//}
+		/*
+			if !expr.Left.IsCalculated {
+				panic(0) // defense programming
+			}
+		*/
 	}
 	if expr.Right != nil {
 		if err := expr.Right.Calculate(data, relName); err != nil {
 			return err
 		}
-		//if !expr.Right.IsCalculated {
-		//	panic(0) // defense programming
-		//}
+		/*
+			if !expr.Right.IsCalculated {
+				panic(0) // defense programming
+			}
+		*/
 	}
 
 	switch expr.NodeType {

@@ -190,7 +190,6 @@ func solveMultiStepSuggests(
 	}
 
 	for _, text := range fields {
-
 		for _, suggest := range suggests {
 			if text == suggest.Text {
 				now = now + "." + text

@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	// db operation
+
 	ErrorDBSysCreateDBFails = errors.New("create database fails")
 
 	ErrorDBSysDropDBFails = errors.New("drop database fails")
@@ -27,6 +28,7 @@ var (
 	ErrorDBSysDuplicatedAttrsFound = errors.New("duplicated attrs found")
 
 	// some rules
+
 	ErrorDBSysMaxAttrExceeded = errors.New("max attr nums 40 exceed")
 
 	ErrorDBSysMaxNameExceeded = errors.New("name length exceed size 24")
@@ -36,6 +38,7 @@ var (
 	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
 	// foreign key
+
 	ErrorDBSysForeignKeyConstraintNotMatch = errors.New("foreign key constraint not match")
 
 	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
@@ -55,6 +58,7 @@ var (
 	ErrorDBSysBigRecordNotSupported = errors.New("big record not supported")
 
 	// index related
+
 	ErrorDBSysColIndexAlreadyExisted = errors.New("column index already created")
 
 	ErrorDBSysIndexNameAlreadyExisted = errors.New("index name already created")
@@ -64,11 +68,13 @@ var (
 	ErrorDBSysInvalidIndexName = errors.New("invalid idx name > 24")
 
 	// primary key
+
 	ErrorDBSysDuplicatedKeysFound = errors.New("duplicated keys found")
 
 	ErrorDBSysIsNotPrimaryKeys = errors.New("is not primary keys")
 
 	// insert rules
+
 	ErrorDBSysInsertValueNotValid = errors.New("insert value not valid")
 
 	ErrorDBSysStringExceedLength = errors.New("insert string exceed length")
@@ -82,14 +88,17 @@ var (
 	ErrorDBSysInsertBoolFormatError = errors.New("insert bool format fail")
 
 	// update rules
+
 	ErrorDBSysUpdateValueTypeNotMatch = errors.New("update value type not match")
 
 	ErrorDBSysNullConstraintViolated = errors.New("null constraint violated")
 
 	// add column
+
 	ErrorDBSysAddComplicateColumnNotSupported = errors.New("add complicate col not supported")
 
 	// remove column
+
 	ErrorDBSysCannotRemoveLastColumn = errors.New("cannot remove last column")
 
 	ErrorDBSysCannotRemovePrimaryColumn = errors.New("cannot remove primary column with multiple column define on table")
@@ -97,5 +106,6 @@ var (
 	ErrorDBSysCannotRemoveForeignKeyCol = errors.New("cannot remove column which has fk")
 
 	// change
+
 	ErrorDBSysCannotChangePkFkColumn = errors.New("cannot change primary columnn")
 )

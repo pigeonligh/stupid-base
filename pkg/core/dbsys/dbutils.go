@@ -60,6 +60,9 @@ type RelInfoMap map[string]RelInfo
 func (m *Manager) GetDBRelInfoMap() RelInfoMap {
 	// existence has been checked
 	file, err := os.OpenFile(env.WorkDir+"/"+DBMetaName, os.O_RDWR|os.O_SYNC, 0666)
+	if err != nil {
+		panic(err)
+	}
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -106,50 +109,6 @@ func (m *Manager) SetRelInfo(info RelInfo) {
 	m.SetDBRelInfoMap(relInfoMap)
 }
 
-//type IdxName2ColsMap map[string][]string
-//type IdxCol2NameMap map[string]string
-//type IdxInfoCollection struct {
-//	Name2Cols IdxName2ColsMap
-//	Col2Name  IdxCol2NameMap
-//}
-//
-//func (m *Manager) GetIdxInfoCollection(relName string) IdxInfoCollection {
-//	file, err := os.OpenFile(env.WorkDir + "/" + getTableIdxMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
-//	defer func() {
-//		if err := file.Close(); err != nil {
-//			panic(err)
-//		}
-//	}()
-//	var decodedMap IdxInfoCollection
-//	d := gob.NewDecoder(file)
-//	// Decoding the serialized data
-//	err = d.Decode(&decodedMap)
-//	if err != nil {
-//		panic(err)
-//	}
-//	return decodedMap
-//}
-//
-//func (m *Manager) SetIdxInfoCollection(relName string, collection IdxInfoCollection) {
-//	// idx existence has been checked in upper callers
-//	file, err := os.OpenFile(env.WorkDir + "/" + getTableIdxMetaFileName(relName), os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
-//	defer func() {
-//		if err := file.Close(); err != nil {
-//			panic(err)
-//		}
-//	}()
-//	if err != nil {
-//		panic(err)
-//	}
-//	e := gob.NewEncoder(file)
-//	// Encoding the map
-//	err = e.Encode(collection)
-//	if err != nil {
-//		panic(err)
-//	}
-//}
-//
-
 type FkConstraint struct {
 	FkName  string
 	SrcRel  string
@@ -164,6 +123,9 @@ type FkConstraintMap map[string]FkConstraint
 
 func (m *Manager) GetFkInfoMap() FkConstraintMap {
 	file, err := os.OpenFile(env.WorkDir+"/"+GlbFkFileName, os.O_RDWR|os.O_SYNC, 0666)
+	if err != nil {
+		panic(err)
+	}
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)
@@ -213,6 +175,9 @@ func (m *Manager) GetAttrInfoList(relName string) AttrInfoList {
 		return res
 	}
 	file, err := os.OpenFile(env.WorkDir+"/"+getTableMetaFileName(relName), os.O_RDWR|os.O_SYNC, 0666)
+	if err != nil {
+		panic(err)
+	}
 	defer func() {
 		if err := file.Close(); err != nil {
 			panic(err)

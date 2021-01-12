@@ -107,7 +107,7 @@ func (m *Manager) SelectTablesByWhereExpr(
 
 	totLength := 0
 	for _, attr := range selectedAttrs {
-		offs = append(offs, attr.AttrOffset)
+		offs = append(offs, totLength)
 		lens = append(lens, attr.AttrSize)
 		rels = append(rels, attr.RelName)
 		attrs = append(attrs, attr.AttrName)

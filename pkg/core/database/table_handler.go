@@ -191,15 +191,15 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 			if act, ok := option.(*sqlparser.DropKey); ok {
 				switch act.Type {
 				case sqlparser.ForeignKeyType:
-					if err := db.sysManager.DropForeignKey(act.Name); err != nil {
+					if err := db.sysManager.DropForeignKey(strings.ToLower(act.Name)); err != nil {
 						return err
 					}
 				case sqlparser.NormalKeyType:
-					if err := db.sysManager.DropIndex(tableName, act.Name); err != nil {
+					if err := db.sysManager.DropIndex(strings.ToLower(tableName), strings.ToLower(act.Name)); err != nil {
 						return err
 					}
 				case sqlparser.PrimaryKeyType:
-					if err := db.sysManager.DropPrimaryKey(tableName); err != nil {
+					if err := db.sysManager.DropPrimaryKey(strings.ToLower(tableName)); err != nil {
 						return err
 					}
 				}

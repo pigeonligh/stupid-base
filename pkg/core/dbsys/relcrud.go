@@ -330,7 +330,15 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 		for attr, val := range name2Val {
 			off := infoMap[attr].AttrOffset
 			size := infoMap[attr].AttrSize
-			copy(tmpTable.rows[i].Data[off:off+size], val.Value[0:size])
+			if val.ValueType == types.NO_ATTR {
+				if tmpTable.nils[i] {
+					tmpTable.rows[i].Data[off+size] = 1
+				} else {
+					return errorutil.ErrorDBSysNullConstraintViolated
+				}
+			} else {
+				copy(tmpTable.rows[i].Data[off:off+size], val.Value[0:size])
+			}
 		}
 	}
 
@@ -358,7 +366,7 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 			if fkInfo.SrcRel == relName {
 				// check if the altered value will satisfied
 				attrSet := m.GetAttrSetFromAttrs(fkInfo.SrcRel, fkInfo.SrcAttr)
-				datafile, _ := m.relManager.OpenFile(getTableDataFileName(getTableDataFileName(fkInfo.DstRel)))
+				datafile, _ := m.relManager.OpenFile(getTableDataFileName(fkInfo.DstRel))
 				idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(fkInfo.DstRel, PrimaryKeyIdxName), datafile)
 				defer m.relManager.CloseFile(datafile.Filename)
 				defer m.idxManager.CloseIndex(getTableIdxDataFileName(fkInfo.DstRel, PrimaryKeyIdxName))

@@ -518,7 +518,6 @@ func (m *Manager) RenameTable(srcName, dstName string) error {
 		delete(relInfoMap, srcName)
 	}
 	m.SetDBRelInfoMap(relInfoMap)
-
 	// rename index file
 	for idx := range attrInfoCollection.IdxMap {
 		_ = os.Rename(env.WorkDir+"/"+getTableIdxDataFileName(srcName, idx), env.WorkDir+"/"+getTableIdxDataFileName(dstName, idx))

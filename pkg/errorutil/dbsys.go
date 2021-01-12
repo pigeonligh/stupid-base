@@ -36,7 +36,7 @@ var (
 	ErrorDBSysPrimaryKeyDoNotExist = errors.New("primary key do not exist")
 
 	// foreign key
-	ErrorDBSysForeignKeyConstraintNotMatch = errors.New("foreign key constraint not match while deleting")
+	ErrorDBSysForeignKeyConstraintNotMatch = errors.New("foreign key constraint not match")
 
 	ErrorDBSysForeignKeyRefSelf = errors.New("foreign key src relation reference self")
 

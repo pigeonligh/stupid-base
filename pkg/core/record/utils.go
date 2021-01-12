@@ -2,9 +2,10 @@ package record
 
 import (
 	"bytes"
-	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"math"
 	"strings"
+
+	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )
 
 func recordPerPage(recordSize int) int {

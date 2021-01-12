@@ -1,9 +1,10 @@
 package bitset
 
 import (
-	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 	"math"
 	"strings"
+
+	log "github.com/pigeonligh/stupid-base/pkg/logutil"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 )

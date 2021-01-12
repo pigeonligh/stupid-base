@@ -2,11 +2,12 @@ package dbsys
 
 import (
 	"encoding/gob"
+	"os"
+
 	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
-	"os"
 )
 
 func compareBytes(attr1, attr2 []byte) int {

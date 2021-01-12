@@ -20,7 +20,7 @@ import (
 //}
 
 type Value struct {
-	Value     [MaxStringSize]byte
+	Value     [types.MaxStringSize]byte
 	ValueType ValueType
 }
 

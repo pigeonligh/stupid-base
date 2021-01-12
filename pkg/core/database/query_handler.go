@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
@@ -52,13 +51,14 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
+LOOP:
 	for _, expr := range stmt.SelectExprs {
 		switch expr.(type) {
 		case *sqlparser.StarExpr:
 			attrTables = nil
 			attrNames = nil
 			attrFuncs = nil
-			break
+			break LOOP
 		case *sqlparser.AliasedExpr:
 			ae := expr.(*sqlparser.AliasedExpr)
 			switch ae.Expr.(type) {
@@ -76,11 +76,11 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 				case "min":
 					funcType = types.MinCluster
 				case "max":
-					funcType = types.MinCluster
+					funcType = types.MaxCluster
 				case "sum":
-					funcType = types.MinCluster
+					funcType = types.SumCluster
 				case "avg":
-					funcType = types.MinCluster
+					funcType = types.AverageCluster
 				default:
 					return errorutil.ErrorUndefinedBehaviour
 				}
@@ -105,9 +105,6 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 			}
 		}
 	}
-
-	fmt.Println(attrNames)
-	fmt.Println(attrFuncs)
 
 	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, attrFuncs, stmt.Where)
 

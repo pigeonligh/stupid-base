@@ -14,6 +14,8 @@ var (
 
 	ErrorDBSysDBNotSelected = errors.New("database not selected")
 
+	ErrorDBSysDBNotExisted = errors.New("database not existed")
+
 	ErrorDBSysRelationExisted = errors.New("table existed")
 
 	ErrorDBSysRelationNotExisted = errors.New("table not existed")

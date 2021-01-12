@@ -112,11 +112,17 @@ func (m *Manager) OpenDB(dbName string) error {
 		// _ = os.Chdir("..")
 		env.SetWorkDir(env.DatabaseDir)
 	}
+
 	/*
 		if err := os.Chdir(dbName); err != nil {
 			log.V(log.DBSysLevel).Error(err)
 			return errorutil.ErrorDBSysOpenDBFails
 		}*/
+
+	if _, err := os.Stat(env.DatabaseDir + "/" + dbName); err != nil {
+		return errorutil.ErrorDBSysDBNotExisted
+	}
+
 	env.SetWorkDir(env.DatabaseDir + "/" + dbName)
 	m.dbSelected = dbName
 	m.rels = make(map[string]AttrInfoList)

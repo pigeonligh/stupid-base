@@ -30,6 +30,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	tableNames := []string{}
 	attrTables := []string{}
 	attrNames := []string{}
+	attrFuncs := []types.ClusterType{}
 
 	if !db.sysManager.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
@@ -50,23 +51,62 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
+LOOP:
 	for _, expr := range stmt.SelectExprs {
 		switch expr.(type) {
 		case *sqlparser.StarExpr:
+			attrTables = nil
 			attrNames = nil
-			break
+			attrFuncs = nil
+			break LOOP
 		case *sqlparser.AliasedExpr:
 			ae := expr.(*sqlparser.AliasedExpr)
-			if col, ok := ae.Expr.(*sqlparser.ColName); ok {
+			switch ae.Expr.(type) {
+			case *sqlparser.ColName:
+				col := ae.Expr.(*sqlparser.ColName)
 				attrTable := col.Qualifier.Name.CompliantName()
 				attrName := col.Name.CompliantName()
 				attrTables = append(attrTables, strings.ToLower(attrTable))
 				attrNames = append(attrNames, strings.ToLower(attrName))
+				attrFuncs = append(attrFuncs, types.NoneCluster)
+			case *sqlparser.FuncExpr:
+				fun := ae.Expr.(*sqlparser.FuncExpr)
+				funcType := types.NoneCluster
+				switch fun.Name.Lowered() {
+				case "min":
+					funcType = types.MinCluster
+				case "max":
+					funcType = types.MaxCluster
+				case "sum":
+					funcType = types.SumCluster
+				case "avg":
+					funcType = types.AverageCluster
+				default:
+					return errorutil.ErrorUndefinedBehaviour
+				}
+
+				for _, fexpr := range fun.Exprs {
+					if fae, ok := fexpr.(*sqlparser.AliasedExpr); ok {
+						if col, ok := fae.Expr.(*sqlparser.ColName); ok {
+							attrTable := col.Qualifier.Name.CompliantName()
+							attrName := col.Name.CompliantName()
+							attrTables = append(attrTables, strings.ToLower(attrTable))
+							attrNames = append(attrNames, strings.ToLower(attrName))
+							attrFuncs = append(attrFuncs, funcType)
+						} else {
+							return errorutil.ErrorUndefinedBehaviour
+						}
+					} else {
+						return errorutil.ErrorUndefinedBehaviour
+					}
+				}
+			default:
+				return errorutil.ErrorUndefinedBehaviour
 			}
 		}
 	}
 
-	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, stmt.Where)
+	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, attrFuncs, stmt.Where)
 
 	if err != nil {
 		return err

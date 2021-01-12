@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -245,6 +244,5 @@ func (db *Database) solveAlterTable(obj sqlparser.Statement) error {
 		}
 	}
 
-	fmt.Println("unsolve")
-	return nil
+	return errorutil.ErrorUndefinedBehaviour
 }

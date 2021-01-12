@@ -49,6 +49,7 @@ func (m *Manager) SelectTablesByWhereExpr(
 	relNameList []string,
 	attrTableList []string,
 	attrNameList []string,
+	attrFuncList []types.ClusterType,
 	expr *sqlparser.Where,
 ) (*TemporalTable, error) {
 	allAttrs := AttrInfoList{}

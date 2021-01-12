@@ -42,4 +42,7 @@ var (
 
 	// ErrorUnknown is an error
 	ErrorUnknown = errors.New("you meet unknown error")
+
+	// ErrorUndefinedBehaviour
+	ErrorUndefinedBehaviour = errors.New("undefined behaviour")
 )

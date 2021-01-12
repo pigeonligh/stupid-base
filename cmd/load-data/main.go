@@ -42,12 +42,12 @@ func main() {
 			}
 		}
 
-		for _, sql := range afterCommand {
-			if err := db.Run(sql); err != nil {
-				fmt.Println("Error:", err)
-				os.Exit(1)
-			}
-		}
+		//for _, sql := range afterCommand {
+		//	if err := db.Run(sql); err != nil {
+		//		fmt.Println("Error:", err)
+		//		os.Exit(1)
+		//	}
+		//}
 
 		for _, tableName := range configOrder {
 			fmt.Println("insert", tableName)

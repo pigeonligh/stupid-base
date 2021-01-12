@@ -55,7 +55,7 @@ func (db *Database) solveString(sql string, originError error) error {
 			if _, ok := relMap[name]; ok {
 				db.sysManager.PrintTableMeta(name)
 			} else {
-				return errorutil.ErrorDBSysRelationExisted
+				return errorutil.ErrorDBSysRelationNotExisted
 			}
 		}
 	}

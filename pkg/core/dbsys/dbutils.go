@@ -2,12 +2,11 @@ package dbsys
 
 import (
 	"encoding/gob"
-	"os"
-
 	"github.com/pigeonligh/stupid-base/pkg/core/env"
 	"github.com/pigeonligh/stupid-base/pkg/core/parser"
 	"github.com/pigeonligh/stupid-base/pkg/core/types"
 	"github.com/pigeonligh/stupid-base/pkg/errorutil"
+	"os"
 )
 
 func compareBytes(attr1, attr2 []byte) int {
@@ -76,6 +75,18 @@ func (m *Manager) GetDBRelInfoMap() RelInfoMap {
 }
 
 func (m *Manager) SetDBRelInfoMap(infoMap RelInfoMap) {
+	// incremental
+	for key := range infoMap {
+		if _, found := m.rels[key]; !found {
+			m.rels[key] = nil
+		}
+	}
+	for key := range m.rels {
+		if _, found := infoMap[key]; !found {
+			delete(m.rels, key)
+		}
+	}
+
 	file, err := os.OpenFile(env.WorkDir+"/"+DBMetaName, os.O_CREATE|os.O_RDWR|os.O_SYNC, 0666)
 	if err != nil {
 		panic(err)

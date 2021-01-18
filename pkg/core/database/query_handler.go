@@ -13,9 +13,8 @@ func exprToString(expr sqlparser.Expr) string {
 	if value, ok := expr.(*sqlparser.Literal); ok {
 		if value == nil {
 			return types.MagicNullString
-		} else {
-			return string(value.Val)
 		}
+		return string(value.Val)
 	}
 	// parse failed, treat as NULL
 	return types.MagicNullString
@@ -30,6 +29,7 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 	tableNames := []string{}
 	attrTables := []string{}
 	attrNames := []string{}
+	attrFuncs := []types.ClusterType{}
 
 	if !db.sysManager.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
@@ -50,23 +50,59 @@ func (db *Database) solveSelect(obj sqlparser.Statement) error {
 		}
 	}
 
+LOOP:
 	for _, expr := range stmt.SelectExprs {
-		switch expr.(type) {
+		switch obj := expr.(type) {
 		case *sqlparser.StarExpr:
+			attrTables = nil
 			attrNames = nil
-			break
+			attrFuncs = nil
+			break LOOP
 		case *sqlparser.AliasedExpr:
-			ae := expr.(*sqlparser.AliasedExpr)
-			if col, ok := ae.Expr.(*sqlparser.ColName); ok {
-				attrTable := col.Qualifier.Name.CompliantName()
-				attrName := col.Name.CompliantName()
+			switch objexpr := obj.Expr.(type) {
+			case *sqlparser.ColName:
+				attrTable := objexpr.Qualifier.Name.CompliantName()
+				attrName := objexpr.Name.CompliantName()
 				attrTables = append(attrTables, strings.ToLower(attrTable))
 				attrNames = append(attrNames, strings.ToLower(attrName))
+				attrFuncs = append(attrFuncs, types.NoneCluster)
+			case *sqlparser.FuncExpr:
+				var funcType types.ClusterType
+				switch objexpr.Name.Lowered() {
+				case "min":
+					funcType = types.MinCluster
+				case "max":
+					funcType = types.MaxCluster
+				case "sum":
+					funcType = types.SumCluster
+				case "avg":
+					funcType = types.AverageCluster
+				default:
+					return errorutil.ErrorUndefinedBehaviour
+				}
+
+				for _, fexpr := range objexpr.Exprs {
+					if fae, ok := fexpr.(*sqlparser.AliasedExpr); ok {
+						if col, ok := fae.Expr.(*sqlparser.ColName); ok {
+							attrTable := col.Qualifier.Name.CompliantName()
+							attrName := col.Name.CompliantName()
+							attrTables = append(attrTables, strings.ToLower(attrTable))
+							attrNames = append(attrNames, strings.ToLower(attrName))
+							attrFuncs = append(attrFuncs, funcType)
+						} else {
+							return errorutil.ErrorUndefinedBehaviour
+						}
+					} else {
+						return errorutil.ErrorUndefinedBehaviour
+					}
+				}
+			default:
+				return errorutil.ErrorUndefinedBehaviour
 			}
 		}
 	}
 
-	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, stmt.Where)
+	table, err := db.sysManager.SelectTablesByWhereExpr(tableNames, attrTables, attrNames, attrFuncs, stmt.Where)
 
 	if err != nil {
 		return err

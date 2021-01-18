@@ -49,6 +49,7 @@ func (m *Manager) SelectTablesByWhereExpr(
 	relNameList []string,
 	attrTableList []string,
 	attrNameList []string,
+	attrFuncList []types.ClusterType,
 	expr *sqlparser.Where,
 ) (*TemporalTable, error) {
 	allAttrs := AttrInfoList{}
@@ -77,7 +78,6 @@ func (m *Manager) SelectTablesByWhereExpr(
 
 			values := TT2Attrs(table, cvs)
 			newCalculatedValues = append(newCalculatedValues, values...)
-
 		}
 
 		allAttrs = append(allAttrs, attrs...)
@@ -93,7 +93,14 @@ func (m *Manager) SelectTablesByWhereExpr(
 				// panic(err)
 				return nil, errorutil.ErrorColNotFound
 			}
-			selectedAttrs = append(selectedAttrs, *attr)
+
+			if attrFuncList != nil && attrFuncList[index] == types.AverageCluster {
+				newAttr := *attr
+				newAttr.AttrType = types.FLOAT
+				selectedAttrs = append(selectedAttrs, newAttr)
+			} else {
+				selectedAttrs = append(selectedAttrs, *attr)
+			}
 		}
 	}
 
@@ -115,6 +122,8 @@ func (m *Manager) SelectTablesByWhereExpr(
 		totLength += attr.AttrSize + 1
 	}
 
+	clusterValues := map[string]string{}
+
 	rows := make([]*record.Record, 0)
 	for _, row := range calculatedValues {
 		tmpRec := record.Record{
@@ -123,12 +132,61 @@ func (m *Manager) SelectTablesByWhereExpr(
 		}
 
 		for i := range selectedAttrs {
-			rawVal, found := row[types.SimpleAttr{
+			attrKey := types.SimpleAttr{
 				TableName: rels[i],
 				ColName:   attrs[i],
-			}]
+			}
+			rawVal, found := row[attrKey]
 			if !found {
 				return nil, errorutil.ErrorColNotFound
+			}
+
+			if attrFuncList != nil {
+				switch attrFuncList[i] {
+				case types.MinCluster:
+					key := "min(" + rels[i] + "." + attrs[i] + ")"
+					if _, found := clusterValues[key]; !found {
+						value, err := calcCluster(calculatedValues, attrKey, typs[i], attrFuncList[i])
+						if err != nil {
+							return nil, err
+						}
+						clusterValues[key] = value
+					}
+					rawVal = clusterValues[key]
+				case types.MaxCluster:
+					key := "max(" + rels[i] + "." + attrs[i] + ")"
+					if _, found := clusterValues[key]; !found {
+						value, err := calcCluster(calculatedValues, attrKey, typs[i], attrFuncList[i])
+						if err != nil {
+							return nil, err
+						}
+						clusterValues[key] = value
+					}
+					rawVal = clusterValues[key]
+				case types.SumCluster:
+					key := "sum(" + rels[i] + "." + attrs[i] + ")"
+					if _, found := clusterValues[key]; !found {
+						value, err := calcCluster(calculatedValues, attrKey, typs[i], attrFuncList[i])
+						if err != nil {
+							return nil, err
+						}
+						clusterValues[key] = value
+					}
+					rawVal = clusterValues[key]
+				case types.AverageCluster:
+					key := "avg(" + rels[i] + "." + attrs[i] + ")"
+					if _, found := clusterValues[key]; !found {
+						value, err := calcCluster(calculatedValues, attrKey, typs[i], attrFuncList[i])
+						if err != nil {
+							return nil, err
+						}
+						clusterValues[key] = value
+					}
+					rawVal = clusterValues[key]
+
+				case types.NoneCluster:
+				default:
+				}
 			}
 
 			if val, err := types.String2Value(rawVal, lens[i], typs[i]); err != nil {
@@ -143,6 +201,22 @@ func (m *Manager) SelectTablesByWhereExpr(
 			}
 		}
 		rows = append(rows, &tmpRec)
+	}
+
+	for i := range selectedAttrs {
+		if attrFuncList != nil {
+			switch attrFuncList[i] {
+			case types.MinCluster:
+				attrs[i] = "min(" + attrs[i] + ")"
+			case types.MaxCluster:
+				attrs[i] = "max(" + attrs[i] + ")"
+			case types.SumCluster:
+				attrs[i] = "sum(" + attrs[i] + ")"
+			case types.AverageCluster:
+				attrs[i] = "avg(" + attrs[i] + ")"
+			case types.NoneCluster:
+			}
+		}
 	}
 
 	tmpTable := &TemporalTable{

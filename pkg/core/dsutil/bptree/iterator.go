@@ -46,17 +46,6 @@ func (iter *Iterator) getNode() (*TreeNode, error) {
 	return iter.operator.LoadNode(iter.nodeIndex)
 }
 
-/*
-func (iter *Iterator) prepareValue() error {
-	node, err := iter.getNode()
-	if err != nil {
-		return err
-	}
-	iter.valueIndex = node.Indexes[iter.nodePos]
-	return nil
-}
-*/
-
 // EqualTo checks the two Iterators are equal or not
 func (iter *Iterator) EqualTo(target *Iterator) bool {
 	if iter.ended && target.ended {

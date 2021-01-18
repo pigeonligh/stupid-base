@@ -47,24 +47,23 @@ func NewFileHandle(filename string) (*FileHandle, error) {
 func (f *FileHandle) Close() error {
 	if !f.initialized || !f.headerModified {
 		return nil
-	} else {
-		pageHandle, err := f.storageFH.GetPage(0)
-		if err != nil {
-			return err
-		}
-		pageData := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
-		*pageData = f.header
-
-		if err = f.storageFH.MarkDirty(pageHandle.Page); err != nil {
-			return err
-		}
-		if err = f.storageFH.UnpinPage(pageHandle.Page); err != nil {
-			return err
-		}
-		f.initialized = false
-		f.header = types.RecordHeaderPage{}
-		return nil
 	}
+	pageHandle, err := f.storageFH.GetPage(0)
+	if err != nil {
+		return err
+	}
+	pageData := (*types.RecordHeaderPage)(types.ByteSliceToPointer(pageHandle.Data))
+	*pageData = f.header
+
+	if err = f.storageFH.MarkDirty(pageHandle.Page); err != nil {
+		return err
+	}
+	if err = f.storageFH.UnpinPage(pageHandle.Page); err != nil {
+		return err
+	}
+	f.initialized = false
+	f.header = types.RecordHeaderPage{}
+	return nil
 }
 
 func (f *FileHandle) AllocateFreeRID() types.RID {
@@ -89,7 +88,7 @@ func (f *FileHandle) AllocateFreeRID() types.RID {
 	ret.Page = freePage
 	ret.Slot = freeSlot
 	_ = f.storageFH.UnpinPage(pageHandle.Page)
-	//log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
+	// log.V(log.RecordLevel).Infof("AllocateRID, (%v %v)", freePage, freeSlot)
 	return ret
 }
 
@@ -103,7 +102,7 @@ func (f *FileHandle) insertPage() error {
 	_ = f.storageFH.UnpinPage(pageHandle.Page)
 
 	f.header.FirstFree = pageHandle.Page
-	f.header.Pages += 1
+	f.header.Pages++
 	f.headerModified = true
 	log.V(log.RecordLevel).Infof("insertPage, FirstFree: %v, Pages: %v", f.header.FirstFree, f.header.Pages)
 	return nil
@@ -153,7 +152,7 @@ func (f *FileHandle) InsertRec(data []byte) (types.RID, error) {
 	if err := f.storageFH.UnpinPage(rid.Page); err != nil {
 		return types.RID{}, err
 	}
-	f.header.RecordNum += 1
+	f.header.RecordNum++
 	f.headerModified = true
 	log.V(log.RecordLevel).Infof("Insert record(%v %v) succeeded!", freePage, freeSlot)
 	return types.RID{
@@ -184,7 +183,7 @@ func (f *FileHandle) DeleteRec(rid types.RID) error {
 		f.header.FirstFree = rid.Page
 	}
 	mybitset.Clean(rid.Slot)
-	f.header.RecordNum -= 1
+	f.header.RecordNum--
 	f.headerModified = true
 
 	if err := f.storageFH.MarkDirty(rid.Page); err != nil {

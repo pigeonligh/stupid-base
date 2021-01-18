@@ -31,21 +31,13 @@ func getTableIdxDataFileName(table, idxName string) string {
 	return table + "-" + idxName + ".index"
 }
 
-//func getTableIdxMetaFileName(table string) string {
-//	return table + ".table-index"
-//}
-
-//func getTableConstraintFileName(table string) string {
-//	return table + ".constraint-meta"
-//}
-
 type Manager struct {
 	relManager *record.Manager
 	idxManager *index.Manager
 	rels       map[string]AttrInfoList
 	dbSelected string
-	//dbMeta     RelInfoMap
-	//dbFK       *record.FileHandle // maintain a database's overall foreign constraint
+	// dbMeta     RelInfoMap
+	// dbFK       *record.FileHandle // maintain a database's overall foreign constraint
 }
 
 var instance *Manager
@@ -224,11 +216,12 @@ func (m *Manager) DropTable(relName string) error {
 		_ = os.Remove(env.WorkDir + "/" + getTableIdxDataFileName(relName, idxName))
 	}
 	_ = os.Remove(env.WorkDir + "/" + getTableMetaFileName(relName))
-	//_ = os.Remove(env.WorkDir + "/" + getTableIdxMetaFileName(relName))
+	// _ = os.Remove(env.WorkDir + "/" + getTableIdxMetaFileName(relName))
 	_ = os.Remove(env.WorkDir + "/" + getTableDataFileName(relName))
 
 	relInfo := m.GetDBRelInfoMap()
 	delete(relInfo, relName)
+	m.SetDBRelInfoMap(relInfo)
 
 	return nil
 }

@@ -24,7 +24,9 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	if err != nil {
 		panic(err)
 	}
-	defer m.relManager.CloseFile(datafile.Filename)
+	defer func() {
+		_ = m.relManager.CloseFile(datafile.Filename)
+	}()
 
 	var recList []*record.Record = nil
 
@@ -33,7 +35,9 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 		for _, expr := range possibleIdxCompList {
 			indexname := getTableIdxDataFileName(relName, expr.Left.AttrInfo.IndexName)
 			idxFH, err := m.idxManager.OpenIndex(indexname, datafile)
-			defer m.idxManager.CloseIndex(indexname)
+			defer func() {
+				_ = m.idxManager.CloseIndex(indexname)
+			}()
 			if err != nil || idxFH == nil {
 				break
 			}
@@ -42,7 +46,7 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 			ridList := idxFH.GetRidList(expr.OpType, expr.Right.Value.Value[0:expr.Left.AttrInfo.AttrSize])
 			// currently test one
 			recList = record.GetRecListFromRidList(datafile, ridList)
-			break
+			break // nolint: staticcheck
 		}
 	}
 	if recList == nil {
@@ -66,7 +70,7 @@ func (m *Manager) SelectSingleTableByExpr(relName string, attrNameList []string,
 	nils := make([]bool, 0)
 
 	totLen := 0
-	if attrNameList == nil || len(attrNameList) == 0 {
+	if len(attrNameList) == 0 {
 		attrNameList = m.GetAttrInfoCollection(relName).NameList
 	}
 	for _, attr := range attrNameList {
@@ -157,7 +161,7 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 		panic(0)
 	}
 
-	//log.Debug(keepList)
+	// log.Debug(keepList)
 
 	totalSize := 0
 	offs := make([]int, 0)
@@ -184,7 +188,6 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 	finalRows := make([]*record.Record, 0)
 	// i for row and j for column
 	for i := 0; i < len(keepList)/len(tables); i++ {
-
 		tmpRec := record.Record{
 			Rid:  types.RID{},
 			Data: make([]byte, totalSize),
@@ -192,14 +195,14 @@ func (m *Manager) SelectFromMultiple(tables []*TemporalTable, rel2Attrs map[stri
 
 		curColCursor := 0
 		tmpList := keepList[i*len(tables) : (i+1)*len(tables)]
-		//log.Debug(tmpList)
+		// log.Debug(tmpList)
 		// idx from each temporal table
 		for j := 0; j < len(tables); j++ {
 			rel := tables[j].rels[0]
 			row := tables[j].rows[tmpList[j]]
 			for _, attr := range rel2Attrs[rel] {
 				copy(tmpRec.Data[offs[curColCursor]:offs[curColCursor]+lens[curColCursor]+1], row.Data[attr.AttrOffset:attr.AttrOffset+attr.AttrSize+1])
-				curColCursor += 1
+				curColCursor++
 			}
 		}
 		finalRows = append(finalRows, &tmpRec)
@@ -230,7 +233,9 @@ func (m *Manager) DeleteRows(relName string, expr *parser.Expr) error {
 	attrInfoCollection := m.GetAttrInfoCollection(relName)
 
 	fh, _ := m.relManager.OpenFile(getTableDataFileName(relName))
-	defer m.relManager.CloseFile(fh.Filename)
+	defer func() {
+		_ = m.relManager.CloseFile(fh.Filename)
+	}()
 
 	delRecList, err := fh.GetFilteredRecList(expr)
 	if err != nil {
@@ -246,7 +251,9 @@ func (m *Manager) DeleteRows(relName string, expr *parser.Expr) error {
 			if fkInfoMap[fkName].DstRel == relName {
 				srcAttrSet := m.GetAttrSetFromAttrs(fkInfoMap[fkName].SrcRel, fkInfoMap[fkName].SrcAttr)
 				srcFH, _ := m.relManager.OpenFile(getTableDataFileName(fkInfoMap[fkName].SrcRel))
-				defer m.relManager.CloseFile(srcFH.Filename)
+				defer func() {
+					_ = m.relManager.CloseFile(srcFH.Filename)
+				}()
 
 				// N * N, find if there's a match between src all records and delete records
 				// todo there probably a chance to check index file
@@ -267,7 +274,9 @@ func (m *Manager) DeleteRows(relName string, expr *parser.Expr) error {
 		// contains the upper case, delete the index key rids
 		for idxName := range attrInfoCollection.IdxMap {
 			idxFH, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, idxName), fh)
-			defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
+			defer func() {
+				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
+			}()
 			err := idxFH.DeleteEntryByBatch(record.GetRidListFromRecList(delRecList))
 			if err != nil {
 				panic(err)
@@ -310,7 +319,12 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 		return nil
 	}
 	fh, err := m.relManager.OpenFile(getTableDataFileName(relName))
-	defer m.relManager.CloseFile(fh.Filename)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = m.relManager.CloseFile(fh.Filename)
+	}()
 
 	// check if primary keys are contained in attrName list
 	checkPrimary := false
@@ -345,15 +359,16 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 	if checkPrimary {
 		if len(tmpTable.rows) > 1 {
 			return errorutil.ErrorDBSysDuplicatedKeysFound // must duplicate
-		} else {
-			attrSet := m.GetAttrSetFromAttrs(relName, attrInfoCollection.PkList)
-			idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName), fh)
-			defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName))
-			compData := attrSet.DataToAttrs(types.RID{}, tmpTable.rows[0].Data)
-			length := len(idxFile.GetRidList(types.OpCompEQ, compData))
-			if length != 0 {
-				return errorutil.ErrorDBSysDuplicatedKeysFound
-			}
+		}
+		attrSet := m.GetAttrSetFromAttrs(relName, attrInfoCollection.PkList)
+		idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName), fh)
+		defer func() {
+			_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName))
+		}()
+		compData := attrSet.DataToAttrs(types.RID{}, tmpTable.rows[0].Data)
+		length := len(idxFile.GetRidList(types.OpCompEQ, compData))
+		if length != 0 {
+			return errorutil.ErrorDBSysDuplicatedKeysFound
 		}
 	}
 
@@ -368,8 +383,12 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 				attrSet := m.GetAttrSetFromAttrs(fkInfo.SrcRel, fkInfo.SrcAttr)
 				datafile, _ := m.relManager.OpenFile(getTableDataFileName(fkInfo.DstRel))
 				idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(fkInfo.DstRel, PrimaryKeyIdxName), datafile)
-				defer m.relManager.CloseFile(datafile.Filename)
-				defer m.idxManager.CloseIndex(getTableIdxDataFileName(fkInfo.DstRel, PrimaryKeyIdxName))
+				defer func() {
+					_ = m.relManager.CloseFile(datafile.Filename)
+				}()
+				defer func() {
+					_ = m.idxManager.CloseIndex(getTableIdxDataFileName(fkInfo.DstRel, PrimaryKeyIdxName))
+				}()
 				compData := attrSet.DataToAttrs(types.RID{}, tmpTable.rows[0].Data)
 				length := len(idxFile.GetRidList(types.OpCompEQ, compData))
 				if length == 0 {
@@ -391,7 +410,9 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 
 				srcAttrSet := m.GetAttrSetFromAttrs(fkInfoMap[fkName].SrcRel, fkInfoMap[fkName].SrcAttr)
 				srcFH, _ := m.relManager.OpenFile(getTableDataFileName(fkInfoMap[fkName].SrcRel))
-				defer m.relManager.CloseFile(srcFH.Filename)
+				defer func() {
+					_ = m.relManager.CloseFile(srcFH.Filename)
+				}()
 				for _, rec := range srcFH.GetRecList() {
 					srcData := srcAttrSet.DataToAttrs(rec.Rid, rec.Data)
 					if compareBytes(srcData, dstAttrSet.DataToAttrs(types.RID{}, prevData[0])) == 0 {
@@ -416,7 +437,9 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 	for idxName, idxAttrs := range attrInfoCollection.IdxMap {
 		if checkIfaLEb(attrNameList, idxAttrs) {
 			idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, idxName), fh)
-			defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
+			defer func() {
+				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
+			}()
 			if err := idxFile.DeleteEntryByBatch(delRids); err != nil {
 				panic(err)
 			}
@@ -432,7 +455,6 @@ func (m *Manager) UpdateRows(relName string, attrNameList []string, rawList []st
 
 // INSERT INTO <tbName> VALUES <valueLists>
 func (m *Manager) InsertRow(relName string, rawList []string) error {
-
 	if !m.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
 	}
@@ -446,10 +468,12 @@ func (m *Manager) InsertRow(relName string, rawList []string) error {
 
 	// open file
 	fh, err := m.relManager.OpenFile(getTableDataFileName(relName))
-	defer m.relManager.CloseFile(fh.Filename)
 	if err != nil {
 		panic(0)
 	}
+	defer func() {
+		_ = m.relManager.CloseFile(fh.Filename)
+	}()
 
 	for i, attrName := range attrInfoCollection.NameList {
 		// check basic value type match
@@ -476,8 +500,12 @@ func (m *Manager) InsertRow(relName string, rawList []string) error {
 
 				dataFH, _ := m.relManager.OpenFile(getTableDataFileName(cons.DstRel))
 				idxFH, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(cons.DstRel, PrimaryKeyIdxName), dataFH)
-				defer m.relManager.CloseFile(getTableDataFileName(cons.DstRel))
-				defer m.idxManager.CloseIndex(getTableIdxDataFileName(cons.DstRel, PrimaryKeyIdxName))
+				defer func() {
+					_ = m.relManager.CloseFile(getTableDataFileName(cons.DstRel))
+				}()
+				defer func() {
+					_ = m.idxManager.CloseIndex(getTableIdxDataFileName(cons.DstRel, PrimaryKeyIdxName))
+				}()
 
 				if len(idxFH.GetRidList(types.OpCompEQ, compData)) == 0 {
 					return errorutil.ErrorDBSysFkValueNotInPk
@@ -493,7 +521,9 @@ func (m *Manager) InsertRow(relName string, rawList []string) error {
 			// has primary key constraint
 			attrSet := m.GetAttrSetFromAttrs(relName, attrInfoCollection.PkList)
 			idxFile, _ = m.idxManager.OpenIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName), fh)
-			defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName))
+			defer func() {
+				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, PrimaryKeyIdxName))
+			}()
 			compData := attrSet.DataToAttrs(types.RID{}, insData)
 			length := len(idxFile.GetRidList(types.OpCompEQ, compData))
 			if length != 0 {
@@ -511,103 +541,12 @@ func (m *Manager) InsertRow(relName string, rawList []string) error {
 		for idxName := range attrInfoCollection.IdxMap {
 			idxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(relName, idxName), fh)
 			_ = idxFile.InsertEntry(rid)
-			defer m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
-
+			tmpName := idxName
+			defer func() {
+				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, tmpName))
+			}()
 		}
 	}
 	log.V(log.DBSysLevel).Infof("Insert value success %v", rawList)
 	return nil
 }
-
-// used for database query, since only some of the col are selected
-//type TemporalTable = []TableColumn
-//
-//type TableColumn struct {
-//	RelName     string
-//	attrName    string
-//	attrSize    int
-//	attrType    int
-//	nullAllowed bool
-//	valueList   []types.Value
-//}
-
-// maybe it can be used for select & join
-//func (m *Manager) GetTemporalTableByAttrs(RelName string, attrNameList []string, expr *parser.Expr) TemporalTable {
-//	retTempTable := make(TemporalTable, 0)
-//
-//	attrInfoMap := m.getAttrInfoMapViaCacheOrReload(RelName, nil)
-//
-//	datafile, err := m.relManager.OpenFile(getTableDataFileName(RelName))
-//	if err != nil {
-//		log.V(log.DBSysLevel).Error(errorutil.ErrorDBSysRelationNotExisted)
-//		return nil
-//	}
-//	defer m.relManager.CloseFile(datafile.Filename)
-//
-//	recordList, _ := record.FilterOnRecList(datafile.GetRecList(), expr)
-//	for _, attr := range attrNameList {
-//		col := TableColumn{
-//			RelName:   RelName,
-//			attrName:  attr,
-//			valueList: make([]types.Value, 0),
-//		}
-//		offset := attrInfoMap[attr].AttrOffset
-//		length := attrInfoMap[attr].AttrSize
-//		attrType := attrInfoMap[attr].AttrType
-//		for _, rec := range recordList {
-//			if rec.Data[offset+length] == 1 {
-//				attrType = types.NO_ATTR // mark null here
-//			}
-//			col.valueList = append(col.valueList, types.NewValueFromByteSlice(rec.Data[offset:offset+length], attrType))
-//		}
-//		col.attrSize = length
-//		col.attrType = attrType
-//		col.nullAllowed = attrInfoMap[attr].NullAllowed
-//		retTempTable = append(retTempTable, col)
-//	}
-//	return retTempTable
-//}
-
-//func (m *Manager) PrintTableByTmpColumns(table TemporalTable) {
-//	printInfo := &TablePrintInfo{
-//		TableHeaderList: make([]string, 0),
-//		OffsetList:      make([]int, 0),
-//		SizeList:        make([]int, 0),
-//		TypeList:        make([]int, 0),
-//		NullList:        make([]bool, 0),
-//		ColWidMap:       make(map[string]int),
-//		ShowingMeta:     false,
-//	}
-//	// construct a record list
-//	recordNums := len(table[0].valueList)
-//	RecordSize := 0
-//	for _, col := range table {
-//		if len(col.valueList) != recordNums {
-//			panic(0)
-//		}
-//		printInfo.ColWidMap[col.attrName] = len(col.attrName)
-//		printInfo.TableHeaderList = append(printInfo.TableHeaderList, col.attrName)
-//		printInfo.OffsetList = append(printInfo.OffsetList, RecordSize)
-//		printInfo.SizeList = append(printInfo.SizeList, col.attrSize)
-//		printInfo.TypeList = append(printInfo.TypeList, col.attrType)
-//		printInfo.NullList = append(printInfo.NullList, col.nullAllowed)
-//
-//		RecordSize += col.attrSize + 1
-//	}
-//	recList := make([]*record.Record, 0)
-//
-//	for i := 0; i < recordNums; i++ {
-//		rec := record.Record{
-//			Rid:  types.RID{},
-//			Data: make([]byte, RecordSize),
-//		}
-//		for j := 0; j < len(table); j++ {
-//			copy(rec.Data[printInfo.OffsetList[j]:printInfo.OffsetList[j]+printInfo.SizeList[j]], table[i].valueList[i].Value[0:printInfo.SizeList[j]])
-//			if len(table[i].valueList[i].Format2String()) > printInfo.ColWidMap[table[i].attrName] {
-//				printInfo.ColWidMap[table[i].attrName] = len(table[i].valueList[i].Format2String())
-//			}
-//		}
-//		recList = append(recList, &rec)
-//	}
-//	m.PrintTableByInfo(recList, printInfo)
-//}

@@ -10,9 +10,11 @@ var (
 	ErrorExprNodeNotImplemented = errors.New("exp node type not implemented")
 
 	// compare op
+
 	ErrorExprNodeCompViolateIsNullSyntax = errors.New("comp expr violate is null syntax")
 
 	// logic op
+
 	ErrorExprNodeLogicWithNonLogicOp = errors.New("node logic with non logic op")
 
 	ErrorExprIsNotLogicComputable = errors.New("expr is not logic computable")
@@ -21,5 +23,5 @@ var (
 
 	ErrorExprUnaryOpWithNilRightChild = errors.New("unary operator with nil right child")
 
-	ErrorExprUnaryOpWithNonNilLeftChild = errors.New("unary operator wtih non nil left child")
+	ErrorExprUnaryOpWithNonNilLeftChild = errors.New("unary operator with non nil left child")
 )

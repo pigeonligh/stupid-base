@@ -97,7 +97,7 @@ func (mg *Manager) MarkDirty(id types.PageID) error {
 	if mg.buffers[slot].pinCount == 0 {
 		// in upper levels, we have pages that already unpinned but still alive for further uses
 		log.V(log.BufferLevel).Warning("error page unpinned")
-		//return errorutil.ErrorPageUnPinned
+		// return errorutil.ErrorPageUnPinned
 	}
 	mg.buffers[slot].dirty = true
 	mg.linkUsed(slot)

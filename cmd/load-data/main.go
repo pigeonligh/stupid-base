@@ -32,7 +32,7 @@ func main() {
 
 			attrs := ""
 			for _, attr := range tableConfig {
-				attrs = attrs + attr
+				attrs += attr
 			}
 			sql := "create table " + tableName + " ( " + attrs + " );"
 
@@ -42,12 +42,12 @@ func main() {
 			}
 		}
 
-		//for _, sql := range afterCommand {
-		//	if err := db.Run(sql); err != nil {
-		//		fmt.Println("Error:", err)
-		//		os.Exit(1)
-		//	}
-		//}
+		for _, sql := range afterCommand {
+			if err := db.Run(sql); err != nil {
+				fmt.Println("Error:", err)
+				os.Exit(1)
+			}
+		}
 
 		for _, tableName := range configOrder {
 			fmt.Println("insert", tableName)
@@ -77,9 +77,9 @@ func main() {
 				values := ""
 				for _, value := range row {
 					if values != "" {
-						values = values + ", "
+						values += ", "
 					}
-					values = values + "'" + strings.TrimSpace(value) + "'"
+					values += "'" + strings.TrimSpace(value) + "'"
 				}
 
 				sql := "insert into " + tableName + " values ( " + values + " )"
@@ -92,7 +92,7 @@ func main() {
 			fmt.Println("insert", count)
 		}
 
-		db.Run("show tables;")
+		_ = db.Run("show tables;")
 
 	default:
 		fmt.Println("unknown parameters")

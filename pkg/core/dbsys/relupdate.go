@@ -44,7 +44,9 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 
 	// insert each record rid to index file
 	dataFile, _ := m.relManager.OpenFile(getTableDataFileName(relName))
-	defer m.relManager.CloseFile(getTableDataFileName(relName))
+	defer func() {
+		_ = m.relManager.CloseFile(getTableDataFileName(relName))
+	}()
 
 	idxAttrSet := types.AttrSet{}
 	for _, attr := range attrList {
@@ -56,22 +58,17 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	if err != nil {
 		panic(err)
 	}
-	insertRidList := make([]types.RID, 0)
+	// insertRidList := make([]types.RID, 0)
 	for _, rec := range dataFile.GetRecList() {
 		err := idxFile.InsertEntry(rec.Rid)
 		if err != nil {
 			panic(err)
 		}
-		insertRidList = append(insertRidList, rec.Rid)
+		// insertRidList = append(insertRidList, rec.Rid)
 		if !duplicatedAllowed {
 			// it must have unique or primary constraint, check duplicate
 			primaryByte := idxAttrSet.DataToAttrs(rec.Rid, rec.Data)
 			if len(idxFile.GetRidList(types.OpCompEQ, primaryByte)) > 1 {
-				// just drop the index is ojbk
-				//if err := idxFile.DeleteEntryByBatch(insertRidList); err != nil {
-				//	panic(err)
-				//	// rolling back
-				//}
 				_ = m.idxManager.CloseIndex(getTableIdxDataFileName(relName, idxName))
 				_ = m.idxManager.DestroyIndex(getTableIdxDataFileName(relName, idxName))
 				return errorutil.ErrorDBSysDuplicatedKeysFound
@@ -84,19 +81,19 @@ func (m *Manager) CreateIndex(idxName string, relName string, attrList []string,
 	relInfo := m.GetDBRelInfoMap()[relName]
 	relInfo.IndexCount++
 	m.SetRelInfo(relInfo)
-	//idxInfoCollection.Name2Cols[idxName] = attrList
+	// idxInfoCollection.Name2Cols[idxName] = attrList
 
 	for _, attr := range attrList {
 		attrInfo := attrInfoCollection.InfoMap[attr]
 		attrInfo.IndexName = idxName
 		attrInfoCollection.InfoMap[attr] = attrInfo
-		//idxInfoCollection.Col2Name[attr] = idxName
+		// idxInfoCollection.Col2Name[attr] = idxName
 	}
 
 	m.SetAttrInfoListByCollection(relName, attrInfoCollection)
 	m.SetRelInfo(relInfo)
 	log.V(log.DBSysLevel).Infof("Create index succeed %v : %v, %v", relName, attrList, idxName)
-	//m.SetIdxInfoCollection(relName, idxInfoCollection)
+	// m.SetIdxInfoCollection(relName, idxInfoCollection)
 	return nil
 }
 
@@ -120,7 +117,7 @@ func (m *Manager) DropIndex(relName string, idxName string) error {
 
 	// 1
 	relInfo := m.GetDBRelInfoMap()[relName]
-	relInfo.IndexCount = relInfo.IndexCount - 1
+	relInfo.IndexCount--
 	m.SetRelInfo(relInfo)
 
 	// 2
@@ -225,7 +222,7 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	if !m.DBSelected() {
 		return errorutil.ErrorDBSysDBNotSelected
 	}
-	//1.
+	// 1.
 	if len(srcAttrList) != len(dstAttrList) {
 		return errorutil.ErrorDBSysForeignKeyLenNotMatch
 	}
@@ -269,9 +266,15 @@ func (m *Manager) AddForeignKey(fkName string, srcRel string, srcAttrList []stri
 	srcFile, _ := m.relManager.OpenFile(getTableDataFileName(srcRel))
 	dstFile, _ := m.relManager.OpenFile(getTableDataFileName(dstRel))
 	dstIdxFile, _ := m.idxManager.OpenIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName), dstFile)
-	defer m.relManager.CloseFile(getTableDataFileName(srcRel))
-	defer m.relManager.CloseFile(getTableDataFileName(dstRel))
-	defer m.idxManager.CloseIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName))
+	defer func() {
+		_ = m.relManager.CloseFile(getTableDataFileName(srcRel))
+	}()
+	defer func() {
+		_ = m.relManager.CloseFile(getTableDataFileName(dstRel))
+	}()
+	defer func() {
+		_ = m.idxManager.CloseIndex(getTableIdxDataFileName(dstRel, PrimaryKeyIdxName))
+	}()
 
 	srcAttrSet := m.GetAttrSetFromAttrs(srcRel, srcAttrList)
 	for _, rec := range srcFile.GetRecList() {
@@ -485,12 +488,12 @@ func (m *Manager) DropColumn(relName string, attrName string) error {
 	}
 
 	for j := i; j < len(attrInfoList); j++ {
-		attrInfoList[j].AttrOffset = attrInfoList[j].AttrOffset - (size + 1)
+		attrInfoList[j].AttrOffset -= size + 1
 	}
 	attrInfoList = append(attrInfoList[0:i], attrInfoList[i+1:]...)
 	m.SetAttrInfoList(relName, attrInfoList)
 	relInfo.RecordSize = relInfo.RecordSize - size - 1
-	relInfo.AttrCount = relInfo.AttrCount - 1
+	relInfo.AttrCount--
 	m.SetRelInfo(relInfo)
 	log.V(log.DBSysLevel).Infof("Drop column succeed %v : %v", relName, attrName)
 	return nil
@@ -511,12 +514,11 @@ func (m *Manager) RenameTable(srcName, dstName string) error {
 	relInfoMap := m.GetDBRelInfoMap()
 	if _, found := relInfoMap[dstName]; found {
 		return errorutil.ErrorDBSysRelationExisted
-	} else {
-		relInfo := relInfoMap[srcName]
-		relInfo.RelName = dstName
-		relInfoMap[dstName] = relInfo
-		delete(relInfoMap, srcName)
 	}
+	relInfo := relInfoMap[srcName]
+	relInfo.RelName = dstName
+	relInfoMap[dstName] = relInfo
+	delete(relInfoMap, srcName)
 	m.SetDBRelInfoMap(relInfoMap)
 	// rename index file
 	for idx := range attrInfoCollection.IdxMap {

@@ -21,7 +21,7 @@ var db *database.Database
 func executor(in string) {
 	sql := strings.Trim(query+in, " \n;")
 	if strings.HasSuffix(in, ";") || sql == "" {
-		query = query + in
+		query += in
 		LivePrefixState.IsEnable = false
 		LivePrefixState.LivePrefix = in
 
@@ -31,7 +31,7 @@ func executor(in string) {
 		query = ""
 		return
 	}
-	query = query + in + " "
+	query += in + " "
 	LivePrefixState.LivePrefix = "... "
 	LivePrefixState.IsEnable = true
 }

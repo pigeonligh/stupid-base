@@ -18,7 +18,7 @@ func (mg *Manager) readPage(pageID types.PageID) (types.PageData, error) {
 		return nil, err
 	}
 	if n != mg.pageSize {
-		return nil, errorutil.ErrorImcompleteRead
+		return nil, errorutil.ErrorIncompleteRead
 	}
 	return data, nil
 }
@@ -31,7 +31,7 @@ func (mg *Manager) writePage(pageID types.PageID, data types.PageData) error {
 		return err
 	}
 	if n != mg.pageSize {
-		return errorutil.ErrorImcompleteWrite
+		return errorutil.ErrorIncompleteWrite
 	}
 	return nil
 }

@@ -4,13 +4,8 @@ a stupid project for relational database.
 
 ### Usage
 
-First, pull the [vitess](https://github.com/vitessio/vitess.git) into the project directory.
 
-```
-git clone https://github.com/vitessio/vitess.git
-```
-
-Then, run the makefile.
+Run the makefile.
 
 ```
 make
